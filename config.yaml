@@ -2,28 +2,28 @@ storage:
   base_path: "data"
 
 downloader:
-  # 全局股票池。当这里的值不是 "all" 时，程序将只下载这个列表中的股票。
-  # 当值为 "all" 时，程序会使用由 "更新A股列表" 任务生成的缓存列表。
-  # symbols: "all" #数据量巨大，要尤其小心
-  symbols: ["002023.SZ", "600519.SH"] # 也可以指定一个具体的列表
+  # 全局股票池。默认使用这个指定的列表。
+  # 如果想下载全市场，请将下一行取消注释，并注释掉列表。
+  # symbols: "all"
+  symbols: ["000001.SZ", "600519.SH", "300059.SZ", "300750.SZ"]
 
-  # 全局默认的实体冷却期（小时）。
-  update_interval_hours: 23
-
-# 任务模板列表：定义了要执行的操作
 tasks:
   - name: "更新A股列表"
     enabled: true
     type: "stock_list"
-    # 这个任务的冷却期可以短一些，比如每12小时更新一次
+    update_strategy: "cooldown"
     update_interval_hours: 12
 
   - name: "日K线-前复权"
     enabled: true
     type: "daily"
     adjust: "qfq"
+    update_strategy: "incremental"
+    date_col: "trade_date"  # 明确指定日期列
 
   - name: "日K线-不复权"
     enabled: true
     type: "daily"
     adjust: "none"
+    update_strategy: "incremental"
+    date_col: "trade_date"  # 明确指定日期列
