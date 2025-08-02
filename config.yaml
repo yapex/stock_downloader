@@ -1,0 +1,23 @@
+# 存储设置
+storage:
+  base_path: "data"
+
+# 下载器全局设置
+downloader:
+  # 全局股票池。可设为 "all" 或具体的ts_code列表
+  symbols: ["000001.SZ", "600519.SH", "300059.SZ", "300750.SZ"]
+  
+  # 全局默认的实体冷却期（小时）。略小于24以避免时间漂移
+  update_interval_hours: 23
+
+# 任务模板列表：定义了要对每只股票执行哪些操作
+tasks:
+  - name: "日K线-前复权"
+    enabled: true
+    type: "daily"
+    adjust: "qfq"
+
+  - name: "日K线-不复权"
+    enabled: true
+    type: "daily"
+    adjust: "none"
