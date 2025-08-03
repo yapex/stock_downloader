@@ -890,7 +890,7 @@ wheels = [
 [[package]]
 name = "stock-downloader"
 version = "1.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "pandas" },
     { name = "plotly" },
@@ -903,7 +903,7 @@ dependencies = [
     { name = "tushare" },
 ]
 
-[package.dev-dependencies]
+[package.optional-dependencies]
 dev = [
     { name = "ipykernel" },
     { name = "ipywidgets" },
@@ -913,9 +913,13 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.30.0" },
+    { name = "ipywidgets", marker = "extra == 'dev'", specifier = ">=8.1.7" },
+    { name = "nbformat", marker = "extra == 'dev'", specifier = ">=5.10.4" },
     { name = "pandas", specifier = ">=2.3.1" },
     { name = "plotly", specifier = ">=6.2.0" },
     { name = "pyarrow", specifier = ">=21.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.1" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "schedule", specifier = ">=1.2.2" },
@@ -923,14 +927,7 @@ requires-dist = [
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "tushare", specifier = ">=1.4.21" },
 ]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "ipykernel", specifier = ">=6.30.0" },
-    { name = "ipywidgets", specifier = ">=8.1.7" },
-    { name = "nbformat", specifier = ">=5.10.4" },
-    { name = "pytest", specifier = ">=8.4.1" },
-]
+provides-extras = ["dev"]
 
 [[package]]
 name = "tabulate"

@@ -13,3 +13,4 @@ data/
 
 # Virtual environments
 .venv
+.DS_Store

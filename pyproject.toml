@@ -1,9 +1,26 @@
+# ==========================================================
+# 构建系统配置
+# 这部分告诉打包工具（如pip, uv）如何构建这个项目。
+# 这是让 entry_points 生效所必需的。
+# ==========================================================
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"} # 告诉setuptools，包的根目录在'src'下
+
+# ==========================================================
+# 项目元数据 (由 uv 管理)
+# ==========================================================
 [project]
 name = "stock-downloader"
-version = "1.1.0"
-description = "Add your description here"
+version = "1.1.5"
+description = "一个基于Tushare Pro的、可插拔的个人量化数据下载器。"
 readme = "README.md"
 requires-python = ">=3.13"
+
+# 核心运行时依赖
 dependencies = [
     "pandas>=2.3.1",
     "plotly>=6.2.0",
@@ -16,7 +33,8 @@ dependencies = [
     "tushare>=1.4.21",
 ]
 
-[dependency-groups]
+# 开发环境依赖 (uv run pytest 时会用到)
+[project.optional-dependencies]
 dev = [
     "ipykernel>=6.30.0",
     "ipywidgets>=8.1.7",
@@ -24,7 +42,14 @@ dev = [
     "pytest>=8.4.1",
 ]
 
-[tool.pytest.ini_options]
-pythonpath = [
-  "."
-]
+# ==========================================================
+# 插件系统入口点 (核心新增部分)
+# 这里是我们“注册”所有任务处理器的地方。
+# DownloadEngine 会自动发现并加载这里定义的所有插件。
+# ==========================================================
+[project.entry-points."stock_downloader.task_handlers"]
+# 格式为: "任务类型标识符" = "模块路径:处理器类名"
+daily = "downloader.tasks.daily:DailyTaskHandler"
+stock_list = "downloader.tasks.stock_list:StockListTaskHandler"
+# 未来新增财报任务时，只需在这里增加一行：
+# financial_income = "downloader.tasks.financials:FinancialsTaskHandler"
