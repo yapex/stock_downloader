@@ -1,61 +1,17 @@
-from tqdm import tqdm
 import pandas as pd
-from datetime import datetime, timedelta
-from .base import BaseTaskHandler, logging
+from .base import IncrementalTaskHandler
 
 
-def record_failed_task(task_name: str, entity_id: str, reason: str):
-    with open("failed_tasks.log", "a", encoding="utf-8") as f:
-        f.write(f"{datetime.now().isoformat()},{task_name},{entity_id},{reason}\n")
+class DailyTaskHandler(IncrementalTaskHandler):
+    """实现日线数据下载的具体逻辑。"""
 
-
-class DailyTaskHandler(BaseTaskHandler):
-    """处理所有日线数据增量下载任务。"""
-
-    def execute(self, **kwargs):
-        target_symbols = kwargs.get("target_symbols")
-        if not target_symbols:
-            self.logger.warning(
-                f"任务 '{self.task_config['name']}' 未收到目标股票列表，跳过。"
-            )
-            return
-
-        task_name = self.task_config["name"]
+    def get_data_type(self) -> str:
         adjust = self.task_config.get("adjust", "none")
-        data_type = f"daily_{adjust or 'none'}"
-        date_col = self.task_config.get("date_col", "trade_date")
+        return f"daily_{adjust or 'none'}"
 
-        self.logger.info(
-            f"--- 开始为 {len(target_symbols)} 只股票执行增量任务: '{task_name}' ---"
-        )
+    def get_date_col(self) -> str:
+        return self.task_config.get("date_col", "trade_date")
 
-        progress_bar = tqdm(target_symbols, desc=f"执行: {task_name}")
-        for ts_code in progress_bar:
-            progress_bar.set_description(f"处理: {data_type}_{ts_code}")
-            try:
-                latest_date = self.storage.get_latest_date(
-                    data_type, ts_code, date_col=date_col
-                )
-                start_date = "19901219"
-                if latest_date:
-                    start_date = (
-                        pd.to_datetime(latest_date, format="%Y%m%d") + timedelta(days=1)
-                    ).strftime("%Y%m%d")
-
-                end_date = datetime.now().strftime("%Y%m%d")
-                if start_date > end_date:
-                    continue
-
-                df = self.fetcher.fetch_daily_history(
-                    ts_code, start_date, end_date, adjust
-                )
-                if df is not None:
-                    if not df.empty:
-                        self.storage.save(df, data_type, ts_code, date_col=date_col)
-                else:
-                    record_failed_task(
-                        task_name, f"{data_type}_{ts_code}", "fetch_failed"
-                    )
-            except Exception as e:
-                tqdm.write(f"❌ 处理股票 {ts_code} 时发生未知错误: {e}")
-                record_failed_task(task_name, f"{data_type}_{ts_code}", str(e))
+    def fetch_data(self, ts_code, start_date, end_date) -> pd.DataFrame | None:
+        adjust = self.task_config.get("adjust", "none")
+        return self.fetcher.fetch_daily_history(ts_code, start_date, end_date, adjust)

@@ -903,7 +903,7 @@ wheels = [
 
 [[package]]
 name = "stock-downloader"
-version = "1.1.6"
+version = "1.1.7"
 source = { editable = "." }
 dependencies = [
     { name = "pandas" },
@@ -921,19 +921,16 @@ dependencies = [
 dev = [
     { name = "ipykernel" },
     { name = "ipywidgets" },
+    { name = "itables" },
     { name = "nbformat" },
     { name = "pytest" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "itables" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.30.0" },
     { name = "ipywidgets", marker = "extra == 'dev'", specifier = ">=8.1.7" },
+    { name = "itables", marker = "extra == 'dev'", specifier = ">=2.4.4" },
     { name = "nbformat", marker = "extra == 'dev'", specifier = ">=5.10.4" },
     { name = "pandas", specifier = ">=2.3.1" },
     { name = "plotly", specifier = ">=6.2.0" },
@@ -947,9 +944,6 @@ requires-dist = [
     { name = "tushare", specifier = ">=1.4.21" },
 ]
 provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "itables", specifier = ">=2.4.4" }]
 
 [[package]]
 name = "tabulate"

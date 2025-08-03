@@ -40,6 +40,7 @@ dev = [
     "ipywidgets>=8.1.7",
     "nbformat>=5.10.4",
     "pytest>=8.4.1",
+    "itables>=2.4.4",
 ]
 
 # ==========================================================
@@ -52,10 +53,4 @@ dev = [
 daily = "downloader.tasks.daily:DailyTaskHandler"
 stock_list = "downloader.tasks.stock_list:StockListTaskHandler"
 daily_basic = "downloader.tasks.daily_basic:DailyBasicTaskHandler"
-
-[dependency-groups]
-dev = [
-    "itables>=2.4.4",
-]
-# 未来新增财报任务时，只需在这里增加一行：
-# financial_income = "downloader.tasks.financials:FinancialsTaskHandler"
+financials = "downloader.tasks.financials:FinancialsTaskHandler"
