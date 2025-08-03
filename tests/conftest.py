@@ -8,16 +8,18 @@ import argparse
 
 @pytest.fixture
 def mock_fetcher():
-    """一个可供所有测试使用的、模拟的Fetcher实例。"""
+    """一个可供所有测试使用的、模拟的Fetcher实例，包含所有方法。"""
     fetcher = MagicMock()
+    # 为每个方法都设置一个默认的、安全的返回值
     fetcher.fetch_stock_list.return_value = pd.DataFrame({"ts_code": ["000001.SZ"]})
     fetcher.fetch_daily_history.return_value = pd.DataFrame(
         {"trade_date": ["20230102"]}
     )
-    fetcher.fetch_daily_basic_by_code.return_value = pd.DataFrame(
-        {"trade_date": ["20230102"]}
-    )
-    fetcher.fetch_daily_basic.return_value = pd.DataFrame({"ts_code": ["000001.SZ"]})
+    fetcher.fetch_daily_basic.return_value = pd.DataFrame({"trade_date": ["20230102"]})
+    # ---> 新增：为财报方法设置mock <---
+    fetcher.fetch_income.return_value = pd.DataFrame({"ann_date": ["20230425"]})
+    fetcher.fetch_balancesheet.return_value = pd.DataFrame({"ann_date": ["20230425"]})
+    fetcher.fetch_cashflow.return_value = pd.DataFrame({"ann_date": ["20230425"]})
     return fetcher
 
 

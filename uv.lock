@@ -257,6 +257,20 @@ wheels = [
 ]
 
 [[package]]
+name = "itables"
+version = "2.4.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ipython" },
+    { name = "numpy" },
+    { name = "pandas" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/81/20/ff4b8bc879c4573e91f810ac2c556c565cbedb994237700ae3ffb42e0e9b/itables-2.4.4.tar.gz", hash = "sha256:29e2b771f7fd3ab70b9d2234615b573da325e610832697e986680ccc036aaf5b", size = 2230757, upload-time = "2025-07-08T20:32:06.531Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a5/cc/a2af9cb19114be0f0afc0242d3e5cb018ac0cbdcf17816c2dd71b68edc79/itables-2.4.4-py3-none-any.whl", hash = "sha256:eb59b24700f6b4ba2a7810a226eeab207a83a2461120f1fd65220f70872eaa45", size = 2261033, upload-time = "2025-07-08T20:32:04.879Z" },
+]
+
+[[package]]
 name = "jedi"
 version = "0.19.2"
 source = { registry = "https://pypi.org/simple" }
@@ -889,7 +903,7 @@ wheels = [
 
 [[package]]
 name = "stock-downloader"
-version = "1.1.5"
+version = "1.1.6"
 source = { editable = "." }
 dependencies = [
     { name = "pandas" },
@@ -911,6 +925,11 @@ dev = [
     { name = "pytest" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "itables" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.30.0" },
@@ -928,6 +947,9 @@ requires-dist = [
     { name = "tushare", specifier = ">=1.4.21" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "itables", specifier = ">=2.4.4" }]
 
 [[package]]
 name = "tabulate"

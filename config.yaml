@@ -35,3 +35,24 @@ tasks:
     # 我们可以不指定 update_strategy，或者自定义一个
     update_strategy: "incremental"
     date_col: "trade_date"
+
+  - name: "财务报表-利润表"
+    enabled: true
+    type: "financials"
+    statement_type: "income" # 对应 fetch_income
+    update_strategy: "incremental"
+    date_col: "ann_date"
+
+  - name: "财务报表-资产负债表"
+    enabled: true
+    type: "financials"
+    statement_type: "balancesheet" # 对应 fetch_balancesheet
+    update_strategy: "incremental"
+    date_col: "ann_date"
+
+  - name: "财务报表-现金流量表"
+    enabled: true
+    type: "financials"
+    statement_type: "cashflow" # 对应 fetch_cashflow
+    update_strategy: "incremental"
+    date_col: "ann_date"
