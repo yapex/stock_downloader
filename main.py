@@ -1,7 +1,6 @@
 import logging
 from dotenv import load_dotenv
 
-# 在所有其他导入之前，第一时间加载 .env 文件
 load_dotenv()
 
 import yaml
@@ -31,13 +30,21 @@ def load_config(config_path: str = "config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
-if __name__ == "__main__":
+# --- 主程序入口 ---
+def main():
+    """
+    程序的主执行函数。
+    """
     parser = argparse.ArgumentParser(description="Stock Data Downloader (Tushare Pro).")
     parser.add_argument(
         "-f",
         "--force",
         action="store_true",
         help="强制执行所有启用的任务，无视冷却期。",
+    )
+    # 我们可以增加一个 --sync-state 参数
+    parser.add_argument(
+        "--sync-state", action="store_true", help="同步数据目录和缓存的状态。"
     )
     args = parser.parse_args()
 
@@ -50,17 +57,17 @@ if __name__ == "__main__":
     )
 
     try:
-        # 1. 加载配置
         config = load_config()
-
-        # 2. 初始化核心组件
         fetcher = TushareFetcher()
         storage = ParquetStorage(
             base_path=config.get("storage", {}).get("base_path", "data")
         )
 
-        # 3. 创建并运行引擎
         engine = DownloadEngine(config, fetcher, storage, args)
+
+        # if args.sync_state:
+        #     engine.sync_state() # 未来可以实现的状态同步功能
+        # else:
         engine.run()
 
         logger.info(
@@ -74,3 +81,7 @@ if __name__ == "__main__":
         logger.info(
             f"\n{separator} 程序异常终止: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {separator}\n"
         )
+
+
+if __name__ == "__main__":
+    main()
