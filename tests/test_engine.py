@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import MagicMock, patch
 import pandas as pd
 import argparse
-from datetime import datetime, timedelta
 
 from downloader.engine import DownloadEngine
 
@@ -12,7 +11,7 @@ class MockDailyHandler:
     def __init__(self, *args):
         pass
 
-    def execute(self):
+    def execute(self, **kwargs):
         pass
 
 
@@ -20,15 +19,16 @@ class MockStockListHandler:
     def __init__(self, *args):
         pass
 
-    def execute(self):
+    def execute(self, **kwargs):
         pass
 
 
 @pytest.fixture
 def mock_fetcher():
+    """一个模拟的Fetcher，为不同测试提供数据。"""
     fetcher = MagicMock()
     fetcher.fetch_stock_list.return_value = pd.DataFrame(
-        {"ts_code": ["000001.SZ", "600519.SH"]}
+        {"ts_code": ["from_api_01", "from_api_02"]}
     )
     fetcher.fetch_daily_history.return_value = pd.DataFrame(
         {"trade_date": ["20230101"]}
@@ -38,12 +38,17 @@ def mock_fetcher():
 
 @pytest.fixture
 def mock_storage():
+    """一个模拟的Storage，特别是为 'all' 模式模拟股票列表文件的读取。"""
     storage = MagicMock()
-    # 模拟股票列表文件存在且可读
-    mock_stock_list_df = pd.DataFrame(
-        {"ts_code": ["000001.SZ", "600519.SH", "300059.SZ"]}
+    # 模拟从Parquet文件读取的股票列表，这对于测试 'all' 模式至关重要
+    mock_stock_list_from_file = pd.DataFrame(
+        {"ts_code": ["from_file_A", "from_file_B", "from_file_C"]}
     )
-    with patch("pandas.read_parquet", MagicMock(return_value=mock_stock_list_df)):
+
+    # 我们需要模拟 pandas.read_parquet 的行为
+    with patch(
+        "pandas.read_parquet", MagicMock(return_value=mock_stock_list_from_file)
+    ):
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         storage._get_file_path.return_value = mock_path
@@ -71,47 +76,21 @@ def test_engine_discovers_tasks(monkeypatch):
     assert engine.task_registry["mock_task"] == MockDailyHandler
 
 
-def test_engine_dispatches_with_specific_symbols(mock_fetcher, mock_storage, base_args):
-    """测试当配置为具体symbols列表时，任务能否被正确分发。"""
-    # ---> 核心修正：为任务添加 'update_strategy' <---
+# === 新增：测试“指定symbols列表”模式 ===
+def test_engine_run_with_specific_symbols(mock_fetcher, mock_storage, base_args):
+    """
+    测试当 config.downloader.symbols 是一个具体列表时，
+    引擎是否会使用这个列表作为 target_symbols。
+    """
+    specific_symbols = ["000001.SZ", "600519.SH"]
     config = {
-        "downloader": {"symbols": ["000001.SZ"]},
+        "downloader": {"symbols": specific_symbols},
         "tasks": [
             {
                 "name": "Test Daily",
                 "enabled": True,
                 "type": "daily",
-                "update_strategy": "incremental",  # <--- 加上这一行
-            }
-        ],
-        "defaults": {},  # 加上一个空的defaults，避免KeyError
-    }
-    mock_daily_handler_class = MagicMock()
-    mock_registry = {"daily": mock_daily_handler_class}
-
-    engine = DownloadEngine(config, mock_fetcher, mock_storage, base_args)
-
-    with patch.object(engine, "task_registry", mock_registry):
-        engine.run()
-
-        mock_daily_handler_class.assert_called_once()
-        call_args, _ = mock_daily_handler_class.call_args
-        passed_config = call_args[0]
-        assert passed_config["target_symbols"] == ["000001.SZ"]
-        mock_daily_handler_class.return_value.execute.assert_called_once()
-
-
-def test_engine_handles_symbols_all_correctly(mock_fetcher, mock_storage, base_args):
-    """【回归测试】测试当配置为 symbols: "all" 时，能否正确加载列表并注入任务。"""
-    # ---> 核心修正：为任务添加 'update_strategy' <---
-    config = {
-        "downloader": {"symbols": "all"},
-        "tasks": [
-            {
-                "name": "Test Daily",
-                "enabled": True,
-                "type": "daily",
-                "update_strategy": "incremental",  # <--- 加上这一行
+                "update_strategy": "incremental",
             }
         ],
         "defaults": {},
@@ -126,9 +105,46 @@ def test_engine_handles_symbols_all_correctly(mock_fetcher, mock_storage, base_a
         engine.run()
 
         mock_daily_handler_class.assert_called_once()
-        call_args, _ = mock_daily_handler_class.call_args
-        passed_config = call_args[0]
+        execute_mock = mock_daily_handler_class.return_value.execute
+        execute_mock.assert_called_once()
 
-        expected_symbols = ["000001.SZ", "600519.SH", "300059.SZ"]
-        assert passed_config["target_symbols"] == expected_symbols
-        mock_daily_handler_class.return_value.execute.assert_called_once()
+        # 核心断言：验证传递给 execute 的 target_symbols 正是我们在 config 中指定的列表
+        _, kwargs = execute_mock.call_args
+        assert kwargs.get("target_symbols") == specific_symbols
+
+
+# === 新增：测试“all”模式 ===
+def test_engine_run_with_symbols_all(mock_fetcher, mock_storage, base_args):
+    """
+    测试当 config.downloader.symbols 是 "all" 时，
+    引擎是否会从 storage 加载列表并作为 target_symbols。
+    """
+    config = {
+        "downloader": {"symbols": "all"},
+        "tasks": [
+            {
+                "name": "Test Daily",
+                "enabled": True,
+                "type": "daily",
+                "update_strategy": "incremental",
+            }
+        ],
+        "defaults": {},
+    }
+
+    mock_daily_handler_class = MagicMock()
+    mock_registry = {"daily": mock_daily_handler_class}
+
+    engine = DownloadEngine(config, mock_fetcher, mock_storage, base_args)
+
+    with patch.object(engine, "task_registry", mock_registry):
+        engine.run()
+
+        mock_daily_handler_class.assert_called_once()
+        execute_mock = mock_daily_handler_class.return_value.execute
+        execute_mock.assert_called_once()
+
+        # 核心断言：验证传递的 target_symbols 是从 mock_storage (模拟文件) 中读取的
+        _, kwargs = execute_mock.call_args
+        expected_symbols_from_file = ["from_file_A", "from_file_B", "from_file_C"]
+        assert kwargs.get("target_symbols") == expected_symbols_from_file

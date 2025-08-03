@@ -1,16 +1,13 @@
 import logging
 from importlib.metadata import entry_points
-from tqdm import tqdm
-import argparse
-import pandas as pd  # 需要导入pandas
+import pandas as pd
 from datetime import datetime
 
 from .fetcher import TushareFetcher
 from .storage import ParquetStorage
+import argparse
 
 logger = logging.getLogger(__name__)
-
-# record_failed_task 保持不变
 
 
 class DownloadEngine:
@@ -28,7 +25,6 @@ class DownloadEngine:
         self.task_registry = self._discover_task_handlers()
 
     def _discover_task_handlers(self) -> dict:
-        # ... (此方法保持不变)
         registry = {}
         try:
             handlers_eps = entry_points(group="stock_downloader.task_handlers")
@@ -40,69 +36,70 @@ class DownloadEngine:
             logger.error(f"自动发现任务处理器时发生错误: {e}", exc_info=True)
         return registry
 
-    def _get_target_symbols(self) -> list:
-        """根据全局配置，确定最终需要下载的股票列表。"""
-        symbols_config = self.config.get("downloader", {}).get("symbols", [])
-        if symbols_config == "all":
+    def run(self):
+        logger.info("下载引擎启动...")
+        tasks = self.config.get("tasks", [])
+        defaults = self.config.get("defaults", {})
+        downloader_config = self.config.get("downloader", {})
+
+        if not tasks:
+            logger.warning("配置文件中未找到任何任务。")
+            return
+
+        # ===================================================================
+        #           核心修正：股票列表的确定逻辑
+        # ===================================================================
+
+        # 1. 执行 stock_list 任务（如果存在且需要更新），以确保 "all" 模式的数据源是最新的
+        stock_list_tasks = [
+            t for t in tasks if t.get("type") == "stock_list" and t.get("enabled")
+        ]
+        for task_spec in stock_list_tasks:
+            self._dispatch_task(
+                task_spec, defaults, target_symbols=None
+            )  # stock_list 任务不需要 symbols
+
+        # 2. 一次性、权威地确定本次运行的目标股票列表
+        symbols_config = downloader_config.get("symbols", [])
+        target_symbols = []
+        if isinstance(symbols_config, list):
+            target_symbols = symbols_config
+            logger.info(
+                f"将使用配置文件中指定的 {len(target_symbols)} 只股票作为目标。"
+            )
+        elif symbols_config == "all":
             try:
                 stock_list_file = self.storage._get_file_path("system", "stock_list")
                 if stock_list_file.exists():
                     df_list = pd.read_parquet(stock_list_file)
-                    logger.info(f"已从本地文件加载 {len(df_list)} 只股票作为目标。")
-                    return df_list["ts_code"].tolist()
+                    target_symbols = df_list["ts_code"].tolist()
+                    logger.info(
+                        f"已从本地文件加载 {len(target_symbols)} 只全市场股票作为目标。"
+                    )
                 else:
-                    logger.warning("配置为'all'但未找到股票列表文件，将尝试实时获取。")
-                    # 降级：实时获取
-                    df_list = self.fetcher.fetch_stock_list()
-                    if df_list is not None:
-                        logger.info(f"已实时获取 {len(df_list)} 只股票作为目标。")
-                        return df_list["ts_code"].tolist()
-                    return []
+                    logger.warning(
+                        "配置为'all'但股票列表文件不存在。请确保'更新A股列表'任务已成功运行。"
+                    )
             except Exception as e:
-                logger.error(f"读取股票列表文件失败: {e}")
-                return []
-        return symbols_config
+                logger.error(f"准备'all'股票列表时出错: {e}")
+        else:
+            logger.error(f"downloader.symbols 配置格式不正确: {symbols_config}")
 
-    def run(self):
-        """
-        执行整个下载流程的主方法。
-        """
-        logger.info("下载引擎启动...")
-        tasks = self.config.get("tasks", [])
-        defaults = self.config.get("defaults", {})
-
-        if not tasks:
-            return
-
-        # --- 阶段一：执行非增量任务 (如 stock_list) ---
-        cooldown_tasks = [
-            t
-            for t in tasks
-            if t.get("update_strategy") == "cooldown" and t.get("enabled")
-        ]
-        for task_spec in cooldown_tasks:
-            self._dispatch_task(task_spec, defaults)
-
-        # --- 阶段二：执行增量任务 ---
-        target_symbols = self._get_target_symbols()
         if not target_symbols:
-            logger.warning("目标股票列表为空，增量任务将被跳过。")
-            return
+            logger.warning("最终目标股票列表为空，依赖股票列表的任务将被跳过。")
 
-        incremental_tasks = [
-            t
-            for t in tasks
-            if t.get("update_strategy") == "incremental" and t.get("enabled")
+        # 3. 执行所有其他数据驱动的任务
+        data_driven_tasks = [
+            t for t in tasks if t.get("type") != "stock_list" and t.get("enabled")
         ]
-        for task_spec in incremental_tasks:
-            # ---> 核心修正：将 symbols 列表注入到每个任务的配置中 <---
-            task_spec["target_symbols"] = target_symbols
-            self._dispatch_task(task_spec, defaults)
+        for task_spec in data_driven_tasks:
+            # 将最终确定的股票列表作为上下文传递
+            context = {"target_symbols": target_symbols}
+            self._dispatch_task(task_spec, defaults, **context)
 
         logger.info("下载引擎所有任务执行完毕。")
 
-    def _dispatch_task(self, task_spec: dict, defaults: dict):
-        """分发单个任务到对应的处理器。"""
+    def _dispatch_task(self, task_spec: dict, defaults: dict, **kwargs):
         task_type = task_spec.get("type")
         handler_class = self.task_registry.get(task_type)
 
@@ -113,7 +110,7 @@ class DownloadEngine:
                 handler_instance = handler_class(
                     final_task_config, self.fetcher, self.storage, self.args
                 )
-                handler_instance.execute()
+                handler_instance.execute(**kwargs)
             except Exception as e:
                 logger.error(
                     f"执行任务 '{task_spec.get('name')}' 时发生错误: {e}", exc_info=True

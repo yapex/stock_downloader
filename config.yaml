@@ -5,7 +5,7 @@ downloader:
   # 全局股票池。默认使用这个指定的列表。
   # 如果想下载全市场，请将下一行取消注释，并注释掉列表。
   # symbols: "all"
-  symbols: ["000001.SZ", "600519.SH", "300059.SZ", "300750.SZ"]
+  symbols: ["600519.SH", "002023.SZ"]
 
 tasks:
   - name: "更新A股列表"
@@ -27,3 +27,11 @@ tasks:
     adjust: "none"
     update_strategy: "incremental"
     date_col: "trade_date"  # 明确指定日期列
+
+  - name: "每日指标"
+    enabled: true
+    type: "daily_basic" 
+    # 这个任务本质上是增量的，但其逻辑在处理器内部实现
+    # 我们可以不指定 update_strategy，或者自定义一个
+    update_strategy: "incremental"
+    date_col: "trade_date"

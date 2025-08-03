@@ -8,9 +8,10 @@ class StockListTaskHandler(BaseTaskHandler):
     处理器插件：负责'冷却期'全量更新股票列表的任务。
     """
 
-    def execute(self):
+    def execute(self, **kwargs):
         """
         执行股票列表的下载和全量覆盖保存。
+        它会忽略传入的 kwargs (如 target_symbols)。
         """
         task_name = self.task_config["name"]
         task_type = self.task_config["type"]
@@ -35,5 +36,4 @@ class StockListTaskHandler(BaseTaskHandler):
             # 全量覆盖保存
             self.storage.overwrite(df, "system", entity_id)
         else:
-            # 如果需要，可以加入失败记录逻辑
             self.logger.error(f"任务 '{task_name}' 获取股票列表失败。")

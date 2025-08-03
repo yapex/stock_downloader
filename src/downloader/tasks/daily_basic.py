@@ -4,13 +4,11 @@ from datetime import datetime, timedelta
 from .base import BaseTaskHandler, logging
 
 
-def record_failed_task(task_name: str, entity_id: str, reason: str):
-    with open("failed_tasks.log", "a", encoding="utf-8") as f:
-        f.write(f"{datetime.now().isoformat()},{task_name},{entity_id},{reason}\n")
-
-
-class DailyTaskHandler(BaseTaskHandler):
-    """处理所有日线数据增量下载任务。"""
+class DailyBasicTaskHandler(BaseTaskHandler):
+    """
+    处理器插件：负责增量下载每日指标数据 (daily_basic)。
+    此版本采用正确的“以股票为中心”的数据模型。
+    """
 
     def execute(self, **kwargs):
         target_symbols = kwargs.get("target_symbols")
@@ -21,18 +19,18 @@ class DailyTaskHandler(BaseTaskHandler):
             return
 
         task_name = self.task_config["name"]
-        adjust = self.task_config.get("adjust", "none")
-        data_type = f"daily_{adjust or 'none'}"
+        data_type = "daily_basic"
         date_col = self.task_config.get("date_col", "trade_date")
 
         self.logger.info(
-            f"--- 开始为 {len(target_symbols)} 只股票执行增量任务: '{task_name}' ---"
+            f"--- 开始为 {len(target_symbols)} 只股票执行每日指标增量任务: '{task_name}' ---"
         )
 
         progress_bar = tqdm(target_symbols, desc=f"执行: {task_name}")
         for ts_code in progress_bar:
             progress_bar.set_description(f"处理: {data_type}_{ts_code}")
             try:
+                # 1. 检查单只股票的最新日期
                 latest_date = self.storage.get_latest_date(
                     data_type, ts_code, date_col=date_col
                 )
@@ -46,16 +44,14 @@ class DailyTaskHandler(BaseTaskHandler):
                 if start_date > end_date:
                     continue
 
-                df = self.fetcher.fetch_daily_history(
-                    ts_code, start_date, end_date, adjust
-                )
-                if df is not None:
-                    if not df.empty:
-                        self.storage.save(df, data_type, ts_code, date_col=date_col)
-                else:
-                    record_failed_task(
-                        task_name, f"{data_type}_{ts_code}", "fetch_failed"
-                    )
+                # 2. 调用新的 Fetcher 方法，一次性获取该股票的所有新数据
+                df = self.fetcher.fetch_daily_basic(ts_code, start_date, end_date)
+
+                # 3. 一次性增量保存
+                if df is not None and not df.empty:
+                    self.storage.save(df, data_type, ts_code, date_col=date_col)
+                # (可以加入失败记录逻辑)
+
             except Exception as e:
-                tqdm.write(f"❌ 处理股票 {ts_code} 时发生未知错误: {e}")
-                record_failed_task(task_name, f"{data_type}_{ts_code}", str(e))
+                tqdm.write(f"❌ 处理股票 {ts_code} 的每日指标时发生未知错误: {e}")
+                # (可以加入失败记录逻辑)

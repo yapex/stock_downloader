@@ -44,28 +44,74 @@ class TushareFetcher:
             logger.error(f"获取A股列表失败: {e}", exc_info=True)
             return None
 
-    def fetch_daily_history(self, ts_code: str, start_date: str, end_date: str, adjust: str) -> pd.DataFrame | None:
-        logger.info(f"开始获取 {ts_code} 从 {start_date} 到 {end_date} 的日线数据 (复权类型: {adjust or '不复权'})...")
+    def fetch_daily_history(
+        self, ts_code: str, start_date: str, end_date: str, adjust: str
+    ) -> pd.DataFrame | None:
+        logger.info(
+            f"开始获取 {ts_code} 从 {start_date} 到 {end_date} 的日线数据 (复权类型: {adjust or '不复权'})..."
+        )
         try:
-            adj_param = adjust if adjust != 'none' else None
+            adj_param = adjust if adjust != "none" else None
             df = ts.pro_bar(
-                ts_code=ts_code, adj=adj_param, start_date=start_date, end_date=end_date,
-                asset='E', freq='D'
+                ts_code=ts_code,
+                adj=adj_param,
+                start_date=start_date,
+                end_date=end_date,
+                asset="E",
+                freq="D",
             )
-            
+
             # ---> 核心修正：在返回前检查 df 是否为 None <---
             if df is None:
                 # 这种情况可能发生在 Tushare 服务器返回非标准空数据时
-                logger.warning(f"Tushare API for {ts_code} 返回了 None，将其视为空DataFrame。")
-                return pd.DataFrame() # 将 None 规范化为空 DataFrame
+                logger.warning(
+                    f"Tushare API for {ts_code} 返回了 None，将其视为空DataFrame。"
+                )
+                return pd.DataFrame()  # 将 None 规范化为空 DataFrame
 
             if not df.empty:
-                df.sort_values(by='trade_date', inplace=True, ignore_index=True)
-            
+                df.sort_values(by="trade_date", inplace=True, ignore_index=True)
+
             logger.info(f"成功获取到 {ts_code} 的 {len(df)} 条日线数据。")
             return df
-            
+
         except Exception as e:
             # ---> 核心修正：在返回 None 前，打印一条明确的错误日志 <---
-            logger.error(f"获取 {ts_code} 的日线数据时发生异常，将返回 None。异常: {e}", exc_info=True)
+            logger.error(
+                f"获取 {ts_code} 的日线数据时发生异常，将返回 None。异常: {e}",
+                exc_info=True,
+            )
+            return None
+
+    def fetch_daily_basic(
+        self, ts_code: str, start_date: str, end_date: str
+    ) -> pd.DataFrame | None:
+        """
+        获取【单只股票】在【一个时间段内】的所有每日指标。
+
+        Args:
+            ts_code (str): Tushare 股票代码。
+            start_date (str): 开始日期, "YYYYMMDD"。
+            end_date (str): 结束日期, "YYYYMMDD"。
+
+        Returns:
+            pd.DataFrame | None: 包含每日指标的 DataFrame, 或在失败时返回 None。
+        """
+        logger.info(f"开始获取 {ts_code} 从 {start_date} 到 {end_date} 的每日指标...")
+        try:
+            # daily_basic 接口在指定 ts_code 时，会返回该股票的时间序列数据
+            df = self.pro.daily_basic(
+                ts_code=ts_code,
+                start_date=start_date,
+                end_date=end_date,
+                fields="ts_code,trade_date,close,turnover_rate,volume_ratio,pe,pe_ttm,pb,ps,ps_ttm,dv_ratio,dv_ttm,total_share,float_share,free_share,total_mv,circ_mv",
+            )
+            if df is not None and not df.empty:
+                df.sort_values(by="trade_date", inplace=True, ignore_index=True)
+
+            df_len = len(df) if df is not None else 0
+            logger.info(f"成功获取到 {ts_code} 的 {df_len} 条每日指标数据。")
+            return df
+        except Exception as e:
+            logger.error(f"获取 {ts_code} 的每日指标失败: {e}", exc_info=True)
             return None
