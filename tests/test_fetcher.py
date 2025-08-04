@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 import tushare as ts  # 导入 tushare 以便 mock
 from dotenv import load_dotenv
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from downloader.fetcher import TushareFetcher
 
@@ -30,6 +30,18 @@ def mock_pro_api(monkeypatch):
     return mock_pro
 
 
+def test_fetcher_initialization_api_failure(monkeypatch):
+    """测试当API验证失败时，TushareFetcher是否抛出异常。"""
+    mock_set_token = MagicMock()
+    mock_pro_api = MagicMock(side_effect=Exception("API init failure"))
+    with (
+        patch("tushare.set_token", mock_set_token),
+        patch("tushare.pro_api", mock_pro_api),
+    ):
+        with pytest.raises(Exception, match="API init failure"):
+            TushareFetcher()
+
+
 # --- 测试用例 ---
 
 
@@ -46,6 +58,15 @@ def test_fetcher_initialization_no_token(monkeypatch):
     monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
     with pytest.raises(ValueError, match="错误：未设置 TUSHARE_TOKEN 环境变量。"):
         TushareFetcher()
+
+
+def test_fetch_stock_list_exception_handling(mock_pro_api, caplog):
+    """测试 fetch_stock_list 异常时返回 None。"""
+    mock_pro_api.stock_basic.side_effect = Exception("fetch error")
+    fetcher = TushareFetcher()
+    result_df = fetcher.fetch_stock_list()
+    assert result_df is None
+    assert "获取A股列表失败" in caplog.text
 
 
 def test_fetch_stock_list(mock_pro_api):
@@ -113,3 +134,187 @@ def test_fetch_daily_history_handles_api_exception(adjust, monkeypatch, caplog):
     assert result_df is None
 
     assert "获取 000003.SZ 的日线数据失败: 模拟网络错误" in caplog.text
+
+
+# ===================================================================
+#           测试 daily_basic 方法
+# ===================================================================
+
+
+def test_fetch_daily_basic_success(mock_pro_api):
+    """测试 fetch_daily_basic 正常情况。"""
+    mock_df = pd.DataFrame(
+        {"ts_code": ["600519.SH"], "trade_date": ["20230101"], "close": [100.0]}
+    )
+    mock_pro_api.daily_basic.return_value = mock_df
+
+    fetcher = TushareFetcher()
+    result = fetcher.fetch_daily_basic("600519", "20230101", "20230131")
+
+    assert isinstance(result, pd.DataFrame)
+    assert not result.empty
+    mock_pro_api.daily_basic.assert_called_once_with(
+        ts_code="600519.SH",
+        start_date="20230101",
+        end_date="20230131",
+        fields="ts_code,trade_date,close,turnover_rate,volume_ratio,pe,pe_ttm,pb,ps,ps_ttm,total_mv,circ_mv",
+    )
+
+
+def test_fetch_daily_basic_returns_none(mock_pro_api):
+    """测试 fetch_daily_basic 当 API 返回 None 时。"""
+    mock_pro_api.daily_basic.return_value = None
+
+    fetcher = TushareFetcher()
+    result = fetcher.fetch_daily_basic("600519", "20230101", "20230131")
+
+    assert isinstance(result, pd.DataFrame)
+    assert result.empty
+
+
+def test_fetch_daily_basic_exception(mock_pro_api, caplog):
+    """测试 fetch_daily_basic 异常处理。"""
+    mock_pro_api.daily_basic.side_effect = Exception("API error")
+
+    fetcher = TushareFetcher()
+    result = fetcher.fetch_daily_basic("600519", "20230101", "20230131")
+
+    assert result is None
+    assert "获取 600519.SH 的每日指标失败" in caplog.text
+
+
+# ===================================================================
+#           测试财务报表方法
+# ===================================================================
+
+
+@pytest.mark.parametrize(
+    "method_name,api_method",
+    [
+        ("fetch_income", "income"),
+        ("fetch_balancesheet", "balancesheet"),
+        ("fetch_cashflow", "cashflow"),
+    ],
+)
+def test_financial_methods_success(mock_pro_api, method_name, api_method):
+    """测试财务报表方法的正常情况。"""
+    mock_df = pd.DataFrame(
+        {"ts_code": ["600519.SH"], "ann_date": ["20230430"], "revenue": [1000000]}
+    )
+    getattr(mock_pro_api, api_method).return_value = mock_df
+
+    fetcher = TushareFetcher()
+    method = getattr(fetcher, method_name)
+    result = method("600519", "20230101", "20231231")
+
+    assert isinstance(result, pd.DataFrame)
+    assert not result.empty
+    getattr(mock_pro_api, api_method).assert_called_once_with(
+        ts_code="600519.SH", start_date="20230101", end_date="20231231"
+    )
+
+
+@pytest.mark.parametrize(
+    "method_name,api_method",
+    [
+        ("fetch_income", "income"),
+        ("fetch_balancesheet", "balancesheet"),
+        ("fetch_cashflow", "cashflow"),
+    ],
+)
+def test_financial_methods_empty_data(mock_pro_api, method_name, api_method):
+    """测试财务报表方法返回空数据或None。"""
+    getattr(mock_pro_api, api_method).return_value = None
+
+    fetcher = TushareFetcher()
+    method = getattr(fetcher, method_name)
+    result = method("600519", "20230101", "20231231")
+
+    assert result is None
+
+
+@pytest.mark.parametrize(
+    "method_name,api_method,error_msg",
+    [
+        ("fetch_income", "income", "利润表"),
+        ("fetch_balancesheet", "balancesheet", "资产负债表"),
+        ("fetch_cashflow", "cashflow", "现金流量表"),
+    ],
+)
+def test_financial_methods_exception(
+    mock_pro_api, method_name, api_method, error_msg, caplog
+):
+    """测试财务报表方法的异常处理。"""
+    getattr(mock_pro_api, api_method).side_effect = Exception("API error")
+
+    fetcher = TushareFetcher()
+    method = getattr(fetcher, method_name)
+    result = method("600519", "20230101", "20231231")
+
+    assert result is None
+    assert f"获取 600519.SH 的{error_msg}失败" in caplog.text
+
+
+# ===================================================================
+#           测试数据排序功能
+# ===================================================================
+
+
+def test_fetch_daily_history_data_sorting(monkeypatch):
+    """测试 fetch_daily_history 是否正确排序数据。"""
+    # 创建乱序的测试数据
+    unsorted_df = pd.DataFrame(
+        {"trade_date": ["20230103", "20230101", "20230102"], "close": [100, 98, 99]}
+    )
+    mock_bar = MagicMock(return_value=unsorted_df)
+    monkeypatch.setattr(ts, "pro_bar", mock_bar)
+
+    fetcher = TushareFetcher()
+    result = fetcher.fetch_daily_history(
+        "600519", "20230101", "20230103", adjust="none"
+    )
+
+    # 验证数据已按日期排序
+    expected_dates = ["20230101", "20230102", "20230103"]
+    assert list(result["trade_date"]) == expected_dates
+
+
+def test_fetch_daily_basic_data_sorting(mock_pro_api):
+    """测试 fetch_daily_basic 是否正确排序数据。"""
+    unsorted_df = pd.DataFrame(
+        {"trade_date": ["20230103", "20230101", "20230102"], "close": [100, 98, 99]}
+    )
+    mock_pro_api.daily_basic.return_value = unsorted_df
+
+    fetcher = TushareFetcher()
+    result = fetcher.fetch_daily_basic("600519", "20230101", "20230103")
+
+    # 验证数据已按日期排序
+    expected_dates = ["20230101", "20230102", "20230103"]
+    assert list(result["trade_date"]) == expected_dates
+
+
+# ===================================================================
+#           测试股票代码标准化
+# ===================================================================
+
+
+def test_stock_code_normalization_in_methods(monkeypatch):
+    """测试各方法中股票代码的标准化处理。"""
+    mock_bar = MagicMock(return_value=pd.DataFrame({"trade_date": ["20230101"]}))
+    monkeypatch.setattr(ts, "pro_bar", mock_bar)
+
+    fetcher = TushareFetcher()
+
+    # 测试未标准化的代码被正确转换
+    fetcher.fetch_daily_history("600519", "20230101", "20230131", adjust="none")
+
+    # 验证调用时使用了标准化后的代码
+    mock_bar.assert_called_with(
+        ts_code="600519.SH",
+        adj=None,
+        start_date="20230101",
+        end_date="20230131",
+        asset="E",
+        freq="D",
+    )
