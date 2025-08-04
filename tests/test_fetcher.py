@@ -1,13 +1,13 @@
+import logging
 import pandas as pd
 import pytest
-from unittest.mock import MagicMock
-from dotenv import load_dotenv
-import logging
 import tushare as ts  # 导入 tushare 以便 mock
-
-load_dotenv()
+from dotenv import load_dotenv
+from unittest.mock import MagicMock
 
 from downloader.fetcher import TushareFetcher
+
+load_dotenv()
 
 
 @pytest.fixture
@@ -72,53 +72,20 @@ def test_fetch_daily_history_success(monkeypatch):
     assert not df.empty
 
 
-def test_fetch_daily_history_handles_api_returning_none(monkeypatch, caplog):
-    """【回归测试】测试当 ts.pro_bar 返回 None 时，能规范化为空 DataFrame。"""
-    mock_bar_returns_none = MagicMock(return_value=None)
-    monkeypatch.setattr(ts, "pro_bar", mock_bar_returns_none)
-    caplog.set_level(logging.WARNING)
-
-    fetcher = TushareFetcher()
-    result_df = fetcher.fetch_daily_history(
-        "000002.SZ", "20230101", "20230131", adjust="none"
-    )
-
-    assert isinstance(result_df, pd.DataFrame)
-    assert result_df.empty
-    assert "Tushare API for 000002.SZ 返回了 None" in caplog.text
-
-
-def test_fetch_daily_history_handles_api_exception(monkeypatch, caplog):
-    """测试当 ts.pro_bar 抛出异常时，能捕获并返回 None。"""
-    mock_bar_raises_exception = MagicMock(side_effect=ConnectionError("模拟网络错误"))
-    monkeypatch.setattr(ts, "pro_bar", mock_bar_raises_exception)
-    caplog.set_level(logging.ERROR)
-
-    fetcher = TushareFetcher()
-    result_df = fetcher.fetch_daily_history(
-        "000003.SZ", "20230101", "20230131", adjust="hfq"
-    )
-
-    assert result_df is None
-    assert "获取 000003.SZ 的日线数据时发生异常" in caplog.text
-    assert "ConnectionError" in caplog.text
-
-
 # ===================================================================
 #           核心修正：修复两个失败的测试
 # ===================================================================
 
 
-def test_fetch_daily_history_handles_api_returning_none(monkeypatch, caplog):
-    """【回归测试】测试当 ts.pro_bar 返回 None 时，能规范化为空 DataFrame 并记录警告。"""
+@pytest.mark.parametrize("adjust", ["none", "qfq", "hfq"])
+def test_fetch_daily_history_handles_api_returning_none(adjust, monkeypatch, caplog):
+    """【最小化测试】测试 ts.pro_bar 返回 None 时的返回值是否正确。"""
     mock_bar_returns_none = MagicMock(return_value=None)
     monkeypatch.setattr(ts, "pro_bar", mock_bar_returns_none)
 
-    caplog.set_level(logging.WARNING)  # 我们要捕获 WARNING 级别的日志
-
     fetcher = TushareFetcher()
     result_df = fetcher.fetch_daily_history(
-        "000002.SZ", "20230101", "20230131", adjust="none"
+        "000002.SZ", "20230101", "20230131", adjust=adjust
     )
 
     # 断言返回值是空的DataFrame
@@ -129,20 +96,20 @@ def test_fetch_daily_history_handles_api_returning_none(monkeypatch, caplog):
     assert "Tushare API for 000002.SZ 返回了 None" in caplog.text
 
 
-def test_fetch_daily_history_handles_api_exception(monkeypatch, caplog):
-    """测试当 ts.pro_bar 抛出异常时，能捕获并返回 None 并记录错误。"""
+@pytest.mark.parametrize("adjust", ["none", "qfq", "hfq"])
+def test_fetch_daily_history_handles_api_exception(adjust, monkeypatch, caplog):
+    """【最小化测试】测试 ts.pro_bar 抛出异常时的返回值是否正确。"""
     mock_bar_raises_exception = MagicMock(side_effect=ConnectionError("模拟网络错误"))
     monkeypatch.setattr(ts, "pro_bar", mock_bar_raises_exception)
 
-    caplog.set_level(logging.ERROR)  # 我们要捕获 ERROR 级别的日志
+    caplog.set_level(logging.ERROR)
 
     fetcher = TushareFetcher()
     result_df = fetcher.fetch_daily_history(
-        "000003.SZ", "20230101", "20230131", adjust="hfq"
+        "000003.SZ", "20230101", "20230131", adjust=adjust
     )
 
     # 断言返回值是 None
     assert result_df is None
 
-    # ---> 核心修正：断言正确的错误日志 <---
     assert "获取 000003.SZ 的日线数据失败: 模拟网络错误" in caplog.text

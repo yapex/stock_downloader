@@ -2,7 +2,6 @@ import pandas as pd
 from pathlib import Path
 from .utils import normalize_stock_code
 import logging
-import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -45,20 +44,26 @@ class ParquetStorage:
                     return df[date_col].max()
             except Exception as e:
                 logger.error(f"读取文件 {file_path} 以获取最新日期时出错: {e}")
-        
+
         # Try legacy format if new format doesn't exist or failed
         if data_type != "system":
             # For stock data, also check legacy path format: entity=entity_id
             normalized_id = normalize_stock_code(entity_id)
-            legacy_path = self.base_path / data_type / f"entity={normalized_id}" / "data.parquet"
+            legacy_path = (
+                self.base_path / data_type / f"entity={normalized_id}" / "data.parquet"
+            )
             if legacy_path.exists():
                 try:
-                    df = pd.read_parquet(legacy_path, engine="pyarrow", columns=[date_col])
+                    df = pd.read_parquet(
+                        legacy_path, engine="pyarrow", columns=[date_col]
+                    )
                     if date_col in df.columns and not df.empty:
                         return df[date_col].max()
                 except Exception as e:
-                    logger.error(f"读取遗留格式文件 {legacy_path} 以获取最新日期时出错: {e}")
-        
+                    logger.error(
+                        f"读取遗留格式文件 {legacy_path} 以获取最新日期时出错: {e}"
+                    )
+
         return None
 
     def save(self, df: pd.DataFrame, data_type: str, entity_id: str, date_col: str):
@@ -68,7 +73,8 @@ class ParquetStorage:
 
         if date_col not in df.columns:
             logger.error(
-                f"[{data_type}/{entity_id}] DataFrame 中缺少日期列 '{date_col}'，无法增量保存。"
+                f"[{data_type}/{entity_id}] DataFrame 中缺少日期列 '{date_col}'，"
+                "无法增量保存。"
             )
             return
 
@@ -87,12 +93,14 @@ class ParquetStorage:
             combined_df.sort_values(by=date_col, inplace=True, ignore_index=True)
             combined_df.to_parquet(file_path, engine="pyarrow", index=False)
             logger.debug(
-                f"[{data_type}/{entity_id}] 数据已成功增量保存，总计 {len(combined_df)} 条。"
+                f"[{data_type}/{entity_id}] 数据已成功增量保存，"
+                f"总计 {len(combined_df)} 条。"
             )
 
         except Exception as e:
             logger.error(
-                f"[{data_type}/{entity_id}] 增量保存到 Parquet 文件 {file_path} 时发生错误: {e}"
+                f"[{data_type}/{entity_id}] 增量保存到 Parquet 文件 {file_path} "
+                f"时发生错误: {e}"
             )
 
     def overwrite(self, df: pd.DataFrame, data_type: str, entity_id: str):
@@ -113,5 +121,6 @@ class ParquetStorage:
             )
         except Exception as e:
             logger.error(
-                f"[{data_type}/{entity_id}] 全量覆盖到 Parquet 文件 {file_path} 时发生错误: {e}"
+                f"[{data_type}/{entity_id}] 全量覆盖到 Parquet 文件 {file_path} "
+                f"时发生错误: {e}"
             )

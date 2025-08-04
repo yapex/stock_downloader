@@ -44,15 +44,15 @@ class BaseTaskHandler(ABC):
 
     def _log_info(self, message: str, *args, **kwargs):
         """信息级别日志"""
-        self._safe_log('INFO', message, *args, **kwargs)
+        self._safe_log("INFO", message, *args, **kwargs)
 
     def _log_warning(self, message: str, *args, **kwargs):
         """警告级别日志"""
-        self._safe_log('WARNING', message, *args, **kwargs)
+        self._safe_log("WARNING", message, *args, **kwargs)
 
     def _log_error(self, message: str, *args, **kwargs):
         """错误级别日志"""
-        self._safe_log('ERROR', message, *args, **kwargs)
+        self._safe_log("ERROR", message, *args, **kwargs)
 
     @abstractmethod
     def execute(self, **kwargs):
@@ -84,14 +84,14 @@ class IncrementalTaskHandler(BaseTaskHandler):
 
         # 创建进度条并设置为当前活跃进度条
         progress_bar = tqdm(
-            target_symbols, 
+            target_symbols,
             desc=f"执行: {task_name}",
             ncols=100,  # 固定进度条宽度
             leave=True,  # 完成后保留进度条
             file=sys.stdout,  # 确保输出到标准输出
         )
         self._current_progress_bar = progress_bar
-        
+
         try:
             for ts_code in progress_bar:
                 progress_bar.set_description(f"处理: {data_type}_{ts_code}")
@@ -102,7 +102,8 @@ class IncrementalTaskHandler(BaseTaskHandler):
                     start_date = "19901219"
                     if latest_date:
                         start_date = (
-                            pd.to_datetime(latest_date, format="%Y%m%d") + timedelta(days=1)
+                            pd.to_datetime(latest_date, format="%Y%m%d")
+                            + timedelta(days=1)
                         ).strftime("%Y%m%d")
 
                     end_date = datetime.now().strftime("%Y%m%d")

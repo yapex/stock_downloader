@@ -1,7 +1,4 @@
-import pytest
-from unittest.mock import MagicMock
-from datetime import datetime, timedelta
-import pandas as pd
+from datetime import datetime
 
 from downloader.tasks.daily import DailyTaskHandler
 

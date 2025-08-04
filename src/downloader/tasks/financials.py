@@ -22,6 +22,7 @@ class FinancialsTaskHandler(IncrementalTaskHandler):
             )
         except AttributeError:
             self._log_error(
-                f"Fetcher 中未找到方法 '{fetch_method_name}'，请检查 'statement_type' 配置。"
+                f"Fetcher 中未找到方法 '{fetch_method_name}'，"
+                "请检查 'statement_type' 配置。"
             )
             return None

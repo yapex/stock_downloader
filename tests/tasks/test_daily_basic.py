@@ -1,5 +1,3 @@
-import pandas as pd
-from unittest.mock import patch
 from downloader.tasks.daily_basic import DailyBasicTaskHandler
 
 
@@ -7,7 +5,8 @@ def test_daily_basic_task_handler_executes_correctly(
     mock_fetcher, mock_storage, mock_args
 ):
     """
-    测试 DailyBasicTaskHandler 是否会为 target_symbols 中的每个股票调用正确的 fetcher 方法。
+    测试 DailyBasicTaskHandler 是否会为 target_symbols 中的每个股票
+    调用正确的 fetcher 方法。
     """
     task_config = {"name": "Test Daily Basic", "type": "daily_basic"}
     target_symbols = ["000001.SZ", "600519.SH"]

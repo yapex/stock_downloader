@@ -1,20 +1,17 @@
 import logging
 import sys
-from dotenv import load_dotenv
-from typing import List, Optional
-
-load_dotenv()
-
 import yaml
 from datetime import datetime
+from dotenv import load_dotenv
+from typing import List, Optional
 import typer
 from tqdm import tqdm
-from rich.console import Console
-from rich.logging import RichHandler
 
 from .fetcher import TushareFetcher
 from .storage import ParquetStorage
 from .engine import DownloadEngine
+
+load_dotenv()
 
 
 class TqdmLoggingHandler(logging.StreamHandler):
@@ -78,7 +75,11 @@ def main(
     ctx: typer.Context,
     symbols: Optional[List[str]] = typer.Argument(
         None,
-        help="【可选】指定一个或多个股票代码 (例如 600519.SH 000001.SZ)。如果第一个是 'all'，则下载所有A股。如果未提供，则使用 config.yaml 中的配置。",
+        help=(
+            "【可选】指定一个或多个股票代码 (例如 600519.SH 000001.SZ)。"
+            "如果第一个是 'all'，则下载所有A股。"
+            "如果未提供，则使用 config.yaml 中的配置。"
+        ),
     ),
     force: bool = typer.Option(
         False,
@@ -104,9 +105,8 @@ def main(
     logger = logging.getLogger(__name__)
 
     separator = "=" * 30
-    logger.info(
-        f"\n\n{separator} 程序开始运行: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {separator}\n"
-    )
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info(f"\n\n{separator} 程序开始运行: {timestamp} {separator}\n")
 
     try:
         config = load_config(config_file)
@@ -130,17 +130,15 @@ def main(
         engine = DownloadEngine(config, fetcher, storage, force_run=force)
         engine.run()
 
-        logger.info(
-            f"\n{separator} 程序运行结束: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {separator}\n"
-        )
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        logger.info(f"\n{separator} 程序运行结束: {timestamp} {separator}\n")
 
     except (ValueError, FileNotFoundError) as e:
         logger.critical(f"程序启动失败: {e}")
     except Exception as e:
         logger.critical(f"程序主流程发生严重错误: {e}", exc_info=True)
-        logger.info(
-            f"\n{separator} 程序异常终止: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {separator}\n"
-        )
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        logger.info(f"\n{separator} 程序异常终止: {timestamp} {separator}\n")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 import logging
 from importlib.metadata import entry_points
 import pandas as pd
-from datetime import datetime
 
 from .fetcher import TushareFetcher
 from .storage import ParquetStorage
@@ -49,7 +48,8 @@ class DownloadEngine:
         #           核心修正：股票列表的确定逻��
         # ===================================================================
 
-        # 1. 执行 stock_list 任务（如果存在且需要更新），以确保 "all" 模式的数据源是最新的
+        # 1. 执行 stock_list 任务（如果存在且需要更新），
+        # 以确保 "all" 模式的数据源是最新的
         stock_list_tasks = [
             t for t in tasks if t.get("type") == "stock_list" and t.get("enabled")
         ]
@@ -116,5 +116,6 @@ class DownloadEngine:
                 )
         else:
             logger.warning(
-                f"未找到类型为 '{task_type}' 的任务处理器，已跳过任务 '{task_spec.get('name')}'。"
+                f"未找到类型为 '{task_type}' 的任务处理器，"
+                f"已跳过任务 '{task_spec.get('name')}'。"
             )

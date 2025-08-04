@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-import logging
 from .base import BaseTaskHandler
 
 

@@ -42,6 +42,7 @@ dev = [
     "nbformat>=5.10.4",
     "pytest>=8.4.1",
     "itables>=2.4.4",
+    "ruff>=0.12.0",
 ]
 
 
@@ -57,3 +58,58 @@ daily = "downloader.tasks.daily:DailyTaskHandler"
 stock_list = "downloader.tasks.stock_list:StockListTaskHandler"
 daily_basic = "downloader.tasks.daily_basic:DailyBasicTaskHandler"
 financials = "downloader.tasks.financials:FinancialsTaskHandler"
+
+# ==========================================================
+# Ruff configuration
+# ==========================================================
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
+select = ["E", "F"]
+ignore = []
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+# Allow E402 (module level import not at top of file) for notebooks
+# since initialization code may need to run before imports
+[tool.ruff.lint.per-file-ignores]
+"*.ipynb" = ["E402"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.7",
+]

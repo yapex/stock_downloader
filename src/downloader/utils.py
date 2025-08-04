@@ -26,9 +26,9 @@ def normalize_stock_code(code: str) -> str:
     stock_number = match.group(1)
 
     # 根据前缀判断交易所
-    if stock_number.startswith('6'):
+    if stock_number.startswith("6"):
         exchange = "SH"
-    elif stock_number.startswith(('0', '3')):
+    elif stock_number.startswith(("0", "3")):
         exchange = "SZ"
     else:
         raise ValueError(f"无法识别的股票代码前缀: {stock_number}")

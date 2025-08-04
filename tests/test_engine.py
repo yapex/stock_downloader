@@ -1,8 +1,5 @@
-import pytest
 from unittest.mock import MagicMock, patch
 import pandas as pd
-import argparse
-from datetime import datetime, timedelta
 
 from downloader.engine import DownloadEngine
 

@@ -1,10 +1,11 @@
 from downloader.tasks.financials import FinancialsTaskHandler
-from unittest.mock import call, ANY  # 导入 ANY 用于匹配不关心的参数
+from unittest.mock import ANY  # 导入 ANY 用于匹配不关心的参数
 
 
 def test_financials_handler_executes_correctly(mock_fetcher, mock_storage, mock_args):
     """
-    测试 FinancialsTaskHandler 是否会为每个股票调用正确的 fetcher 方法，并传递所有必需参数。
+    测试 FinancialsTaskHandler 是否会为每个股票调用正确的 fetcher 方法，
+    并传递所有必需参数。
     """
     task_config = {
         "name": "Test Income",

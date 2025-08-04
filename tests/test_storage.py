@@ -71,7 +71,7 @@ def test_storage_initial_save_and_get_date(temp_storage, mock_daily_df_part1):
     storage.save(df, data_type, ts_code, date_col="trade_date")
 
     file_path = storage._get_file_path(data_type, ts_code)
-    expected_path = Path('./test_data_pytest/daily_qfq/600519.SH/data.parquet')
+    expected_path = Path("./test_data_pytest/daily_qfq/600519.SH/data.parquet")
     assert file_path == expected_path
     assert file_path.exists()
     saved_df = pd.read_parquet(file_path)
@@ -93,7 +93,7 @@ def test_save_with_normalized_code(temp_storage, mock_daily_df_part1):
     storage.save(df, data_type, ts_code, date_col="trade_date")
 
     file_path = storage._get_file_path(data_type, "600519.SH")
-    expected_path = Path('./test_data_pytest/daily_qfq/600519.SH/data.parquet')
+    expected_path = Path("./test_data_pytest/daily_qfq/600519.SH/data.parquet")
     assert file_path == expected_path
 
 
