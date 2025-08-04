@@ -21,7 +21,7 @@ class FinancialsTaskHandler(IncrementalTaskHandler):
                 ts_code=ts_code, start_date=start_date, end_date=end_date
             )
         except AttributeError:
-            self.logger.error(
+            self._log_error(
                 f"Fetcher 中未找到方法 '{fetch_method_name}'，请检查 'statement_type' 配置。"
             )
             return None

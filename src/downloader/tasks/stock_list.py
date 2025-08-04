@@ -15,7 +15,7 @@ class StockListTaskHandler(BaseTaskHandler):
         """
         task_name = self.task_config["name"]
         task_type = self.task_config["type"]
-        self.logger.info(f"--- 开始执行冷却期任务: '{task_name}' ---")
+        self._log_info(f"--- 开始执行冷却期任务: '{task_name}' ---")
 
         interval_hours = self.task_config.get("update_interval_hours", 23)
         entity_id = task_type
@@ -27,7 +27,7 @@ class StockListTaskHandler(BaseTaskHandler):
                 target_file_path.stat().st_mtime
             )
             if datetime.now() - last_modified_time < timedelta(hours=interval_hours):
-                self.logger.info(f"任务 '{task_name}' 处于冷却期，跳过。")
+                self._log_info(f"任务 '{task_name}' 处于冷却期，跳过。")
                 return
 
         # 执行下载
@@ -36,4 +36,4 @@ class StockListTaskHandler(BaseTaskHandler):
             # 全量覆盖保存
             self.storage.overwrite(df, "system", entity_id)
         else:
-            self.logger.error(f"任务 '{task_name}' 获取股票列表失败。")
+            self._log_error(f"任务 '{task_name}' 获取股票列表失败。")

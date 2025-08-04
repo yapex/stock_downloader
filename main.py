@@ -1,4 +1,5 @@
 import logging
+import sys
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -6,22 +7,52 @@ load_dotenv()
 import yaml
 from datetime import datetime
 import argparse
+from tqdm import tqdm
 
 from downloader.fetcher import TushareFetcher
 from downloader.storage import ParquetStorage
 from downloader.engine import DownloadEngine
 
 
+class TqdmLoggingHandler(logging.StreamHandler):
+    """与tqdm兼容的日志处理器"""
+    
+    def __init__(self):
+        super().__init__()
+        
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            # 使用 tqdm.write 来输出日志，这样不会打断进度条
+            tqdm.write(msg, file=sys.stdout, end='\n')
+        except Exception:
+            self.handleError(record)
+
 def setup_logging():
-    """配置日志系统，同时输出到文件和控制台"""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.FileHandler("downloader.log", mode="a", encoding="utf-8"),
-            logging.StreamHandler(),
-        ],
+    """配置日志系统，同时输出到文件和控制台，与tqdm兼容"""
+    # 清理现有的 handlers
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # 创建日志格式
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%H:%M:%S"
     )
+    
+    # 文件处理器
+    file_handler = logging.FileHandler("downloader.log", mode="a", encoding="utf-8")
+    file_handler.setFormatter(formatter)
+    
+    # 控制台处理器（与tqdm兼容）
+    console_handler = TqdmLoggingHandler()
+    console_handler.setFormatter(formatter)
+    
+    # 配置根日志记录器
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
 
 
 def load_config(config_path: str = "config.yaml") -> dict:
