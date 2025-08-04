@@ -1,0 +1,220 @@
+import pytest
+from unittest.mock import patch, MagicMock, mock_open
+import logging
+import tempfile
+import os
+from pathlib import Path
+from downloader.main import DownloaderApp, load_config
+from downloader.fetcher import TushareFetcher
+from downloader.storage import ParquetStorage
+from downloader.engine import DownloadEngine
+
+
+@pytest.fixture
+def mock_logger():
+    logger = MagicMock(spec=logging.Logger)
+    return logger
+
+
+@pytest.fixture
+def downloader_app(mock_logger):
+    return DownloaderApp(logger=mock_logger)
+
+
+@pytest.fixture
+def sample_config():
+    return {
+        "downloader": {
+            "symbols": ["600519.SH", "000001.SZ"]
+        },
+        "storage": {
+            "base_path": "test_data"
+        }
+    }
+
+
+class TestDownloaderApp:
+    def test_init_with_logger(self, mock_logger):
+        app = DownloaderApp(logger=mock_logger)
+        assert app.logger is mock_logger
+
+    def test_init_without_logger(self):
+        app = DownloaderApp()
+        assert app.logger is not None
+
+    def test_process_symbols_config_no_symbols(self, downloader_app, sample_config):
+        original_config = sample_config.copy()
+        result = downloader_app.process_symbols_config(sample_config, None)
+        assert result == original_config
+
+    def test_process_symbols_config_empty_symbols(self, downloader_app, sample_config):
+        original_config = sample_config.copy()
+        result = downloader_app.process_symbols_config(sample_config, [])
+        assert result == original_config
+
+    def test_process_symbols_config_specific_symbols(self, downloader_app, mock_logger):
+        config = {}
+        symbols = ["600519.SH", "000001.SZ"]
+
+        result = downloader_app.process_symbols_config(config, symbols)
+
+        assert result["downloader"]["symbols"] == symbols
+        mock_logger.info.assert_called_with(f"命令行指定股票池: {symbols}")
+
+    def test_process_symbols_config_all_symbol(self, downloader_app, mock_logger):
+        config = {}
+        symbols = ["all"]
+
+        result = downloader_app.process_symbols_config(config, symbols)
+
+        assert result["downloader"]["symbols"] == "all"
+        mock_logger.info.assert_called_with("命令行指定下载所有A股。")
+
+    def test_process_symbols_config_all_symbol_case_insensitive(self, downloader_app):
+        config = {}
+        symbols = ["ALL"]
+
+        result = downloader_app.process_symbols_config(config, symbols)
+
+        assert result["downloader"]["symbols"] == "all"
+
+    def test_process_symbols_config_existing_downloader_section(self, downloader_app):
+        config = {
+            "downloader": {
+                "existing_key": "existing_value"
+            }
+        }
+        symbols = ["600519.SH"]
+
+        result = downloader_app.process_symbols_config(config, symbols)
+
+        assert result["downloader"]["symbols"] == symbols
+        assert result["downloader"]["existing_key"] == "existing_value"
+
+    def test_create_components(self, downloader_app, sample_config):
+        with patch('downloader.main.TushareFetcher') as mock_fetcher_class, \
+             patch('downloader.main.ParquetStorage') as mock_storage_class:
+
+            mock_fetcher = MagicMock()
+            mock_storage = MagicMock()
+            mock_fetcher_class.return_value = mock_fetcher
+            mock_storage_class.return_value = mock_storage
+
+            fetcher, storage = downloader_app.create_components(sample_config)
+
+            assert fetcher is mock_fetcher
+            assert storage is mock_storage
+
+    def test_create_components_default_storage_path(self, downloader_app):
+        config = {}
+
+        with patch('downloader.main.TushareFetcher') as mock_fetcher_class, \
+             patch('downloader.main.ParquetStorage') as mock_storage_class:
+
+            downloader_app.create_components(config)
+
+            mock_storage_class.assert_called_once_with(base_path="data")
+
+    @patch('downloader.main.DownloadEngine')
+    @patch('downloader.main.load_config')
+    def test_run_download_success(self, mock_load_config, mock_engine_class, downloader_app, sample_config):
+        mock_load_config.return_value = sample_config
+        mock_engine = MagicMock()
+        mock_engine_class.return_value = mock_engine
+
+        with patch.object(downloader_app, 'create_components') as mock_create:
+            mock_fetcher, mock_storage = MagicMock(), MagicMock()
+            mock_create.return_value = (mock_fetcher, mock_storage)
+
+            result = downloader_app.run_download()
+
+            assert result is True
+
+    @patch('downloader.main.load_config')
+    def test_run_download_with_custom_params(self, mock_load_config, downloader_app, sample_config):
+        mock_load_config.return_value = sample_config
+
+        with patch.object(downloader_app, 'create_components') as mock_create, \
+             patch('downloader.main.DownloadEngine') as mock_engine_class:
+
+            mock_create.return_value = (MagicMock(), MagicMock())
+            mock_engine = MagicMock()
+            mock_engine_class.return_value = mock_engine
+
+            downloader_app.run_download(
+                config_path="custom_config.yaml",
+                symbols=["600519.SH"],
+                force=True
+            )
+
+    @patch('downloader.main.load_config')
+    def test_run_download_file_not_found_error(self, mock_load_config, downloader_app, mock_logger):
+        mock_load_config.side_effect = FileNotFoundError("配置文件不存在")
+
+        with pytest.raises(FileNotFoundError):
+            downloader_app.run_download()
+
+    @patch('downloader.main.load_config')
+    def test_run_download_value_error(self, mock_load_config, downloader_app, mock_logger):
+        mock_load_config.side_effect = ValueError("配置参数无效")
+
+        with pytest.raises(ValueError):
+            downloader_app.run_download()
+
+    @patch('downloader.main.load_config')
+    def test_run_download_general_exception(self, mock_load_config, downloader_app, mock_logger):
+        mock_load_config.side_effect = Exception("未知错误")
+
+        with pytest.raises(Exception):
+            downloader_app.run_download()
+
+    @patch('downloader.main.load_config')
+    def test_run_download_with_symbols_processing(self, mock_load_config, downloader_app, sample_config):
+        mock_load_config.return_value = sample_config.copy()
+
+        with patch.object(downloader_app, 'create_components') as mock_create, \
+             patch('downloader.main.DownloadEngine') as mock_engine_class:
+
+            mock_create.return_value = (MagicMock(), MagicMock())
+            mock_engine = MagicMock()
+            mock_engine_class.return_value = mock_engine
+
+            symbols = ["300001.SZ"]
+            downloader_app.run_download(symbols=symbols)
+
+
+class TestLoadConfig:
+    def test_load_config_success(self):
+        yaml_content = """
+        downloader:
+            symbols:
+                - "600519.SH"
+                - "000001.SZ"
+        storage:
+            base_path: "data"
+        """
+
+        with patch("builtins.open", mock_open(read_data=yaml_content)), \
+             patch("pathlib.Path.exists", return_value=True):
+
+            config = load_config("test_config.yaml")
+
+            assert config["downloader"]["symbols"] == ["600519.SH", "000001.SZ"]
+
+    def test_load_config_file_not_found(self):
+        with patch("pathlib.Path.exists", return_value=False):
+            with pytest.raises(FileNotFoundError) as exc_info:
+                load_config("nonexistent.yaml")
+
+            assert "配置文件 nonexistent.yaml 不存在" in str(exc_info.value)
+
+    def test_load_config_default_path(self):
+        with patch("builtins.open", mock_open(read_data="test: value")), \
+             patch("pathlib.Path.exists", return_value=True):
+
+            config = load_config()
+
+            assert config["test"] == "value"
+
+
+

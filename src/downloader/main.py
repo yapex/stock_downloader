@@ -3,7 +3,8 @@ import sys
 import yaml
 from datetime import datetime
 from dotenv import load_dotenv
-from typing import List, Optional
+from pathlib import Path
+from typing import List, Optional, Dict, Any
 import typer
 from tqdm import tqdm
 
@@ -57,8 +58,115 @@ def setup_logging():
 
 def load_config(config_path: str = "config.yaml") -> dict:
     """加载 YAML 配置文件"""
+    config_file = Path(config_path)
+    if not config_file.exists():
+        raise FileNotFoundError(f"配置文件 {config_path} 不存在")
+    
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+class DownloaderApp:
+    """
+    主应用程序类，封装了数据下载的核心业务逻辑。
+    这个类将业务逻辑从 UI 层分离，使其更容易测试。
+    """
+
+    def __init__(self, logger: Optional[logging.Logger] = None):
+        self.logger = logger or logging.getLogger(__name__)
+
+    def process_symbols_config(
+        self, 
+        config: Dict[str, Any], 
+        symbols: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        根据命令行参数调整配置中的股票符号。
+        
+        Args:
+            config: 配置字典
+            symbols: 命令行指定的股票符号列表
+            
+        Returns:
+            修改后的配置字典
+        """
+        if not symbols:
+            return config
+            
+        # 确保 config 中有 downloader 节点
+        if "downloader" not in config:
+            config["downloader"] = {}
+            
+        if len(symbols) == 1 and symbols[0].lower() == "all":
+            self.logger.info("命令行指定下载所有A股。")
+            config["downloader"]["symbols"] = "all"
+        else:
+            self.logger.info(f"命令行指定股票池: {list(symbols)}")
+            config["downloader"]["symbols"] = list(symbols)
+            
+        return config
+
+    def create_components(
+        self, 
+        config: Dict[str, Any]
+    ) -> tuple[TushareFetcher, ParquetStorage, DownloadEngine]:
+        """
+        创建下载系统的核心组件。
+        
+        Args:
+            config: 配置字典
+            
+        Returns:
+            (fetcher, storage, engine) 元组
+        """
+        fetcher = TushareFetcher()
+        storage = ParquetStorage(
+            base_path=config.get("storage", {}).get("base_path", "data")
+        )
+        return fetcher, storage
+
+    def run_download(
+        self,
+        config_path: str = "config.yaml",
+        symbols: Optional[List[str]] = None,
+        force: bool = False
+    ) -> bool:
+        """
+        执行数据下载任务。
+        
+        Args:
+            config_path: 配置文件路径
+            symbols: 指定的股票符号列表
+            force: 是否强制执行
+            
+        Returns:
+            是否成功执行
+            
+        Raises:
+            FileNotFoundError: 配置文件不存在
+            ValueError: 配置参数错误
+            Exception: 其他异常
+        """
+        try:
+            # 加载和处理配置
+            config = load_config(config_path)
+            config = self.process_symbols_config(config, symbols)
+            
+            # 创建组件
+            fetcher, storage = self.create_components(config)
+            engine = DownloadEngine(config, fetcher, storage, force_run=force)
+            
+            # 执行下载
+            engine.run()
+            
+            return True
+            
+        except (FileNotFoundError, ValueError) as e:
+            self.logger.critical(f"程序启动失败: {e}")
+            raise
+        except Exception as e:
+            self.logger.critical(f"程序主流程发生严重错误: {e}", exc_info=True)
+            raise
 
 
 # --- Typer 应用定义 ---
@@ -108,28 +216,10 @@ def main(
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logger.info(f"\n\n{separator} 程序开始运行: {timestamp} {separator}\n")
 
+    app = DownloaderApp(logger)
+    
     try:
-        config = load_config(config_file)
-
-        # --- 根据命令行参数调整股票池 ---
-        if symbols:
-            # Typer 在没有参数时会传入一个空元组，而不是None
-            if len(symbols) == 1 and symbols[0].lower() == "all":
-                logger.info("命令行指定下载所有A股。")
-                config["downloader"]["symbols"] = "all"
-            else:
-                logger.info(f"命令行指定股票池: {list(symbols)}")
-                config["downloader"]["symbols"] = list(symbols)
-        # --------------------------------
-
-        fetcher = TushareFetcher()
-        storage = ParquetStorage(
-            base_path=config.get("storage", {}).get("base_path", "data")
-        )
-
-        engine = DownloadEngine(config, fetcher, storage, force_run=force)
-        engine.run()
-
+        app.run_download(config_path=config_file, symbols=symbols, force=force)
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logger.info(f"\n{separator} 程序运行结束: {timestamp} {separator}\n")
 

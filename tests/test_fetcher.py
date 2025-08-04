@@ -136,6 +136,45 @@ def test_fetch_daily_history_handles_api_exception(adjust, monkeypatch, caplog):
     assert "获取 000003.SZ 的日线数据失败: 模拟网络错误" in caplog.text
 
 
+def test_fetch_income_balancesheet_cashflow(mock_pro_api, caplog):
+    """测试财务函数 fetch_income, fetch_balancesheet, fetch_cashflow 的正常返回和异常处理"""
+    mock_df = pd.DataFrame({"ann_date": ["20220101"]})
+
+    # 测试正常返回情况
+    mock_pro_api.income.return_value = mock_df
+    mock_pro_api.balancesheet.return_value = mock_df
+    mock_pro_api.cashflow.return_value = mock_df
+
+    fetcher = TushareFetcher()
+
+    # 测试各个财务方法的正常调用
+    result_income = fetcher.fetch_income("600519", "20220101", "20221231")
+    result_balance = fetcher.fetch_balancesheet("600519", "20220101", "20221231")
+    result_cashflow = fetcher.fetch_cashflow("600519", "20220101", "20221231")
+
+    assert result_income.equals(mock_df)
+    assert result_balance.equals(mock_df)
+    assert result_cashflow.equals(mock_df)
+
+    # 测试异常抛出处理
+    mock_pro_api.income.side_effect = Exception("模拟错误")
+    mock_pro_api.balancesheet.side_effect = Exception("模拟错误")
+    mock_pro_api.cashflow.side_effect = Exception("模拟错误")
+
+    with caplog.at_level(logging.ERROR):
+        result_income = fetcher.fetch_income("600519", "20220101", "20221231")
+        result_balance = fetcher.fetch_balancesheet("600519", "20220101", "20221231")
+        result_cashflow = fetcher.fetch_cashflow("600519", "20220101", "20221231")
+
+        assert result_income is None
+        assert result_balance is None  
+        assert result_cashflow is None
+
+        assert "获取 600519.SH 的利润表失败" in caplog.text
+        assert "获取 600519.SH 的资产负债表失败" in caplog.text
+        assert "获取 600519.SH 的现金流量表失败" in caplog.text
+
+
 # ===================================================================
 #           测试 daily_basic 方法
 # ===================================================================
