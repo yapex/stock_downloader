@@ -2,6 +2,7 @@ import os
 import tushare as ts
 import pandas as pd
 import logging
+from .utils import normalize_stock_code
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ class TushareFetcher:
     def fetch_daily_history(
         self, ts_code: str, start_date: str, end_date: str, adjust: str
     ) -> pd.DataFrame | None:
+        ts_code = normalize_stock_code(ts_code)
         logger.info(
             f"开始获取 {ts_code} 从 {start_date} 到 {end_date} 的日线数据 (复权类型: {adjust or '不复权'})..."
         )
@@ -79,6 +81,7 @@ class TushareFetcher:
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
         """获取【单只股票】在【一个时间段内】的所有每日指标。"""
+        ts_code = normalize_stock_code(ts_code)
         logger.info(f"开始获取 {ts_code} 从 {start_date} 到 {end_date} 的每日指标...")
         try:
             df = self.pro.daily_basic(
@@ -102,6 +105,7 @@ class TushareFetcher:
     def fetch_income(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
+        ts_code = normalize_stock_code(ts_code)
         logger.info(f"开始为 {ts_code} 获取利润表 (公告日自 {start_date} 起)...")
         try:
             df = self.pro.income(
@@ -119,6 +123,7 @@ class TushareFetcher:
     def fetch_balancesheet(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
+        ts_code = normalize_stock_code(ts_code)
         logger.info(f"开始为 {ts_code} 获取资产负债表 (公告日自 {start_date} 起)...")
         try:
             df = self.pro.balancesheet(
@@ -136,6 +141,7 @@ class TushareFetcher:
     def fetch_cashflow(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
+        ts_code = normalize_stock_code(ts_code)
         logger.info(f"开始为 {ts_code} 获取现金流量表 (公告日自 {start_date} 起)...")
         try:
             df = self.pro.cashflow(
