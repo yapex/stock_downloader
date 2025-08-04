@@ -1,6 +1,8 @@
 import pandas as pd
 from pathlib import Path
+from .utils import normalize_stock_code
 import logging
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -15,30 +17,49 @@ class ParquetStorage:
         self.base_path = Path(base_path)
         if not self.base_path.exists():
             self.base_path.mkdir(parents=True, exist_ok=True)
-            logger.info(f"存储根目录已创建: {self.base_path.resolve()}")
+            logger.debug(f"存储根目录已创建: {self.base_path.resolve()}")
 
     def _get_file_path(self, data_type: str, entity_id: str) -> Path:
         """
         根据数据类型和实体ID构建文件路径。
-        实体ID可以是 ts_code 或其他唯一标识符如 'stock_list'。
+        对于系统相关数据，不进行股票代码标准化。
         """
-        return self.base_path / data_type / f"entity={entity_id}" / "data.parquet"
+        if data_type == "system":
+            # 系统数据不需要股票代码标准化
+            return self.base_path / data_type / f"{entity_id}.parquet"
+        else:
+            # 股票数据需要进行标准化处理
+            normalized_id = normalize_stock_code(entity_id)
+            return self.base_path / data_type / normalized_id / "data.parquet"
 
     def get_latest_date(
         self, data_type: str, entity_id: str, date_col: str
     ) -> str | None:
-        """获取本地存储的最新日期。"""
+        """获取本地存储的最新日期。支持新格式和旧格式的路径。"""
+        # Try new format first
         file_path = self._get_file_path(data_type, entity_id)
-        if not file_path.exists():
-            return None
-        try:
-            df = pd.read_parquet(file_path, engine="pyarrow", columns=[date_col])
-            if date_col in df.columns and not df.empty:
-                return df[date_col].max()
-            return None
-        except Exception as e:
-            logger.error(f"读取文件 {file_path} 以获取最新日期时出错: {e}")
-            return None
+        if file_path.exists():
+            try:
+                df = pd.read_parquet(file_path, engine="pyarrow", columns=[date_col])
+                if date_col in df.columns and not df.empty:
+                    return df[date_col].max()
+            except Exception as e:
+                logger.error(f"读取文件 {file_path} 以获取最新日期时出错: {e}")
+        
+        # Try legacy format if new format doesn't exist or failed
+        if data_type != "system":
+            # For stock data, also check legacy path format: entity=entity_id
+            normalized_id = normalize_stock_code(entity_id)
+            legacy_path = self.base_path / data_type / f"entity={normalized_id}" / "data.parquet"
+            if legacy_path.exists():
+                try:
+                    df = pd.read_parquet(legacy_path, engine="pyarrow", columns=[date_col])
+                    if date_col in df.columns and not df.empty:
+                        return df[date_col].max()
+                except Exception as e:
+                    logger.error(f"读取遗留格式文件 {legacy_path} 以获取最新日期时出错: {e}")
+        
+        return None
 
     def save(self, df: pd.DataFrame, data_type: str, entity_id: str, date_col: str):
         """将 DataFrame 增量保存到 Parquet 文件中。"""
@@ -65,7 +86,7 @@ class ParquetStorage:
 
             combined_df.sort_values(by=date_col, inplace=True, ignore_index=True)
             combined_df.to_parquet(file_path, engine="pyarrow", index=False)
-            logger.info(
+            logger.debug(
                 f"[{data_type}/{entity_id}] 数据已成功增量保存，总计 {len(combined_df)} 条。"
             )
 
@@ -87,7 +108,7 @@ class ParquetStorage:
 
         try:
             df.to_parquet(file_path, engine="pyarrow", index=False)
-            logger.info(
+            logger.debug(
                 f"[{data_type}/{entity_id}] 数据已成功全量覆盖，总计 {len(df)} 条。"
             )
         except Exception as e:

@@ -5,7 +5,6 @@ from datetime import datetime
 
 from .fetcher import TushareFetcher
 from .storage import ParquetStorage
-import argparse
 
 logger = logging.getLogger(__name__)
 
@@ -16,28 +15,28 @@ class DownloadEngine:
         config: dict,
         fetcher: TushareFetcher,
         storage: ParquetStorage,
-        args: argparse.Namespace,
+        force_run: bool = False,
     ):
         self.config = config
         self.fetcher = fetcher
         self.storage = storage
-        self.args = args
+        self.force_run = force_run
         self.task_registry = self._discover_task_handlers()
 
     def _discover_task_handlers(self) -> dict:
         registry = {}
         try:
             handlers_eps = entry_points(group="stock_downloader.task_handlers")
-            logger.info(f"发现了 {len(handlers_eps)} 个任务处理器入口点。")
+            logger.debug(f"发现了 {len(handlers_eps)} 个任务处理器入口点。")
             for ep in handlers_eps:
                 registry[ep.name] = ep.load()
-                logger.info(f"  - 已注册处理器: '{ep.name}'")
+                logger.debug(f"  - 已注册处理器: '{ep.name}'")
         except Exception as e:
             logger.error(f"自动发现任务处理器时发生错误: {e}", exc_info=True)
         return registry
 
     def run(self):
-        logger.info("下载引擎启动...")
+        logger.debug("下载引擎启动...")
         tasks = self.config.get("tasks", [])
         defaults = self.config.get("defaults", {})
         downloader_config = self.config.get("downloader", {})
@@ -47,7 +46,7 @@ class DownloadEngine:
             return
 
         # ===================================================================
-        #           核心修正：股票列表的确定逻辑
+        #           核心修正：股票列表的确定逻��
         # ===================================================================
 
         # 1. 执行 stock_list 任务（如果存在且需要更新），以确保 "all" 模式的数据源是最新的
@@ -64,7 +63,7 @@ class DownloadEngine:
         target_symbols = []
         if isinstance(symbols_config, list):
             target_symbols = symbols_config
-            logger.info(
+            logger.debug(
                 f"将使用配置文件中指定的 {len(target_symbols)} 只股票作为目标。"
             )
         elif symbols_config == "all":
@@ -73,7 +72,7 @@ class DownloadEngine:
                 if stock_list_file.exists():
                     df_list = pd.read_parquet(stock_list_file)
                     target_symbols = df_list["ts_code"].tolist()
-                    logger.info(
+                    logger.debug(
                         f"已从本地文件加载 {len(target_symbols)} 只全市场股票作为目标。"
                     )
                 else:
@@ -97,7 +96,7 @@ class DownloadEngine:
             context = {"target_symbols": target_symbols}
             self._dispatch_task(task_spec, defaults, **context)
 
-        logger.info("下载引擎所有任务执行完毕。")
+        logger.debug("下载引擎所有任务执行完毕。")
 
     def _dispatch_task(self, task_spec: dict, defaults: dict, **kwargs):
         task_type = task_spec.get("type")
@@ -108,7 +107,7 @@ class DownloadEngine:
             final_task_config.update(task_spec)
             try:
                 handler_instance = handler_class(
-                    final_task_config, self.fetcher, self.storage, self.args
+                    final_task_config, self.fetcher, self.storage, self.force_run
                 )
                 handler_instance.execute(**kwargs)
             except Exception as e:

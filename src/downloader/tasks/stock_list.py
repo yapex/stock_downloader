@@ -22,7 +22,7 @@ class StockListTaskHandler(BaseTaskHandler):
         target_file_path = self.storage._get_file_path("system", entity_id)
 
         # 门禁检查：基于文件最后修改时间
-        if not self.args.force and target_file_path.exists():
+        if not self.force_run and target_file_path.exists():
             last_modified_time = datetime.fromtimestamp(
                 target_file_path.stat().st_mtime
             )

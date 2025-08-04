@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 import pandas as pd
 from tqdm import tqdm
-import argparse
 import sys
 
 # 导入核心组件以进行类型提示，增强代码可读性和健壮性
@@ -22,12 +21,12 @@ class BaseTaskHandler(ABC):
         task_config: dict,
         fetcher: TushareFetcher,
         storage: ParquetStorage,
-        args: argparse.Namespace,
+        force_run: bool = False,
     ):
         self.task_config = task_config
         self.fetcher = fetcher
         self.storage = storage
-        self.args = args
+        self.force_run = force_run
         self.logger = logging.getLogger(self.__class__.__name__)
         self._current_progress_bar = None
 

@@ -1,32 +1,36 @@
 import logging
 import sys
 from dotenv import load_dotenv
+from typing import List, Optional
 
 load_dotenv()
 
 import yaml
 from datetime import datetime
-import argparse
+import typer
 from tqdm import tqdm
+from rich.console import Console
+from rich.logging import RichHandler
 
-from downloader.fetcher import TushareFetcher
-from downloader.storage import ParquetStorage
-from downloader.engine import DownloadEngine
+from .fetcher import TushareFetcher
+from .storage import ParquetStorage
+from .engine import DownloadEngine
 
 
 class TqdmLoggingHandler(logging.StreamHandler):
     """与tqdm兼容的日志处理器"""
-    
+
     def __init__(self):
         super().__init__()
-        
+
     def emit(self, record):
         try:
             msg = self.format(record)
             # 使用 tqdm.write 来输出日志，这样不会打断进度条
-            tqdm.write(msg, file=sys.stdout, end='\n')
+            tqdm.write(msg, file=sys.stdout, end="\n")
         except Exception:
             self.handleError(record)
+
 
 def setup_logging():
     """配置日志系统，同时输出到文件和控制台，与tqdm兼容"""
@@ -34,21 +38,20 @@ def setup_logging():
     root_logger = logging.getLogger()
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
-    
+
     # 创建日志格式
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%H:%M:%S"
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%H:%M:%S"
     )
-    
+
     # 文件处理器
     file_handler = logging.FileHandler("downloader.log", mode="a", encoding="utf-8")
     file_handler.setFormatter(formatter)
-    
+
     # 控制台处理器（与tqdm兼容）
     console_handler = TqdmLoggingHandler()
     console_handler.setFormatter(formatter)
-    
+
     # 配置根日志记录器
     root_logger.setLevel(logging.INFO)
     root_logger.addHandler(file_handler)
@@ -61,23 +64,41 @@ def load_config(config_path: str = "config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
-# --- 主程序入口 ---
-def main():
+# --- Typer 应用定义 ---
+app = typer.Typer(
+    name="downloader",
+    help="一个基于 Tushare Pro 的、可插拔的个人量化数据下载器。",
+    add_completion=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
+
+
+@app.callback(invoke_without_command=True)
+def main(
+    ctx: typer.Context,
+    symbols: Optional[List[str]] = typer.Argument(
+        None,
+        help="【可选】指定一个或多个股票代码 (例如 600519.SH 000001.SZ)。如果第一个是 'all'，则下载所有A股。如果未提供，则使用 config.yaml 中的配置。",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="强制执行所有启用的任务，无视冷却期。",
+        show_default=False,
+    ),
+    config_file: str = typer.Option(
+        "config.yaml",
+        "--config",
+        "-c",
+        help="指定配置文件的路径。",
+    ),
+):
     """
     程序的主执行函数。
     """
-    parser = argparse.ArgumentParser(description="Stock Data Downloader (Tushare Pro).")
-    parser.add_argument(
-        "-f",
-        "--force",
-        action="store_true",
-        help="强制执行所有启用的任务，无视冷却期。",
-    )
-    # 我们可以增加一个 --sync-state 参数
-    parser.add_argument(
-        "--sync-state", action="store_true", help="同步数据目录和缓存的状态。"
-    )
-    args = parser.parse_args()
+    if ctx.invoked_subcommand is not None:
+        return
 
     setup_logging()
     logger = logging.getLogger(__name__)
@@ -88,17 +109,25 @@ def main():
     )
 
     try:
-        config = load_config()
+        config = load_config(config_file)
+
+        # --- 根据命令行参数调整股票池 ---
+        if symbols:
+            # Typer 在没有参数时会传入一个空元组，而不是None
+            if len(symbols) == 1 and symbols[0].lower() == "all":
+                logger.info("命令行指定下载所有A股。")
+                config["downloader"]["symbols"] = "all"
+            else:
+                logger.info(f"命令行指定股票池: {list(symbols)}")
+                config["downloader"]["symbols"] = list(symbols)
+        # --------------------------------
+
         fetcher = TushareFetcher()
         storage = ParquetStorage(
             base_path=config.get("storage", {}).get("base_path", "data")
         )
 
-        engine = DownloadEngine(config, fetcher, storage, args)
-
-        # if args.sync_state:
-        #     engine.sync_state() # 未来可以实现的状态同步功能
-        # else:
+        engine = DownloadEngine(config, fetcher, storage, force_run=force)
         engine.run()
 
         logger.info(
@@ -115,4 +144,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    app()
