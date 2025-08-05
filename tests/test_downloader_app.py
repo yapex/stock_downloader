@@ -87,25 +87,27 @@ class TestDownloaderApp:
 
     def test_create_components(self, downloader_app, sample_config):
         with patch('downloader.main.TushareFetcher'), \
-             patch('downloader.main.ParquetStorage') as mock_storage:
+             patch('downloader.main.DuckDBStorage') as mock_storage:
             mock_storage.return_value = "storage_instance"
             
             fetcher, storage = downloader_app.create_components(sample_config)
             
             assert storage == "storage_instance"
             
-            # 根据 sample_config fixture, base_path 应该是 "test_data"
-            mock_storage.assert_called_once_with(base_path="test_data")
+            # 根据 sample_config fixture, 将 base_path 替换为 db_path
+            # DuckDBStorage 现在使用默认的 "data/stock.db" 因为 sample_config 中没有 db_path
+            mock_storage.assert_called_once_with(db_path="data/stock.db")
 
     def test_create_components_default_storage_path(self, downloader_app):
         config = {}
 
         with patch('downloader.main.TushareFetcher'), \
-             patch('downloader.main.ParquetStorage') as mock_storage:
+             patch('downloader.main.DuckDBStorage') as mock_storage:
 
             downloader_app.create_components(config)
 
-            mock_storage.assert_called_once_with(base_path="data")
+            # DuckDBStorage 现在使用默认的 db_path "data/stock.db"
+            mock_storage.assert_called_once_with(db_path="data/stock.db")
 
     @patch('downloader.main.DownloadEngine')
     @patch('downloader.main.load_config')

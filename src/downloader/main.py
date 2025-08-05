@@ -10,7 +10,7 @@ import typer
 from tqdm import tqdm
 
 from .fetcher import TushareFetcher
-from .storage import ParquetStorage
+from .storage import DuckDBStorage
 from .engine import DownloadEngine
 
 # --- 忽略来自 tushare 的 FutureWarning ---
@@ -111,7 +111,7 @@ class DownloaderApp:
 
     def create_components(
         self, config: Dict[str, Any]
-    ) -> tuple[TushareFetcher, ParquetStorage, DownloadEngine]:
+    ) -> tuple[TushareFetcher, DuckDBStorage]:
         """
         创建下载系统的核心组件。
 
@@ -119,11 +119,11 @@ class DownloaderApp:
             config: 配置字典
 
         Returns:
-            (fetcher, storage, engine) 元组
+            (fetcher, storage) 元组
         """
         fetcher = TushareFetcher()
-        storage = ParquetStorage(
-            base_path=config.get("storage", {}).get("base_path", "data")
+        storage = DuckDBStorage(
+            db_path=config.get("storage", {}).get("db_path", "data/stock.db")
         )
         return fetcher, storage
 
