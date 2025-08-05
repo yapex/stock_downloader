@@ -1,5 +1,5 @@
 storage:
-  base_path: "data"
+  base_path: "/Users/yapex/workspace/stock_data"
 
 downloader:
   # 全局股票池。默认使用这个指定的列表。
