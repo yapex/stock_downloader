@@ -1,13 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
 import logging
-import tempfile
-import os
-from pathlib import Path
 from downloader.main import DownloaderApp, load_config
-from downloader.fetcher import TushareFetcher
-from downloader.storage import ParquetStorage
-from downloader.engine import DownloadEngine
 
 
 @pytest.fixture

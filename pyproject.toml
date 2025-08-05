@@ -40,7 +40,6 @@ dev = [
     "ipykernel>=6.30.0",
     "ipywidgets>=8.1.7",
     "nbformat>=5.10.4",
-    "pytest>=8.4.1",
     "itables>=2.4.4",
     "ruff>=0.12.0",
 ]
@@ -113,4 +112,5 @@ exclude = [
 dev = [
     "pytest-cov>=6.2.1",
     "ruff>=0.12.7",
+    "pytest>=8.4.1",
 ]

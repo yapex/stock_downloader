@@ -1041,7 +1041,7 @@ wheels = [
 
 [[package]]
 name = "stock-downloader"
-version = "1.1.7"
+version = "1.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "pandas" },
@@ -1061,12 +1061,12 @@ dev = [
     { name = "ipywidgets" },
     { name = "itables" },
     { name = "nbformat" },
-    { name = "pytest" },
     { name = "ruff" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
 ]
@@ -1080,7 +1080,6 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.1" },
     { name = "plotly", specifier = ">=6.2.0" },
     { name = "pyarrow", specifier = ">=21.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.1" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12.0" },
@@ -1093,6 +1092,7 @@ provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-cov", specifier = ">=6.2.1" },
     { name = "ruff", specifier = ">=0.12.7" },
 ]

@@ -1,9 +1,5 @@
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
-import tempfile
-import os
-from pathlib import Path
-import typer
 from typer.testing import CliRunner
 from downloader.main import app, setup_logging, TqdmLoggingHandler
 
