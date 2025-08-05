@@ -43,6 +43,9 @@ class BaseTaskHandler(ABC):
             # 否则使用常规的 logger
             getattr(self.logger, level.lower())(message, *args, **kwargs)
 
+    def _log_debug(self, message: str, *args, **kwargs):
+        self._safe_log("DEBUG", message, *args, **kwargs)
+
     def _log_info(self, message: str, *args, **kwargs):
         """信息级别日志"""
         self._safe_log("INFO", message, *args, **kwargs)
@@ -79,7 +82,7 @@ class IncrementalTaskHandler(BaseTaskHandler):
         data_type = self.get_data_type()
         date_col = self.get_date_col()
 
-        self._log_info(
+        self._log_debug(
             f"--- 开始为 {len(target_symbols)} 只股票执行增量任务: '{task_name}' ---"
         )
 
@@ -114,17 +117,17 @@ class IncrementalTaskHandler(BaseTaskHandler):
                     # 获取任务特定的速率限制配置
                     rate_limit_config = self.task_config.get("rate_limit", {})
                     calls_per_minute = rate_limit_config.get("calls_per_minute")
-                    
+
                     # 如果配置了速率限制，则应用它
                     if calls_per_minute is not None:
                         # 为每个任务创建一个带速率限制的包装函数
                         @rate_limit(
-                            calls_per_minute=calls_per_minute, 
-                            task_key=f"{task_name}_{ts_code}"
+                            calls_per_minute=calls_per_minute,
+                            task_key=f"{task_name}_{ts_code}",
                         )
                         def _fetch_data():
                             return self.fetch_data(ts_code, start_date, end_date)
-                        
+
                         df = _fetch_data()
                     else:
                         # 使用默认的无限制调用

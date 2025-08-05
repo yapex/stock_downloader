@@ -62,7 +62,7 @@ financials = "downloader.tasks.financials:FinancialsTaskHandler"
 # Ruff configuration
 # ==========================================================
 [tool.ruff]
-line-length = 88
+ignore = ["E501"]
 target-version = "py313"
 
 [tool.ruff.lint]

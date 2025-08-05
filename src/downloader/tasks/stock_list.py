@@ -15,7 +15,7 @@ class StockListTaskHandler(BaseTaskHandler):
         """
         task_name = self.task_config["name"]
         task_type = self.task_config["type"]
-        self._log_info(f"--- 开始执行冷却期任务: '{task_name}' ---")
+        self._log_debug(f"--- 开始执行冷却期任务: '{task_name}' ---")
 
         interval_hours = self.task_config.get("update_interval_hours", 23)
         entity_id = task_type
@@ -27,25 +27,25 @@ class StockListTaskHandler(BaseTaskHandler):
                 target_file_path.stat().st_mtime
             )
             if datetime.now() - last_modified_time < timedelta(hours=interval_hours):
-                self._log_info(f"任务 '{task_name}' 处于冷却期，跳过。")
+                self._log_debug(f"任务 '{task_name}' 处于冷却期，跳过。")
                 return
 
         # 获取任务特定的速率限制配置
         rate_limit_config = self.task_config.get("rate_limit", {})
         calls_per_minute = rate_limit_config.get("calls_per_minute")
-        
+
         # 执行下载，根据配置应用速率限制
         if calls_per_minute is not None:
             # 应用速率限制
             @rate_limit(calls_per_minute=calls_per_minute, task_key=task_name)
             def _fetch_stock_list():
                 return self.fetcher.fetch_stock_list()
-            
+
             df = _fetch_stock_list()
         else:
             # 使用默认的无限制调用
             df = self.fetcher.fetch_stock_list()
-            
+
         if df is not None:
             # 全量覆盖保存
             self.storage.overwrite(df, "system", entity_id)

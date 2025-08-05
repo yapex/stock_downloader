@@ -1,5 +1,6 @@
 import logging
 import sys
+import warnings
 import yaml
 from datetime import datetime
 from dotenv import load_dotenv
@@ -11,6 +12,10 @@ from tqdm import tqdm
 from .fetcher import TushareFetcher
 from .storage import ParquetStorage
 from .engine import DownloadEngine
+
+# --- 忽略来自 tushare 的 FutureWarning ---
+# 这是为了避免在控制台和日志中显示大量关于 Series.fillna(method='bfill') 的弃用警告
+warnings.filterwarnings("ignore", category=FutureWarning, module="tushare")
 
 load_dotenv()
 
@@ -61,7 +66,7 @@ def load_config(config_path: str = "config.yaml") -> dict:
     config_file = Path(config_path)
     if not config_file.exists():
         raise FileNotFoundError(f"配置文件 {config_path} 不存在")
-    
+
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
@@ -76,46 +81,43 @@ class DownloaderApp:
         self.logger = logger or logging.getLogger(__name__)
 
     def process_symbols_config(
-        self, 
-        config: Dict[str, Any], 
-        symbols: Optional[List[str]] = None
+        self, config: Dict[str, Any], symbols: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         根据命令行参数调整配置中的股票符号。
-        
+
         Args:
             config: 配置字典
             symbols: 命令行指定的股票符号列表
-            
+
         Returns:
             修改后的配置字典
         """
         if not symbols:
             return config
-            
+
         # 确保 config 中有 downloader 节点
         if "downloader" not in config:
             config["downloader"] = {}
-            
+
         if len(symbols) == 1 and symbols[0].lower() == "all":
-            self.logger.info("命令行指定下载所有A股。")
+            self.logger.debug("命令行指定下载所有A股。")
             config["downloader"]["symbols"] = "all"
         else:
-            self.logger.info(f"命令行指定股票池: {list(symbols)}")
+            self.logger.debug(f"命令行指定股票池: {list(symbols)}")
             config["downloader"]["symbols"] = list(symbols)
-            
+
         return config
 
     def create_components(
-        self, 
-        config: Dict[str, Any]
+        self, config: Dict[str, Any]
     ) -> tuple[TushareFetcher, ParquetStorage, DownloadEngine]:
         """
         创建下载系统的核心组件。
-        
+
         Args:
             config: 配置字典
-            
+
         Returns:
             (fetcher, storage, engine) 元组
         """
@@ -129,19 +131,19 @@ class DownloaderApp:
         self,
         config_path: str = "config.yaml",
         symbols: Optional[List[str]] = None,
-        force: bool = False
+        force: bool = False,
     ) -> bool:
         """
         执行数据下载任务。
-        
+
         Args:
             config_path: 配置文件路径
             symbols: 指定的股票符号列表
             force: 是否强制执行
-            
+
         Returns:
             是否成功执行
-            
+
         Raises:
             FileNotFoundError: 配置文件不存在
             ValueError: 配置参数错误
@@ -151,16 +153,16 @@ class DownloaderApp:
             # 加载和处理配置
             config = load_config(config_path)
             config = self.process_symbols_config(config, symbols)
-            
+
             # 创建组件
             fetcher, storage = self.create_components(config)
             engine = DownloadEngine(config, fetcher, storage, force_run=force)
-            
+
             # 执行下载
             engine.run()
-            
+
             return True
-            
+
         except (FileNotFoundError, ValueError) as e:
             self.logger.critical(f"程序启动失败: {e}")
             raise
@@ -214,21 +216,21 @@ def main(
 
     separator = "=" * 30
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logger.info(f"\n\n{separator} 程序开始运行: {timestamp} {separator}\n")
+    logger.debug(f"\n\n{separator} 程序开始运行: {timestamp} {separator}\n")
 
     app = DownloaderApp(logger)
-    
+
     try:
         app.run_download(config_path=config_file, symbols=symbols, force=force)
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        logger.info(f"\n{separator} 程序运行结束: {timestamp} {separator}\n")
+        logger.debug(f"\n{separator} 程序运行结束: {timestamp} {separator}\n")
 
     except (ValueError, FileNotFoundError) as e:
         logger.critical(f"程序启动失败: {e}")
     except Exception as e:
         logger.critical(f"程序主流程发生严重错误: {e}", exc_info=True)
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        logger.info(f"\n{separator} 程序异常终止: {timestamp} {separator}\n")
+        logger.fatal(f"\n{separator} 程序异常终止: {timestamp} {separator}\n")
 
 
 if __name__ == "__main__":
