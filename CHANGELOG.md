@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Network Error Handling**: Implemented automatic retry mechanism for network-related errors in IncrementalTaskHandler
+  - Network errors (timeout, connection issues, etc.) are now caught and logged
+  - Affected stocks are collected and retried at the end of the task
+  - If retry fails, errors are logged to failed_tasks.log with specific retry failure codes
+
 ### Changed
 - **File Path Structure**: Removed "entity=" prefix from file paths for stock data
   - **Old format**: `data_type/entity=STOCK_CODE/data.parquet`

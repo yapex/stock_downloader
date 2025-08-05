@@ -143,6 +143,7 @@ INFO -   - 已注册处理器: 'financials'
     - **解析配置:** 从 `config.yaml` 中读取 `tasks` 列表。
     - **确定目标:** 确定本次运行所需处理的最终股票列表（优先使用命令行参数，其次使用配置文件，最后可从本地 stock_list 文件加载）。
     - **任务分派:** 将每个启用的任务分派给其对应的、已注册的处理器。
+    - **错误处理协调:** 捕获任务执行过程中的异常并进行适当的处理
 
 ### 3. Tushare 数据获取器 (`downloader/fetcher.py`)
 - **职责:** 处理与外部 Tushare Pro API 的所有通信。
@@ -165,6 +166,11 @@ INFO -   - 已注册处理器: 'financials'
 - **结构:**
     - `base.py`: 定义了 `BaseTaskHandler` 和 `IncrementalTaskHandler`，为插件开发提供了标准模板。
     - 具体实现 (例如 `daily.py`): 继承基类，实现数据获取和配置的特定逻辑。
+- **错误处理:**
+    - `IncrementalTaskHandler` 实现了网络错误的自动检测和重试机制
+    - 网络相关错误（如超时、连接失败等）会被捕获并暂存
+    - 在任务结束时，系统会统一重试所有失败的股票
+    - 如果重试仍然失败，错误会被记录到 `failed_tasks.log` 文件中
 
 ### 6. 速率限制 (`downloader/rate_limit.py`)
 - **职责:** 防止 API 调用频率超过限制。
