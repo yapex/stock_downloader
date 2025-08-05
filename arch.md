@@ -164,13 +164,12 @@ INFO -   - 已注册处理器: 'financials'
 ### 5. 任务处理器 (`downloader/tasks/`)
 - **职责:** 封装单个特定下载作业的全部逻辑，是插件的最终实现。
 - **结构:**
-    - `base.py`: 定义了 `BaseTaskHandler` 和 `IncrementalTaskHandler`，为插件开发提供了标准模板。
-    - 具体实现 (例如 `daily.py`): 继承基类，实现数据获取和配置的特定逻辑。
+    - **`base.py`**: 定义了抽象基类 `BaseTaskHandler` 和 `IncrementalTaskHandler`。`IncrementalTaskHandler` 使用**模板方法模式**，为所有增量下载任务提供了一个统一的、健壮的算法骨架。它内部通过一个核心的 `_process_single_symbol` 方法处理单个股票的下载、保存和错误分类，从而消除了代码重复。
+- **具体实现** (例如 `daily.py`): 继承 `IncrementalTaskHandler`，仅需实现获取特定数据类型 (`get_data_type`)、日期列 (`get_date_col`) 和数据获取逻辑 (`fetch_data`)，无需关心执行、重试等复杂流���。
 - **错误处理:**
-    - `IncrementalTaskHandler` 实现了网络错误的自动检测和重试机制
-    - 网络相关错误（如超时、连接失败等）会被捕获并暂存
-    - 在任务结束时，系统会统一重试所有失败的股票
-    - 如果重试仍然失败，错误会被记录到 `failed_tasks.log` 文件中
+    - `IncrementalTaskHandler` 实现了精细的错误处理机制。
+    - **网络错误**: 自动检测（如超时、连接失败）并收集失败的股票。在主任务流程结束后，通过 `_retry_network_errors` 方法对这些股票进行一次自动重试。
+    - **其他错误**: 对于非网络错误或重试后依然失败的情况，错误信息将被记录到 `failed_tasks.log` 文件中，以便后续分析。
 
 ### 6. 速率限制 (`downloader/rate_limit.py`)
 - **职责:** 防止 API 调用频率超过限制。
