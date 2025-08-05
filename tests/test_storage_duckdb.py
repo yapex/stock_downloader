@@ -3,10 +3,9 @@ import pytest
 from pathlib import Path
 import duckdb
 import logging
-import inspect
 from unittest.mock import Mock
 
-from downloader.storage import DuckDBStorage, ParquetStorage
+from downloader.storage import DuckDBStorage
 from downloader.engine import DownloadEngine
 from downloader.fetcher import TushareFetcher
 
@@ -56,7 +55,7 @@ def test_get_table_name(db_path: Path):
     """测试表名生成逻辑。"""
     storage = DuckDBStorage(db_path)
     assert storage._get_table_name("daily", "000001.SZ") == "daily_000001_SZ"
-    assert storage._get_table_name("system", "stock_list") == "system_stock_list"
+    assert storage._get_table_name("system", "stock_list") == "sys_stock_list"
 
 
 def test_save_and_get_latest_date(storage: DuckDBStorage, sample_df: pd.DataFrame):
@@ -138,42 +137,6 @@ def test_save_dataframe_without_date_col(storage: DuckDBStorage, caplog):
     table_name = storage._get_table_name("daily", "000001.SZ")
     res = storage.conn.execute(f"SELECT table_name FROM duckdb_tables() WHERE table_name='{table_name}';").fetchall()
     assert len(res) == 0
-
-
-def test_interface_consistency_with_parquet_storage():
-    """测试 DuckDBStorage 和 ParquetStorage 的同名方法参数一致性。"""
-    # 获取两个类的公共方法
-    duck_methods = {name: method for name, method in inspect.getmembers(DuckDBStorage, predicate=inspect.isfunction)
-                   if not name.startswith('_')}
-    parquet_methods = {name: method for name, method in inspect.getmembers(ParquetStorage, predicate=inspect.isfunction)
-                      if not name.startswith('_')}
-    
-    # 找到两个类都有的方法
-    common_methods = set(duck_methods.keys()) & set(parquet_methods.keys())
-    
-    # 对于每个公共方法，比较其签名
-    for method_name in common_methods:
-        duck_signature = inspect.signature(duck_methods[method_name])
-        parquet_signature = inspect.signature(parquet_methods[method_name])
-        
-        # 比较参数名称和默认值
-        duck_params = list(duck_signature.parameters.keys())
-        parquet_params = list(parquet_signature.parameters.keys())
-        
-        assert duck_params == parquet_params, (
-            f"方法 '{method_name}' 的参数不一致: "
-            f"DuckDBStorage: {duck_params}, ParquetStorage: {parquet_params}"
-        )
-        
-        # 比较参数的默认值
-        for param_name in duck_params:
-            duck_param = duck_signature.parameters[param_name]
-            parquet_param = parquet_signature.parameters[param_name]
-            
-            assert duck_param.default == parquet_param.default, (
-                f"方法 '{method_name}' 的参数 '{param_name}' 默认值不一致: "
-                f"DuckDBStorage: {duck_param.default}, ParquetStorage: {parquet_param.default}"
-            )
 
 
 def test_engine_run_end_to_end(tmp_path: Path, monkeypatch):

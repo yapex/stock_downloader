@@ -19,14 +19,11 @@ class StockListTaskHandler(BaseTaskHandler):
 
         interval_hours = self.task_config.get("update_interval_hours", 23)
         entity_id = task_type
-        target_file_path = self.storage._get_file_path("system", entity_id)
 
-        # 门禁检查：基于文件最后修改时间
-        if not self.force_run and target_file_path.exists():
-            last_modified_time = datetime.fromtimestamp(
-                target_file_path.stat().st_mtime
-            )
-            if datetime.now() - last_modified_time < timedelta(hours=interval_hours):
+        # 门禁检查：基于数据库中的最后更新时间
+        if not self.force_run:
+            last_updated = self.storage.get_table_last_updated("system", entity_id)
+            if last_updated and datetime.now() - last_updated < timedelta(hours=interval_hours):
                 self._log_debug(f"任务 '{task_name}' 处于冷却期，跳过。")
                 return
 

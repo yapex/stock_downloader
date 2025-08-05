@@ -100,18 +100,20 @@ def test_engine_run_with_symbols_all(mock_fetcher, mock_storage, mock_args):
 
     engine = DownloadEngine(config, mock_fetcher, mock_storage, mock_args)
 
-    # 模拟从Parquet文件读取的股票列表
+    # 模拟从 DuckDBStorage 读取的股票列表
     expected_symbols_from_file = ["from_file_A", "from_file_B", "from_file_C"]
     mock_stock_list_df = pd.DataFrame({"ts_code": expected_symbols_from_file})
 
-    # ---> 核心修正：在测试函数内部进行局部的、安全的 patch <---
-    with patch("pandas.read_parquet", MagicMock(return_value=mock_stock_list_df)):
-        with patch.object(engine, "task_registry", mock_registry):
-            engine.run()
+    # 模拟 DuckDBStorage 的方法
+    mock_storage.table_exists.return_value = True
+    mock_storage.query.return_value = mock_stock_list_df
 
-            mock_daily_handler_class.assert_called_once()
-            execute_mock = mock_daily_handler_class.return_value.execute
-            execute_mock.assert_called_once()
+    with patch.object(engine, "task_registry", mock_registry):
+        engine.run()
 
-            _, kwargs = execute_mock.call_args
-            assert kwargs.get("target_symbols") == expected_symbols_from_file
+        mock_daily_handler_class.assert_called_once()
+        execute_mock = mock_daily_handler_class.return_value.execute
+        execute_mock.assert_called_once()
+
+        _, kwargs = execute_mock.call_args
+        assert kwargs.get("target_symbols") == expected_symbols_from_file

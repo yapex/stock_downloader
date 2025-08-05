@@ -22,7 +22,7 @@ def sample_config():
             "symbols": ["600519.SH", "000001.SZ"]
         },
         "storage": {
-            "base_path": "test_data"
+            "db_path": "test_data/stock.db"
         }
     }
 
@@ -94,9 +94,8 @@ class TestDownloaderApp:
             
             assert storage == "storage_instance"
             
-            # 根据 sample_config fixture, 将 base_path 替换为 db_path
-            # DuckDBStorage 现在使用默认的 "data/stock.db" 因为 sample_config 中没有 db_path
-            mock_storage.assert_called_once_with(db_path="data/stock.db")
+            # 验证 DuckDBStorage 的构造参数
+            mock_storage.assert_called_once_with(db_path=sample_config["storage"]["db_path"])
 
     def test_create_components_default_storage_path(self, downloader_app):
         config = {}
@@ -197,7 +196,7 @@ class TestLoadConfig:
                 - "600519.SH"
                 - "000001.SZ"
         storage:
-            base_path: "data"
+            db_path: "data/stock.db"
         """
 
         with patch("builtins.open", mock_open(read_data=yaml_content)), \

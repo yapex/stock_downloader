@@ -4,7 +4,7 @@ import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .fetcher import TushareFetcher
-from .storage import ParquetStorage
+from .storage import DuckDBStorage
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class DownloadEngine:
         self,
         config: dict,
         fetcher: TushareFetcher,
-        storage: ParquetStorage,
+        storage: DuckDBStorage,
         force_run: bool = False,
     ):
         self.config = config
@@ -69,16 +69,20 @@ class DownloadEngine:
             )
         elif symbols_config == "all":
             try:
-                stock_list_file = self.storage._get_file_path("system", "stock_list")
-                if stock_list_file.exists():
-                    df_list = pd.read_parquet(stock_list_file)
-                    target_symbols = df_list["ts_code"].tolist()
-                    logger.debug(
-                        f"已从本地文件加载 {len(target_symbols)} 只全市场股票作为目标。"
-                    )
+                if self.storage.table_exists("system", "stock_list"):
+                    df_list = self.storage.query("system", "stock_list")
+                    if not df_list.empty and "ts_code" in df_list.columns:
+                        target_symbols = df_list["ts_code"].tolist()
+                        logger.debug(
+                            f"已从数据库加载 {len(target_symbols)} 只全市场股票作为目标。"
+                        )
+                    else:
+                        logger.warning(
+                            "股票列表数据为空或缺少 ts_code 列。请确保'更新A股列表'任务已成功运行。"
+                        )
                 else:
                     logger.warning(
-                        "配置为'all'但股票列表文件不存在。请确保'更新A股列表'任务已成功运行。"
+                        "配置为'all'但股票列表表不存在。请确保'更新A股列表'任务已成功运行。"
                     )
             except Exception as e:
                 logger.error(f"准备'all'股票列表时出错: {e}")

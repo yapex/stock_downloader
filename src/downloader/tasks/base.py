@@ -8,7 +8,7 @@ import time
 
 # 导入核心组件以进行类型提示，增强代码可读性和健壮性
 from downloader.fetcher import TushareFetcher
-from downloader.storage import ParquetStorage
+from downloader.storage import DuckDBStorage
 from downloader.rate_limit import rate_limit
 
 # 从新的 utils 模块导入工具函数
@@ -22,7 +22,7 @@ class BaseTaskHandler(ABC):
         self,
         task_config: dict,
         fetcher: TushareFetcher,
-        storage: ParquetStorage,
+        storage: DuckDBStorage,
         force_run: bool = False,
     ):
         self.task_config = task_config
