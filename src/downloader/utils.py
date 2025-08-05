@@ -30,6 +30,8 @@ def normalize_stock_code(code: str) -> str:
         exchange = "SH"
     elif stock_number.startswith(("0", "3")):
         exchange = "SZ"
+    elif stock_number.startswith(("8", "9")):
+        exchange = "BJ"
     else:
         raise ValueError(f"无法识别的股票代码前缀: {stock_number}")
 
