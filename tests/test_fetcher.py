@@ -137,7 +137,9 @@ def test_fetch_daily_history_handles_api_exception(adjust, monkeypatch, caplog):
 
 
 def test_fetch_income_balancesheet_cashflow(mock_pro_api, caplog):
-    """测试财务函数 fetch_income, fetch_balancesheet, fetch_cashflow 的正常返回和异常处理"""
+    """测试财务函数 fetch_income, fetch_balancesheet, fetch_cashflow 
+    的正常返回和异常处理
+    """
     mock_df = pd.DataFrame({"ann_date": ["20220101"]})
 
     # 测试正常返回情况

@@ -35,7 +35,9 @@ class TestCLIIntegration:
 
     @patch('downloader.main.setup_logging')
     @patch('downloader.main.DownloaderApp')
-    def test_cli_with_default_config(self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content):
+    def test_cli_with_default_config(
+        self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content
+    ):
         """测试使用默认配置文件的CLI调用"""
         mock_app = MagicMock()
         mock_app_class.return_value = mock_app
@@ -56,7 +58,9 @@ class TestCLIIntegration:
 
     @patch('downloader.main.setup_logging')
     @patch('downloader.main.DownloaderApp')
-    def test_cli_with_custom_config(self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content):
+    def test_cli_with_custom_config(
+        self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content
+    ):
         """测试使用自定义配置文件的CLI调用"""
         mock_app = MagicMock()
         mock_app_class.return_value = mock_app
@@ -76,7 +80,9 @@ class TestCLIIntegration:
 
     @patch('downloader.main.setup_logging')
     @patch('downloader.main.DownloaderApp')
-    def test_cli_with_symbols(self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content):
+    def test_cli_with_symbols(
+        self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content
+    ):
         """测试指定股票符号的CLI调用"""
         mock_app = MagicMock()
         mock_app_class.return_value = mock_app
@@ -96,7 +102,9 @@ class TestCLIIntegration:
 
     @patch('downloader.main.setup_logging')
     @patch('downloader.main.DownloaderApp')
-    def test_cli_with_all_symbols(self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content):
+    def test_cli_with_all_symbols(
+        self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content
+    ):
         """测试下载所有股票的CLI调用"""
         mock_app = MagicMock()
         mock_app_class.return_value = mock_app
@@ -116,7 +124,9 @@ class TestCLIIntegration:
 
     @patch('downloader.main.setup_logging')
     @patch('downloader.main.DownloaderApp')
-    def test_cli_with_force_flag(self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content):
+    def test_cli_with_force_flag(
+        self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content
+    ):
         """测试强制执行标志的CLI调用"""
         mock_app = MagicMock()
         mock_app_class.return_value = mock_app
@@ -136,7 +146,9 @@ class TestCLIIntegration:
 
     @patch('downloader.main.setup_logging')
     @patch('downloader.main.DownloaderApp')
-    def test_cli_with_combined_options(self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content):
+    def test_cli_with_combined_options(
+        self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content
+    ):
         """测试组合选项的CLI调用"""
         mock_app = MagicMock()
         mock_app_class.return_value = mock_app
@@ -160,7 +172,9 @@ class TestCLIIntegration:
 
     @patch('downloader.main.setup_logging')
     @patch('downloader.main.DownloaderApp')
-    def test_cli_file_not_found_error(self, mock_app_class, mock_setup_logging, cli_runner):
+    def test_cli_file_not_found_error(
+        self, mock_app_class, mock_setup_logging, cli_runner
+    ):
         """测试配置文件不存在时的错误处理"""
         mock_app = MagicMock()
         mock_app_class.return_value = mock_app
@@ -174,7 +188,9 @@ class TestCLIIntegration:
 
     @patch('downloader.main.setup_logging')
     @patch('downloader.main.DownloaderApp')
-    def test_cli_general_exception(self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content):
+    def test_cli_general_exception(
+        self, mock_app_class, mock_setup_logging, cli_runner, sample_config_content
+    ):
         """测试一般异常的错误处理"""
         mock_app = MagicMock()
         mock_app_class.return_value = mock_app

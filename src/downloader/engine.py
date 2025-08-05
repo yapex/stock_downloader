@@ -1,6 +1,7 @@
 import logging
 from importlib.metadata import entry_points
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .fetcher import TushareFetcher
 from .storage import ParquetStorage
@@ -45,7 +46,7 @@ class DownloadEngine:
             return
 
         # ===================================================================
-        #           核心修正：股票列表的确定逻��
+        #           核心修正：股票列表的确定逻
         # ===================================================================
 
         # 1. 执行 stock_list 任务（如果存在且需要更新），
@@ -91,12 +92,51 @@ class DownloadEngine:
         data_driven_tasks = [
             t for t in tasks if t.get("type") != "stock_list" and t.get("enabled")
         ]
-        for task_spec in data_driven_tasks:
-            # 将最终确定的股票列表作为上下文传递
-            context = {"target_symbols": target_symbols}
-            self._dispatch_task(task_spec, defaults, **context)
+
+        # Check for concurrency configuration
+        max_workers = downloader_config.get("max_concurrent_tasks", 1)
+
+        if max_workers > 1:
+            logger.debug(
+                f"使用 {max_workers} 个线程并发执行 {len(data_driven_tasks)} 个任务"
+            )
+            self._run_tasks_concurrently(
+                data_driven_tasks, defaults, target_symbols, max_workers
+            )
+        else:
+            logger.debug(f"顺序执行 {len(data_driven_tasks)} 个任务")
+            for task_spec in data_driven_tasks:
+                # 将最终确定的股票列表作为上下文传递
+                context = {"target_symbols": target_symbols}
+                self._dispatch_task(task_spec, defaults, **context)
 
         logger.debug("下载引擎所有任务执行完毕。")
+
+    def _run_tasks_concurrently(self, tasks, defaults, target_symbols, max_workers):
+        """Execute tasks concurrently using a thread pool."""
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks to the executor
+            future_to_task = {
+                executor.submit(
+                    self._dispatch_task,
+                    task_spec,
+                    defaults,
+                    **{"target_symbols": target_symbols},
+                ): task_spec
+                for task_spec in tasks
+            }
+
+            # Wait for all tasks to complete and handle results
+            for future in as_completed(future_to_task):
+                task_spec = future_to_task[future]
+                try:
+                    # This will re-raise any exception caught in the thread
+                    future.result()
+                    logger.debug(f"任务 '{task_spec['name']}' 完成")
+                except Exception as e:
+                    logger.error(
+                        f"任务 '{task_spec['name']}' 执行失败: {e}", exc_info=True
+                    )
 
     def _dispatch_task(self, task_spec: dict, defaults: dict, **kwargs):
         task_type = task_spec.get("type")
@@ -114,6 +154,8 @@ class DownloadEngine:
                 logger.error(
                     f"执行任务 '{task_spec.get('name')}' 时发生错误: {e}", exc_info=True
                 )
+                # Re-raise the exception so it can be caught by the concurrent executor
+                raise
         else:
             logger.warning(
                 f"未找到类型为 '{task_type}' 的任务处理器，"
