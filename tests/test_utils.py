@@ -1,6 +1,6 @@
 import pytest
 
-from downloader.utils import normalize_stock_code
+from downloader.utils import normalize_stock_code, is_interval_greater_than_7_days
 
 
 def test_normalize_stock_code_sh():
@@ -28,6 +28,12 @@ def test_normalize_stock_code_gem():
     assert normalize_stock_code("300750") == "300750.SZ"
 
 
+def test_normalize_stock_code_bj():
+    """测试北交所代码"""
+    assert normalize_stock_code("800001") == "800001.BJ"
+    assert normalize_stock_code("900001") == "900001.BJ"
+
+
 def test_invalid_code():
     """测试无效代码"""
     with pytest.raises(ValueError, match="无法从 '12345' 中提取有效的6位股票代码"):
@@ -44,3 +50,15 @@ def test_non_string_input():
     """测试非字符串输入"""
     with pytest.raises(TypeError, match="股票代码必须是字符串，而不是 <class 'int'>"):
         normalize_stock_code(600519)
+
+
+def test_interval_greater_than_7_days():
+    # 测试间隔大于 7 天的情况
+    assert is_interval_greater_than_7_days("20250101", "20250110")
+    # 测试间隔小于 7 天的情况
+    assert not is_interval_greater_than_7_days("20250101", "20250105")
+    # 测试间隔等于 7 天的情况
+    assert not is_interval_greater_than_7_days("20250101", "20250108")
+    # 测试无效日期格式的情况
+    with pytest.raises(ValueError):
+        is_interval_greater_than_7_days("invalid", "20250110")

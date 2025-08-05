@@ -88,22 +88,22 @@ class TestDownloaderApp:
     def test_create_components(self, downloader_app, sample_config):
         with patch('downloader.main.TushareFetcher') as mock_fetcher_class, \
              patch('downloader.main.ParquetStorage') as mock_storage_class:
-
-            mock_fetcher = MagicMock()
-            mock_storage = MagicMock()
-            mock_fetcher_class.return_value = mock_fetcher
-            mock_storage_class.return_value = mock_storage
-
+            mock_fetcher_class.return_value = "fetcher_instance"
+            mock_storage_class.return_value = "storage_instance"
+            
             fetcher, storage = downloader_app.create_components(sample_config)
-
-            assert fetcher is mock_fetcher
-            assert storage is mock_storage
+            
+            assert fetcher == "fetcher_instance"
+            assert storage == "storage_instance"
+            
+            mock_fetcher_class.assert_called_once()
+            mock_storage_class.assert_called_once_with(base_path="data")
 
     def test_create_components_default_storage_path(self, downloader_app):
         config = {}
 
-        with patch('downloader.main.TushareFetcher') as mock_fetcher_class, \
-             patch('downloader.main.ParquetStorage') as mock_storage_class:
+        with patch('downloader.main.TushareFetcher'), \
+             patch('downloader.main.ParquetStorage'):
 
             downloader_app.create_components(config)
 

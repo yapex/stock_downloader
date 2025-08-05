@@ -8,6 +8,7 @@ import sys
 # 导入核心组件以进行类型提示，增强代码可读性和健壮性
 from downloader.fetcher import TushareFetcher
 from downloader.storage import ParquetStorage
+from downloader.rate_limit import rate_limit
 
 # 从新的 utils 模块导入工具函数
 from ..utils import record_failed_task
@@ -110,7 +111,24 @@ class IncrementalTaskHandler(BaseTaskHandler):
                     if start_date > end_date:
                         continue
 
-                    df = self.fetch_data(ts_code, start_date, end_date)
+                    # 获取任务特定的速率限制配置
+                    rate_limit_config = self.task_config.get("rate_limit", {})
+                    calls_per_minute = rate_limit_config.get("calls_per_minute")
+                    
+                    # 如果配置了速率限制，则应用它
+                    if calls_per_minute is not None:
+                        # 为每个任务创建一个带速率限制的包装函数
+                        @rate_limit(
+                            calls_per_minute=calls_per_minute, 
+                            task_key=f"{task_name}_{ts_code}"
+                        )
+                        def _fetch_data():
+                            return self.fetch_data(ts_code, start_date, end_date)
+                        
+                        df = _fetch_data()
+                    else:
+                        # 使用默认的无限制调用
+                        df = self.fetch_data(ts_code, start_date, end_date)
 
                     if df is not None:
                         if not df.empty:

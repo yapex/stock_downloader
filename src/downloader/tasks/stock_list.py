@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from .base import BaseTaskHandler
+from ..rate_limit import rate_limit
 
 
 class StockListTaskHandler(BaseTaskHandler):
@@ -29,8 +30,22 @@ class StockListTaskHandler(BaseTaskHandler):
                 self._log_info(f"任务 '{task_name}' 处于冷却期，跳过。")
                 return
 
-        # 执行下载
-        df = self.fetcher.fetch_stock_list()
+        # 获取任务特定的速率限制配置
+        rate_limit_config = self.task_config.get("rate_limit", {})
+        calls_per_minute = rate_limit_config.get("calls_per_minute")
+        
+        # 执行下载，根据配置应用速率限制
+        if calls_per_minute is not None:
+            # 应用速率限制
+            @rate_limit(calls_per_minute=calls_per_minute, task_key=task_name)
+            def _fetch_stock_list():
+                return self.fetcher.fetch_stock_list()
+            
+            df = _fetch_stock_list()
+        else:
+            # 使用默认的无限制调用
+            df = self.fetcher.fetch_stock_list()
+            
         if df is not None:
             # 全量覆盖保存
             self.storage.overwrite(df, "system", entity_id)

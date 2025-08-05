@@ -2,7 +2,8 @@ import os
 import tushare as ts
 import pandas as pd
 import logging
-from .utils import normalize_stock_code
+from .utils import normalize_stock_code, is_interval_greater_than_7_days
+from .rate_limit import rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,14 @@ class TushareFetcher:
     封装 Tushare Pro API 的数据获取器。
     """
 
-    def __init__(self):
+    def __init__(self, default_rate_limit: int = 150):
+        """
+        初始化 TushareFetcher
+
+        Args:
+            default_rate_limit: 默认的API调用速率限制（每分钟调用次数）
+        """
+        self.default_rate_limit = default_rate_limit
         token = os.getenv("TUSHARE_TOKEN")
         if not token:
             raise ValueError("错误：未设置 TUSHARE_TOKEN 环境变量。")
@@ -25,6 +33,7 @@ class TushareFetcher:
             logger.error(f"Tushare Pro API 初始化或验证失败: {e}")
             raise
 
+    @rate_limit(calls_per_minute=200)
     def fetch_stock_list(self) -> pd.DataFrame | None:
         """获取所有A股的列表。"""
         logger.debug("开始从 Tushare 获取A股列表...")
@@ -40,6 +49,7 @@ class TushareFetcher:
             logger.error(f"获取A股列表失败: {e}", exc_info=True)
             return None
 
+    @rate_limit(calls_per_minute=500)
     def fetch_daily_history(
         self, ts_code: str, start_date: str, end_date: str, adjust: str
     ) -> pd.DataFrame | None:
@@ -55,8 +65,14 @@ class TushareFetcher:
                 freq="D",
             )
 
-            # ---> 核心修正：恢复并优化对 None 返回值的处理 <---
-            if df is None:
+            # ---> 如果间隔时间大于 7 天，才需要警告 <---
+
+            if (
+                is_interval_greater_than_7_days(
+                    start_date=start_date, end_date=end_date
+                )
+                and df is None
+            ):
                 # 这种情况可能发生在 Tushare 服务器返回非标准空数据时
                 logger.warning(
                     f"Tushare API for {ts_code} 返回了 None，将其视为空DataFrame。"
@@ -73,6 +89,7 @@ class TushareFetcher:
             logger.error(f"获取 {ts_code} 的日线数据失败: {e}", exc_info=True)
             return None
 
+    @rate_limit(calls_per_minute=200)
     def fetch_daily_basic(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
@@ -96,6 +113,7 @@ class TushareFetcher:
             return None
 
     # ---> 新增的财务报表获取方法 <---
+    @rate_limit(calls_per_minute=200)
     def fetch_income(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
@@ -111,6 +129,7 @@ class TushareFetcher:
             logger.error(f"获取 {ts_code} 的利润表失败: {e}", exc_info=True)
             return None
 
+    @rate_limit(calls_per_minute=200)
     def fetch_balancesheet(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
@@ -126,6 +145,7 @@ class TushareFetcher:
             logger.error(f"获取 {ts_code} 的资产负债表失败: {e}", exc_info=True)
             return None
 
+    @rate_limit(calls_per_minute=200)
     def fetch_cashflow(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:

@@ -9,6 +9,8 @@
 - **高效存储**: 使用 Parquet 格式进行数据存储和压缩
 - **自动股票代码标准化**: 支持多种股票代码输入格式，自动标准化
 - **向后兼容**: 支持旧版本文件路径格式的自动迁移
+- **速率限制**: 支持对 API 调用进行速率限制，防止被限制访问
+- **灵活配置**: 支持通过命令行参数或配置文件指定目标股票
 
 ## 最近更新
 
@@ -50,27 +52,66 @@ tushare:
 storage:
   base_path: "./data"
 
+downloader:
+  symbols: 
+    - "all"  # 或者指定具体股票代码列表
+
 tasks:
   - name: "股票列表"
     enabled: true
     type: "stock_list"
     update_strategy: "overwrite"
+    update_interval_hours: 23
   
   - name: "日线行情(前复权)"
     enabled: true
     type: "daily"
+    adjust: "qfq"  # qfq-前复权, hfq-后复权, none-不复权
     update_strategy: "incremental"
     date_col: "trade_date"
+    
+  - name: "每日指标"
+    enabled: true
+    type: "daily_basic"
+    update_strategy: "incremental"
+    date_col: "trade_date"
+    
+  - name: "财务报表-资产负债表"
+    enabled: true
+    type: "financials"
+    statement_type: "balancesheet"
+    update_strategy: "incremental"
+    date_col: "ann_date"
+    
+  - name: "财务报表-利润表"
+    enabled: true
+    type: "financials"
+    statement_type: "income"
+    update_strategy: "incremental"
+    date_col: "ann_date"
+    
+  - name: "财务报表-现金流量表"
+    enabled: true
+    type: "financials"
+    statement_type: "cashflow"
+    update_strategy: "incremental"
+    date_col: "ann_date"
 ```
 
 ## 使用方法
 
 ```bash
-# 运行数据下载
+# 运行数据下载（使用配置文件中的股票列表）
 python main.py
 
-# 强制更新所有数据
+# 强制更新所有数据（无视冷却期）
 python main.py --force
+
+# 指定特定股票下载
+python main.py 600519.SH 000001.SZ
+
+# 下载所有A股数据
+python main.py all
 ```
 
 ## 数据迁移
@@ -88,6 +129,7 @@ stock_downloader/
 │   ├── fetcher.py        # 数据获取器
 │   ├── storage.py        # 存储处理器
 │   ├── utils.py          # 工具函数
+│   ├── rate_limit.py     # 速率限制器
 │   └── tasks/            # 任务处理器
 │       ├── base.py       # 基础任务类
 │       ├── daily.py      # 日线数据任务

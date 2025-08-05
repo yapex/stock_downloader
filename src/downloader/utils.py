@@ -45,3 +45,25 @@ def record_failed_task(task_name: str, entity_id: str, reason: str):
     """
     with open("failed_tasks.log", "a", encoding="utf-8") as f:
         f.write(f"{datetime.now().isoformat()},{task_name},{entity_id},{reason}\n")
+
+
+def is_interval_greater_than_7_days(start_date: str, end_date: str) -> bool:
+    """
+    检查两个日期之间的间隔是否大于 7 天。
+
+    Args:
+        start_date (str): 起始日期，格式为 'YYYYMMDD'。
+        end_date (str): 结束日期，格式为 'YYYYMMDD'。
+
+    Returns:
+        bool: 如果间隔大于 7 天，返回 True；否则返回 False。
+    """
+    # 将日期字符串转换为 datetime 对象
+    start = datetime.strptime(start_date, "%Y%m%d")
+    end = datetime.strptime(end_date, "%Y%m%d")
+
+    # 计算日期差值
+    delta = end - start
+
+    # 检查差值是否大于 7 天
+    return delta.days > 7
