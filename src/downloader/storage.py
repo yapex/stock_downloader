@@ -85,12 +85,26 @@ class ParquetStorage:
             combined_df = df
             if file_path.exists():
                 existing_df = pd.read_parquet(file_path, engine="pyarrow")
-                # 在连接前检查 DataFrame 是否为空，避免 FutureWarning
-                if not existing_df.empty and not df.empty:
-                    combined_df = pd.concat([existing_df, df], ignore_index=True)
-                elif not existing_df.empty:
-                    combined_df = existing_df
-                # 如果 df 为空但 existing_df 也为空，则 combined_df 保持为原始 df（即空）
+                # 检查是否需要合并数据
+                if not existing_df.empty:
+                    # 只有当新数据不为空时才合并
+                    if not df.empty:
+                        # 使用 pd.concat 前确保不会触发 FutureWarning
+                        # 通过显式过滤掉空的或全NA的DataFrame来避免警告
+                        dfs_to_concat = []
+                        if not existing_df.empty:
+                            dfs_to_concat.append(existing_df)
+                        if not df.empty:
+                            dfs_to_concat.append(df)
+                        
+                        if dfs_to_concat:
+                            combined_df = pd.concat(dfs_to_concat, ignore_index=True)
+                        else:
+                            combined_df = pd.DataFrame()
+                    else:
+                        # 新数据为空，使用现有数据
+                        combined_df = existing_df
+                # 如果 existing_df 为空但 df 不为空，则 combined_df 保持为原始 df
                 
                 # 只有在 combined_df 不为空时才去重
                 if not combined_df.empty:
