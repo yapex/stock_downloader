@@ -85,12 +85,22 @@ class ParquetStorage:
             combined_df = df
             if file_path.exists():
                 existing_df = pd.read_parquet(file_path, engine="pyarrow")
-                combined_df = pd.concat([existing_df, df], ignore_index=True)
-                combined_df.drop_duplicates(
-                    subset=[date_col], keep="last", inplace=True
-                )
+                # 在连接前检查 DataFrame 是否为空，避免 FutureWarning
+                if not existing_df.empty and not df.empty:
+                    combined_df = pd.concat([existing_df, df], ignore_index=True)
+                elif not existing_df.empty:
+                    combined_df = existing_df
+                # 如果 df 为空但 existing_df 也为空，则 combined_df 保持为原始 df（即空）
+                
+                # 只有在 combined_df 不为空时才去重
+                if not combined_df.empty:
+                    combined_df.drop_duplicates(
+                        subset=[date_col], keep="last", inplace=True
+                    )
 
-            combined_df.sort_values(by=date_col, inplace=True, ignore_index=True)
+            # 只有在 combined_df 不为空时才排序
+            if not combined_df.empty:
+                combined_df.sort_values(by=date_col, inplace=True, ignore_index=True)
             combined_df.to_parquet(file_path, engine="pyarrow", index=False)
             logger.debug(
                 f"[{data_type}/{entity_id}] 数据已成功增量保存，"
