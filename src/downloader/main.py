@@ -37,7 +37,7 @@ class TqdmLoggingHandler(logging.StreamHandler):
 
 
 def setup_logging():
-    """配置日志系统，同时输出到文件和控制台，与tqdm兼容"""
+    """配置日志系统，错误信息只记录到文件，终端保持简洁"""
     root_logger = logging.getLogger()
     
     # 在清理之前，检查是否在测试环境中。如果是，保留pytest的日志处理器
@@ -49,20 +49,40 @@ def setup_logging():
             root_logger.removeHandler(handler)
 
     # 创建日志格式
-    formatter = logging.Formatter(
+    file_formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%H:%M:%S"
     )
+    console_formatter = logging.Formatter("%(message)s")  # 终端只显示消息内容
 
-    # 文件处理器
+    # 文件处理器 - 记录所有级别的日志
     file_handler = logging.FileHandler("downloader.log", mode="a", encoding="utf-8")
-    file_handler.setFormatter(formatter)
+    file_handler.setFormatter(file_formatter)
+    file_handler.setLevel(logging.DEBUG)
 
-    # 控制台处理器（与tqdm兼容）
+    # 控制台处理器 - 只显示INFO级别的关键信息
     console_handler = TqdmLoggingHandler()
-    console_handler.setFormatter(formatter)
+    console_handler.setFormatter(console_formatter)
+    console_handler.setLevel(logging.INFO)
+    
+    # 添加过滤器，控制台只显示特定的消息
+    class TerminalFilter(logging.Filter):
+        def filter(self, record):
+            # 只允许特定的消息在终端显示
+            terminal_messages = [
+                "正在启动...",
+                "初始化组件...", 
+                "开始执行任务组:",
+                "使用组配置:",
+                "全部任务已完成",
+                "程序运行完成",
+                "执行统计"
+            ]
+            return any(msg in record.getMessage() for msg in terminal_messages)
+    
+    console_handler.addFilter(TerminalFilter())
 
     # 配置根日志记录器
-    root_logger.setLevel(logging.INFO)
+    root_logger.setLevel(logging.DEBUG)
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
 
@@ -220,6 +240,10 @@ class DownloaderApp:
 
             # 执行下载
             engine.run()
+            
+            # 获取执行统计
+            stats = engine.get_execution_stats()
+            self._log_execution_summary(stats)
 
             return True
 
@@ -232,6 +256,29 @@ class DownloaderApp:
         finally:
             elapsed_time = time.time() - start_time
             self.logger.info("全部任务已完成，耗时 %.2f 秒", elapsed_time)
+
+    def _log_execution_summary(self, stats: Dict[str, Any]):
+        """
+        记录执行统计摘要
+        
+        Args:
+            stats: 执行统计数据
+        """
+        total_symbols = stats.get('total_symbols', 0)
+        failed_tasks = stats.get('failed_tasks', [])
+        
+        if total_symbols == 0:
+            # 没有股票符号的任务（如更新股票列表）
+            if failed_tasks:
+                self.logger.info(f"执行统计: 任务失败 - {', '.join(failed_tasks)} (详细信息请查看 downloader.log)")
+            else:
+                self.logger.info("执行统计: 所有任务成功完成")
+        else:
+            # 有股票符号的任务
+            if failed_tasks:
+                self.logger.info(f"执行统计: 处理 {total_symbols} 只股票，任务失败 - {', '.join(failed_tasks)} (详细信息请查看 downloader.log)")
+            else:
+                self.logger.info(f"执行统计: 成功处理 {total_symbols} 只股票")
 
 
 # --- Typer 应用定义 ---

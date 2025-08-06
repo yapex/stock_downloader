@@ -27,6 +27,14 @@ class DownloadEngine:
         self.symbols_overridden = symbols_overridden  # 记录股票列表是否被命令行参数覆盖
         self.group_name = group_name  # 记录组名
         self.task_registry = self._discover_task_handlers()
+        # 执行统计
+        self.execution_stats = {
+            'total_symbols': 0,
+            'successful_symbols': [],
+            'failed_symbols': [],
+            'skipped_symbols': [],
+            'failed_tasks': []
+        }
 
     def _discover_task_handlers(self) -> dict:
         registry = {}
@@ -146,6 +154,10 @@ class DownloadEngine:
                     failed_tasks.append(task_spec.get('name'))
 
         logger.debug("下载引擎所有任务执行完毕。")
+        
+        # 更新执行统计
+        self.execution_stats['total_symbols'] = len(target_symbols)
+        self.execution_stats['failed_tasks'] = failed_tasks
         
         # ===================================================================
         #   组内任务完成后，根据 is_full_group_run 和任务成功情况更新 last_run_ts
@@ -267,3 +279,7 @@ class DownloadEngine:
             # 未知的配置格式
             logger.warning(f"未知的 symbols 配置格式: {configured_symbols}")
             return False
+    
+    def get_execution_stats(self):
+        """获取执行统计信息"""
+        return self.execution_stats.copy()
