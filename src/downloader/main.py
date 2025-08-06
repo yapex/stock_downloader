@@ -2,6 +2,7 @@ import logging
 import sys
 import warnings
 import yaml
+import time
 from datetime import datetime
 from dotenv import load_dotenv
 from pathlib import Path
@@ -37,10 +38,15 @@ class TqdmLoggingHandler(logging.StreamHandler):
 
 def setup_logging():
     """配置日志系统，同时输出到文件和控制台，与tqdm兼容"""
-    # 清理现有的 handlers
     root_logger = logging.getLogger()
+    
+    # 在清理之前，检查是否在测试环境中。如果是，保留pytest的日志处理器
+    pytest_handlers = [h for h in root_logger.handlers if 'pytest' in str(type(h)).lower() or 'caplog' in str(type(h)).lower()]
+    
+    # 清理现有的 handlers（但保留pytest的处理器）
     for handler in root_logger.handlers[:]:
-        root_logger.removeHandler(handler)
+        if handler not in pytest_handlers:
+            root_logger.removeHandler(handler)
 
     # 创建日志格式
     formatter = logging.Formatter(
@@ -149,6 +155,9 @@ class DownloaderApp:
             ValueError: 配置参数错误
             Exception: 其他异常
         """
+        self.logger.info("开始执行任务")
+        start_time = time.time()
+        
         try:
             # 加载和处理配置
             config = load_config(config_path)
@@ -169,6 +178,9 @@ class DownloaderApp:
         except Exception as e:
             self.logger.critical(f"程序主流程发生严重错误: {e}", exc_info=True)
             raise
+        finally:
+            elapsed_time = time.time() - start_time
+            self.logger.info("全部任务已完成，耗时 %.2f 秒", elapsed_time)
 
 
 # --- Typer 应用定义 ---
@@ -211,8 +223,21 @@ def main(
     if ctx.invoked_subcommand is not None:
         return
 
+    # 创建临时的启动处理器，确保"正在启动..."消息能够即时输出
+    root_logger = logging.getLogger()
+    startup_handler = logging.StreamHandler(sys.stdout)
+    startup_handler.setFormatter(logging.Formatter("%(message)s"))
+    root_logger.addHandler(startup_handler)
+    root_logger.setLevel(logging.INFO)
+    
+    # 输出启动消息
+    logging.info("正在启动...")
+
     setup_logging()
     logger = logging.getLogger(__name__)
+    
+    # 初始化完成消息
+    logger.info("初始化组件...")
 
     separator = "=" * 30
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

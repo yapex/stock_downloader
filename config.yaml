@@ -11,7 +11,7 @@ downloader:
     '000858',
   ]
   # 最大并发任务数。设置为 1 则为顺序执行。
-  max_concurrent_tasks: 1
+  max_concurrent_tasks: 3
 
 tasks:
   - name: "更新A股列表"

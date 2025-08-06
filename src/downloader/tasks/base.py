@@ -84,16 +84,24 @@ class IncrementalTaskHandler(BaseTaskHandler):
             f"--- 开始为 {len(target_symbols)} 只股票执行增量任务: '{task_name}' ---"
         )
 
-        progress_bar = tqdm(
-            target_symbols,
-            desc=f"执行: {task_name}",
-            ncols=100,
-            leave=True,
-            file=sys.stdout,
-        )
-        self._current_progress_bar = progress_bar
+        try:
+            progress_bar = tqdm(
+                target_symbols,
+                desc=f"执行: {task_name}",
+                ncols=100,
+                leave=True,
+                file=sys.stdout,
+            )
+            self._current_progress_bar = progress_bar
+        except (BrokenPipeError, OSError) as e:
+            self._log_warning(f"进度条初始化失败，切换为静默模式: {e}")
+            # 使用静默模式，禁用进度条
+            self._current_progress_bar = None
+            # 直接使用迭代器而不是进度条
+            progress_bar = target_symbols
 
         network_error_symbols = []
+        is_progress_bar_active = hasattr(progress_bar, 'close')  # 判断是否为真正的进度条
         try:
             for ts_code in progress_bar:
                 is_success, is_network_error = self._process_single_symbol(
@@ -103,7 +111,8 @@ class IncrementalTaskHandler(BaseTaskHandler):
                     network_error_symbols.append(ts_code)
         finally:
             self._current_progress_bar = None
-            progress_bar.close()
+            if is_progress_bar_active:
+                progress_bar.close()
 
         if network_error_symbols:
             self._retry_network_errors(network_error_symbols)
@@ -125,7 +134,12 @@ class IncrementalTaskHandler(BaseTaskHandler):
         
         desc_prefix = f"重试: {data_type}_{ts_code}" if is_retry else f"处理: {data_type}_{ts_code}"
         if self._current_progress_bar:
-            self._current_progress_bar.set_description(desc_prefix)
+            try:
+                self._current_progress_bar.set_description(desc_prefix)
+            except (BrokenPipeError, OSError):
+                # 进度条更新失败，切换为静默模式
+                self._log_debug(f"进度条更新失败，禁用进度条: {desc_prefix}")
+                self._current_progress_bar = None
 
         try:
             if is_retry:
@@ -203,21 +217,29 @@ class IncrementalTaskHandler(BaseTaskHandler):
         task_name = self.task_config["name"]
         self._log_info(f"开始重试 {len(symbols)} 只因网络错误失败的股票...")
 
-        retry_progress_bar = tqdm(
-            symbols,
-            desc=f"重试: {task_name}",
-            ncols=100,
-            leave=True,
-            file=sys.stdout,
-        )
-        self._current_progress_bar = retry_progress_bar
+        try:
+            retry_progress_bar = tqdm(
+                symbols,
+                desc=f"重试: {task_name}",
+                ncols=100,
+                leave=True,
+                file=sys.stdout,
+            )
+            self._current_progress_bar = retry_progress_bar
+        except (BrokenPipeError, OSError) as e:
+            self._log_warning(f"重试进度条初始化失败，切换为静默模式: {e}")
+            # 使用静默模式，禁用进度条
+            self._current_progress_bar = None
+            retry_progress_bar = symbols
 
+        is_retry_progress_bar_active = hasattr(retry_progress_bar, 'close')
         try:
             for ts_code in retry_progress_bar:
                 self._process_single_symbol(ts_code, is_retry=True)
         finally:
             self._current_progress_bar = None
-            retry_progress_bar.close()
+            if is_retry_progress_bar_active:
+                retry_progress_bar.close()
 
     @abstractmethod
     def get_data_type(self) -> str:
