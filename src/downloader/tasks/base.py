@@ -145,14 +145,29 @@ class IncrementalTaskHandler(BaseTaskHandler):
             if is_retry:
                 time.sleep(1)
 
+            # 步骤1: TaskHandler 调用 DuckDBStorage.get_latest_date(data_type, ts_code, date_col)
             latest_date = self.storage.get_latest_date(
                 data_type, ts_code, date_col=date_col
             )
-            start_date = "19901219"
+            
+            # 步骤2: 根据 latest_date 确定 start_date
+            start_date = "19901219"  # 默认起始日期
             if latest_date:
-                start_date = (
-                    pd.to_datetime(latest_date, format="%Y%m%d") + timedelta(days=1)
-                ).strftime("%Y%m%d")
+                # 步骤3: latest_date + 1 天作为 start_date
+                try:
+                    # 首先尝试标准的 YYYYMMDD 格式
+                    start_date = (
+                        pd.to_datetime(latest_date, format="%Y%m%d") + timedelta(days=1)
+                    ).strftime("%Y%m%d")
+                except ValueError:
+                    try:
+                        # 如果标准格式失败，尝试自动解析
+                        start_date = (
+                            pd.to_datetime(latest_date) + timedelta(days=1)
+                        ).strftime("%Y%m%d")
+                    except Exception as e:
+                        self._log_warning(f"无法解析日期格式 {latest_date}，使用默认起始日期: {e}")
+                        start_date = "19901219"
 
             end_date = datetime.now().strftime("%Y%m%d")
             if start_date > end_date:
@@ -189,11 +204,18 @@ class IncrementalTaskHandler(BaseTaskHandler):
             return True, False
 
         except Exception as e:
+            # 检查异常类型和错误消息
             error_msg = str(e).lower()
-            is_network_error = any(
-                keyword in error_msg
-                for keyword in ["timeout", "connection", "network", "connect", "ssl", "name or service not known"]
-            )
+            
+            # 首先检查异常类型
+            is_network_error = isinstance(e, (ConnectionError, TimeoutError))
+            
+            # 如果不是标准网络异常，检查错误消息中的关键词
+            if not is_network_error:
+                is_network_error = any(
+                    keyword in error_msg
+                    for keyword in ["timeout", "connection", "network", "connect", "ssl", "name or service not known"]
+                )
 
             if is_network_error:
                 if not is_retry:
