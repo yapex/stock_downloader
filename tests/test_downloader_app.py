@@ -21,12 +21,19 @@ def sample_config():
         "storage": {
             "db_path": "test_data/stock.db"
         },
+        "tasks": {
+            "test_daily": {
+                "name": "测试日线任务",
+                "type": "daily",
+                "adjust": "qfq"
+            }
+        },
         "groups": {
             "default": {
                 "description": "测试配置",
                 "symbols": ["600519.SH", "000001.SZ"],
                 "max_concurrent_tasks": 1,
-                "tasks": []
+                "tasks": ["test_daily"]
             }
         }
     }

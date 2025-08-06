@@ -10,6 +10,12 @@ def minimal_config_file(tmp_path):
 storage:
   db_path: "data/test.db"
 
+tasks:
+  test_task:
+    name: "测试任务"
+    type: "daily"
+    adjust: "none"
+
 groups:
   default:
     description: "测试配置"

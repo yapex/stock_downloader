@@ -1,118 +1,66 @@
 storage:
   db_path: "data/stock.db"
 
+# 任务模板定义：只定义任务的核心类型和参数
+tasks:
+  update_stock_list:
+    name: "更新A股列表"
+    type: "stock_list"
+    
+  daily_qfq:
+    name: "日K线-前复权"
+    type: "daily"
+    adjust: "qfq"
+    date_col: "trade_date"
+    
+  daily_none:
+    name: "日K线-不复权"
+    type: "daily"
+    adjust: "none"
+    date_col: "trade_date"
+    
+  daily_basic:
+    name: "每日指标"
+    type: "daily_basic"
+    date_col: "trade_date"
+    
+  financial_income:
+    name: "财务报表-利润表"
+    type: "financials"
+    statement_type: "income"
+    date_col: "ann_date"
+    
+  financial_balance:
+    name: "财务报表-资产负债表"
+    type: "financials"
+    statement_type: "balancesheet"
+    date_col: "ann_date"
+    
+  financial_cashflow:
+    name: "财务报表-现金流量表"
+    type: "financials"
+    statement_type: "cashflow"
+    date_col: "ann_date"
+
+# 组配置：引用任务名称列表
 groups:
-  # 默认组：完整的日K线和财务数据下载
   default:
-    description: "完整的日K线和财务数据下载"
-    symbols: ["600519", "002023", '600276', '600612', 
-      '000333', '002415', '000895', '603288', '600900',
-      '601100', '603568', '600636', '000651', '600570',
-      '000858',
-    ]
+    description: "默认组的日K线和财务数据下载"
+    symbols: ["600519", "002023", "600276", "600612", 
+      "000333", "002415", "000895", "603288", "600900",
+      "601100", "603568", "600636", "000651", "600570",
+      "000858"]
     max_concurrent_tasks: 3
-    tasks:
-      - name: "更新A股列表"
-        enabled: true
-        type: "stock_list"
-        update_strategy: "cooldown"
-        update_interval_hours: 23
-
-      - name: "日K线-前复权"
-        enabled: true
-        type: "daily"
-        adjust: "qfq"
-        update_strategy: "incremental"
-        date_col: "trade_date"
-
-      - name: "日K线-不复权"
-        enabled: true
-        type: "daily"
-        adjust: "none"
-        update_strategy: "incremental"
-        date_col: "trade_date"
-
-      - name: "每日指标"
-        enabled: true
-        type: "daily_basic" 
-        update_strategy: "incremental"
-        date_col: "trade_date"
-
-      - name: "财务报表-利润表"
-        enabled: true
-        type: "financials"
-        statement_type: "income"
-        update_strategy: "incremental"
-        date_col: "ann_date"
-
-      - name: "财务报表-资产负债表"
-        enabled: true
-        type: "financials"
-        statement_type: "balancesheet"
-        update_strategy: "incremental"
-        date_col: "ann_date"
-
-      - name: "财务报表-现金流量表"
-        enabled: true
-        type: "financials"
-        statement_type: "cashflow"
-        update_strategy: "incremental"
-        date_col: "ann_date"
-
-  # 日K组：只下载日K数据，用于快速更新
+    tasks: ["update_stock_list", "daily_qfq", "daily_none", "daily_basic", "financial_income", "financial_balance", "financial_cashflow"]
+    
   daily:
     description: "仅下载日K线数据"
     symbols: "all"
-    max_concurrent_tasks: 5
-    tasks:
-      - name: "更新A股列表"
-        enabled: true
-        type: "stock_list"
-        update_strategy: "cooldown"
-        update_interval_hours: 23
-
-      - name: "日K线-前复权"
-        enabled: true
-        type: "daily"
-        adjust: "qfq"
-        update_strategy: "incremental"
-        date_col: "trade_date"
-
-      - name: "每日指标"
-        enabled: true
-        type: "daily_basic"
-        update_strategy: "incremental"
-        date_col: "trade_date"
-
-  # 财务组：只下载财务数据
+    max_concurrent_tasks: 3
+    tasks: ["update_stock_list", "daily_qfq", "daily_none", "daily_basic"]
+    
   financial:
     description: "仅下载财务报表数据"
     symbols: "all"
     max_concurrent_tasks: 3
-    tasks:
-      - name: "更新A股列表"
-        enabled: true
-        type: "stock_list"
-        update_strategy: "cooldown"
-        update_interval_hours: 720  # 按月
-
-      - name: "财务报表-利润表"
-        enabled: true
-        type: "financials"
-        statement_type: "income"
-        update_strategy: "incremental"
-        date_col: "ann_date"
-
-      - name: "财务报表-资产负债表"
-        enabled: true
-        type: "financials"
-        statement_type: "balancesheet"
-        update_strategy: "incremental"
-        date_col: "ann_date"
-
-      - name: "财务报表-现金流量表"
-        enabled: true
-        type: "financials"
-        statement_type: "cashflow"
-        update_strategy: "incremental"
-        date_col: "ann_date"
+    tasks: ["update_stock_list", "financial_income", "financial_balance", "financial_cashflow"]
