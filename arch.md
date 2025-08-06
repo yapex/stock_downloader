@@ -1,224 +1,174 @@
-# 架构概览
+# Stock Downloader - 架构设计
 
-本文档旨在阐述股票数据下载器的系统架构。这是一个基于 Python 的应用程序，专为从 Tushare Pro API 下载金融数据而设计。该系统遵循模块化、可扩展和配置驱动的原则。
+本文档详细阐述了 Stock Downloader 的系统架构、设计原则和核心组件，旨在帮助开发者快速理解项目内部工作原理并进行二次开发。
 
-## 核心设计原则
+## 1. 核心设计哲学
 
-- **配置驱动 (Configuration-Driven):** 所有下载操作均由 `config.yaml` 文件控制。该文件定义了需要下载哪些数据集、针对哪些股票以及使用何种参数。这使得用户无需修改任何代码即可自定义下载器的行为。
-- **关注点分离 (Separation of Concerns):** 应用程序被划分为多个独立的组件，每个组件都有单一的职责（例如，获取数据、存储数据、执行任务）。这使得系统更易于理解、维护和测试。
-- **基于任务的可扩展性 (Task-Based Extensibility):** 系统围绕"任务"进行设计。每个任务代表一个特定的下载作业（例如，下载日线行情、下载财务报表）。通过**插件化**的机制，可以轻松添加新的任务处理器（Task Handler）类来支持新的数据类型。
-- **增量更新 (Incremental Updates):** 下载器经过优化，仅获取新增或更新的数据，从而最大限度地减少冗余的 API 调用并节省网络带宽。它会为每支股票和每个数据集跟踪最新已下载的数据点。
+本项目遵循以下几个核心设计原则：
 
-## 插件化架构：`entry_points` 详解
+- **配置驱动 (Configuration-Driven):** 系统的所有行为，如数据源、下载目标和任务参数，都由 `config.yaml` 驱动。开发者和用户无需修改代码即可定制下载流程。
+- **插件化与可扩展 (Plugin-based & Extensible):** 每一种数据下载任务（如日线、财务报表）都被实现为一个独立的“任务处理器”插件。通过 Python 的 `entry_points` 机制，可以轻松添加新的数据类型，而无需改动核心引擎。
+- **关注点分离 (Separation of Concerns):** 系统被划分为职责单一的组件（引擎、获取器、存储器、任务处理器），使得代码更易于理解、测试和维护。
+- **健壮性优先 (Robustness First):** 内置了增量更新、错误分类和自动重试机制，确保了数据同步的效率和在不���定网络环境下的可靠性。
 
-本项目的核心是其基于 `entry_points` 的插件化架构，这是实现高度可扩展性的关键。它允许开发者在不修改核心引擎代码的情况下，添加新的下载功能。
+## 2. 架构图
 
-### 1. 工作原理
+下图展示了系统的核心组件及其交互关系：
 
-`entry_points` 是 Python 打包标准（由 `setuptools` 或类似的构建工具支持）的一部分。它允许一个包（本项目）向其他包（或自身）"宣告"它提供某些可插拔的组件。
+```mermaid
+graph TD
+    subgraph "用户层 (User Layer)"
+        A[CLI (dl)]
+        F[config.yaml]
+        I[pyproject.toml]
+    end
 
-在本应用中，`DownloadEngine` 在初始化时，会执行以下操作：
+    subgraph "应用核心 (Application Core)"
+        B(Download Engine)
+        C{Task Handlers (Plugins)}
+        D[Tushare Fetcher]
+        E[DuckDB Storage]
+    end
 
-```python
-# downloader/engine.py
-from importlib.metadata import entry_points
+    subgraph "外部依赖 (External)"
+        G[(Tushare API)]
+        H[(data/stock.db)]
+    end
 
-# ...
-class DownloadEngine:
-    def _discover_task_handlers(self) -> dict:
-        registry = {}
-        # 查找所有在 'stock_downloader.task_handlers' 组中注册的插件
-        handlers_eps = entry_points(group="stock_downloader.task_handlers")
-        for ep in handlers_eps:
-            # 加载插件类并存入注册表
-            registry[ep.name] = ep.load()
-        return registry
+    A -- "启动" --> B
+    B -- "读取配置" --> F
+    B -- "发现插件" --> I
+    B -- "加载并分派任务给" --> C
+    C -- "使用" --> D
+    C -- "使用" --> E
+    D -- "从...获取数据" --> G
+    E -- "读/写" --> H
 ```
 
-1.  **发现:** `DownloadEngine` 使用 `importlib.metadata.entry_points` 查找所有在名为 `stock_downloader.task_handlers` 的特定组中注册的插件。
-2.  **加载:** 它遍历找到的每个入口点，`ep.name` 是我们在配置中定义的任务类型（如 `daily`），`ep.load()` 则会动态地导入并返回处理器类本身（如 `DailyTaskHandler`）。
-3.  **注册:** 引擎将任务类型和对应的处理器类存储在一个字典（`task_registry`）中。
+## 3. 系统组件详解
 
-当 `config.yaml` 中的任务被执行时，引擎只需在这个注册表中查找与任务 `type` 匹配的处理器类即可。
+#### `main.py` (应用入口)
 
-### 2. 如何配置
+- **职责:** 作为用户与系统交互的命令行接口 (CLI)。
+- **功能:**
+    - 使用 `Typer` 构建用户友好的命令行界面（例如 `dl`, `dl --group daily`）。
+    - 解析命令行参数（如 `--force`, `--group`）。
+    - 初始化日志系统。
+    - 启动 `DownloaderApp`，开始业务流程。
 
-插件的"注册"发生在 `pyproject.toml` 文件中。这是连接任务类型、处理器代码和核心引擎的桥梁。
+#### `DownloadEngine` (下载引擎)
+
+- **职责:** 整个下载流程的中央协调器，是系统的大脑。
+- **功能:**
+    - **插件发现:** 在启动时，通过 `importlib.metadata.entry_points` 自动发现所有在 `pyproject.toml` 中注册的任务处理器插件。
+    - **配置解析:** 读取并解析 `config.yaml`，理解用户想要执行哪个任务组 (`group`)，以及组内包含哪些任务 (`tasks`) 和股票 (`symbols`)。
+    - **任务调度:** 根据配置，创建任务队列，并将每个任务分派给对应的任务处理器实例。
+    - **流程控制:** 管理任务的并发执行，并收集每个任务的执行结果。
+    - **错误协调:** 捕获并协调处理在任务执行期间发生的错误，例如触发全局重试。
+
+#### `Task Handlers` (任务处理器 / 插件)
+
+- **职责:** 封装特定数据类型下载的全部逻辑。每个处理器就是一个独立的“工人”。
+- **核心设计:**
+    - **`BaseTaskHandler` (基类):** 定义了所有任务处理器必须遵守的接口。
+    - **`IncrementalTaskHandler` (模板方法模式):** 这是设计的精髓所在。它为所有需要“增量更新”的任务提供了一个统一、健壮的算法骨架。它处理了检查本地最新数据、计算需下载的日期范围、调用数��获取、保存数据、错误分类和自动重试等所有通用逻辑。
+- **具体实现 (如 `DailyTaskHandler`):**
+    - 继承 `IncrementalTaskHandler`。
+    - 只需实现几个特定的抽象方法，如 `get_data_type()` (返回数据表名) 和 `fetch_data()` (调用 `Fetcher` 获取具体数据)。
+    - 开发者无需关心复杂的增量和重试逻辑，只需聚焦于“获取哪种数据”这一个问题。
+
+#### `TushareFetcher` (数据获取器)
+
+- **职责:** 封装与 Tushare Pro API 的所有网络通信。
+- **功能:**
+    - 初始化 Tushare Pro SDK。
+    - 提供一系列清晰、具体的方法（如 `fetch_daily`, `fetch_financials`）供任务处理器调用。
+    - 将 Tushare 返回的数据统一处理为 Pandas DataFrame。
+
+#### `DuckDBStorage` (数据存储器)
+
+- **职责:** 负责所有数据库的读写操作。
+- **功能:**
+    - 使用 DuckDB 作为底层存储，所有数据都保存在一个单一的文件中 (`data/stock.db`)。
+    - **数据分区:** 在 DuckDB 内部，数据按 `data_type` (任务类型) 和 `ts_code` (股票代码) 进行分区存储，极大地提高了查询效率。
+    - **增量写入 (`save`):** 将新数据追加到对应的表中。
+    - **全量覆写 (`overwrite`):** 删除旧表，用新数据创建新表。
+    - **查询最新日期 (`get_latest_date`):** 高效查询某支股票某个数据类型的最新日期，为增量更新提供支持。
+
+## 4. 插件化系统：如何扩展新功能
+
+这是本项目的核心优势。假设您想添加一个下载“指数日线行情”的新功能，只需遵循以下步骤：
+
+#### 第1步：创建任务处理器类
+
+在 `src/downloader/tasks/` 目录下创建新文件 `index_daily.py`。代码如下：
+
+```python
+# src/downloader/tasks/index_daily.py
+from .base import IncrementalTaskHandler
+import pandas as pd
+
+class IndexDailyTaskHandler(IncrementalTaskHandler):
+    def get_data_type(self) -> str:
+        # 定义数据将存储的表名
+        return "index_daily"
+
+    def get_date_col(self) -> str:
+        # 定义用于增量更新的日期列
+        return "trade_date"
+
+    def fetch_data(self, ts_code: str, start_date: str, end_date: str) -> pd.DataFrame:
+        # 实现具体的数据获取逻辑
+        # 注意：可能需要先在 TushareFetcher 中添加一个 fetch_index_daily 方法
+        return self.fetcher.fetch_index_daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+```
+
+#### 第2步：注册插件
+
+打开 `pyproject.toml` 文件，在 `[project.entry-points."stock_downloader.task_handlers"]` 部分，添加一行来“宣告”你的新插件：
 
 ```toml
 # pyproject.toml
 
 [project.entry-points."stock_downloader.task_handlers"]
+# ... 其他已注册的处理器
 # 格式: "任务类型标识符" = "模块路径:处理器类名"
-daily       = "downloader.tasks.daily:DailyTaskHandler"
-stock_list  = "downloader.tasks.stock_list:StockListTaskHandler"
-daily_basic = "downloader.tasks.daily_basic:DailyBasicTaskHandler"
-financials  = "downloader.tasks.financials:FinancialsTaskHandler"
+index_daily = "downloader.tasks.index_daily:IndexDailyTaskHandler"
+```
+- `index_daily`: 是这个插件的唯一标识符。你将在 `config.yaml` 中使用它。
+- `downloader.tasks.index_daily:IndexDailyTaskHandler`: 指明了当引擎需要 `index_daily` 类型的处理器时，应该去哪里加载它。
+
+#### 第3步：更新项目安装
+
+为了让 `entry_points` 的变更生效，必须在项目根目录重新运行安装命令。这会更新项目的元数据。
+
+```bash
+# 使用 uv (推荐)
+uv pip install -e .
+
+# 或者使用 pip
+pip install -e .
+```
+> **提示:** `-e` 表示“可编辑模式”，安装后，你对代码的任何修改都会立刻生效，无需再次安装。
+
+#### 第4步：在 `config.yaml` 中使用
+
+现在，你就可以像使用内置任务一样，在 `config.yaml` 中配置和使用你的新任务了。
+
+```yaml
+# config.yaml
+
+tasks:
+  # ... 其他任务模板
+  index_daily_data:
+    name: "下载指数日线"
+    type: "index_daily"  # 使用你在 toml 中定义的标识符
+
+groups:
+  index_group:
+    description: "专门下载指数数据的任务组"
+    symbols: ["000001.SH", "399001.SZ"] # 指数代码
+    tasks: ["index_daily_data"]
 ```
 
-- **`[project.entry-points."stock_downloader.task_handlers"]`**: 定义了一个名为 `stock_downloader.task_handlers` 的入口点组。
-- **`daily = "..."`**: 定义了一个名为 `daily` 的插件。这个 `daily` 就是你在 `config.yaml` 中 `type` 字段需要填写的值。
-- **`"downloader.tasks.daily:DailyTaskHandler"`**: 指定了当请求 `daily` 类型的任务时，引擎应该从 `downloader.tasks.daily` 模块加载 `DailyTaskHandler` 这个类。
-
-### 3. 如何验证插件是否加载成功
-
-为了方便调试，应用在启动时会打印所有成功加载的插件。你可以通过查看 `downloader.log` 文件或控制台输出来确认。
-
-```log
-INFO - 发现了 4 个任务处理器入口点。
-INFO -   - 已注册处理器: 'daily'
-INFO -   - 已注册处理器: 'stock_list'
-INFO -   - 已注册处理器: 'daily_basic'
-INFO -   - 已注册处理器: 'financials'
-```
-
-如果你的新插件没有出现在这里，通常意味着 `pyproject.toml` 配置有误，或者项目没有被正确地以"可编辑模式"安装。
-
-### 4. 如何添加一个新的任务处理器（示例）
-
-假设你想添加一个下载"指数日线行情"的新功能。
-
-1.  **创建处理器类:**
-    在 `src/downloader/tasks/` 目录下创建一个新文件 `index_daily.py`，内容如下：
-    ```python
-    # src/downloader/tasks/index_daily.py
-    from .base import IncrementalTaskHandler
-    
-    class IndexDailyTaskHandler(IncrementalTaskHandler):
-        def get_data_type(self) -> str:
-            return "index_daily" # 定义数据类型，用于存储路径
-    
-        def get_date_col(self) -> str:
-            return "trade_date"
-    
-        def fetch_data(self, ts_code, start_date, end_date):
-            # 调用 fetcher 中获取指数行情的方法 (可能需要先在 fetcher 中添加)
-            return self.fetcher.fetch_index_daily(ts_code, start_date, end_date)
-    ```
-
-2.  **注册新的入口点:**
-    打开 `pyproject.toml` 并添加一行：
-    ```toml
-    [project.entry-points."stock_downloader.task_handlers"]
-    # ... 其他处理器
-    index_daily = "downloader.tasks.index_daily:IndexDailyTaskHandler"
-    ```
-
-3.  **更新项目安装:**
-    为了让 `entry_points` 的变更生效，你必须在项目根目录下重新运行安装命令。这会更新项目的元数据。
-    ```bash
-    # 使用 uv
-    uv pip install -e .
-    
-    # 或使用 pip
-    pip install -e .
-    ```
-    `-e` 表示"可编辑模式"，这意味着你对代码的修改会立刻生效，无需重新安装。
-
-4.  **在 `config.yaml` 中使用:**
-    现在你可以在配置文件中添加新任务了：
-    ```yaml
-    tasks:
-      - name: "下载指数日线"
-        enabled: true
-        type: "index_daily" # 使用你在 toml 中定义的名字
-        update_strategy: "incremental"
-        date_col: "trade_date"
-    ```
-
-通过这套机制，项目的功能可以被无限扩展，而无需触及 `DownloadEngine` 的核心逻辑。
-
-## 组件解析
-
-系统由以下关键组件构成：
-
-### 1. 入口点 (`main.py`)
-- **职责:** 初始化应用程序，解析命令行参数（如 `--force`），设置日志系统，并协调主要组件的运行。
-- **功能:** 加载配置，实例化 `Fetcher`、`Storage` 和 `Engine`，然后调用 `Engine` 来启动下载流程。
-
-### 2. 下载引擎 (`downloader/engine.py`)
-- **职责:** 作为下载流程的中央协调器。
-- **功能:**
-    - **动态发现插件:** 通过 `entry_points` 机制自动发现并注册所有可用的任务处理器。
-    - **解析配置:** 从 `config.yaml` 中读取 `tasks` 列表。
-    - **确定目标:** 确定本次运行所需处理的最终股票列表（优先使用命令行参数，其次使用配置文件，最后可从本地 stock_list 文件加载）。
-    - **任务分派:** 将每个启用的任务分派给其对应的、已注册的处理器。
-    - **错误处理协调:** 捕获任务执行过程中的异常并进行适当的处理
-
-### 3. Tushare 数据获取器 (`downloader/fetcher.py`)
-- **职责:** 处理与外部 Tushare Pro API 的所有通信。
-- **功能:**
-    - 初始化 Tushare API。
-    - 提供一个清晰的接口，用于获取不同类型的数据（例如 `fetch_daily_history`）。
-    - 抽象 Tushare 库的底层细节，返回标准化的 Pandas DataFrame。
-    - 支持 API 调用的速率限制
-
-### 4. Parquet 存储器 (`downloader/storage.py`)
-- **职责:** 处理所有文件系统的读写操作。
-- **功能:**
-    - 使用高效的 Parquet 格式保存数据。
-    - 将数据组织在结构化的目录中：`base_path/data_type/STOCK_CODE/data.parquet`。
-    - 实现了增量 `save` 和全量 `overwrite` 两种操作。
-    - 提供 `get_latest_date` 方法，对于增量更新至关重要。
-
-### 5. 任务处理器 (`downloader/tasks/`)
-- **职责:** 封装单个特定下载作业的全部逻辑，是插件的最终实现。
-- **结构:**
-    - **`base.py`**: 定义了抽象基类 `BaseTaskHandler` 和 `IncrementalTaskHandler`。`IncrementalTaskHandler` 使用**模板方法模式**，为所有增量下载任务提供了一个统一的、健壮的算法骨架。它内部通过一个核心的 `_process_single_symbol` 方法处理单个股票的下载、保存和错误分类，从而消除了代码重复。
-- **具体实现** (例如 `daily.py`): 继承 `IncrementalTaskHandler`，仅需实现获取特定数据类型 (`get_data_type`)、日期列 (`get_date_col`) 和数据获取逻辑 (`fetch_data`)，无需关心执行、重试等复杂流���。
-- **错误处理:**
-    - `IncrementalTaskHandler` 实现了精细的错误处理机制。
-    - **网络错误**: 自动检测（如超时、连接失败）并收集失败的股票。在主任务流程结束后，通过 `_retry_network_errors` 方法对这些股票进行一次自动重试。
-    - **其他错误**: 对于非网络错误或重试后依然失败的情况，错误信息将被记录到 `failed_tasks.log` 文件中，以便后续分析。
-
-### 6. 速率限制 (`downloader/rate_limit.py`)
-- **职责:** 防止 API 调用频率超过限制。
-- **功能:**
-    - 使用装饰器模式实现 API 调用的速率限制。
-    - 支持按任务类型配置不同的速率限制。
-
-## 数据流
-
-1. 用户启动程序，通过命令行参数或配置文件指定要下载的股票列表。
-2. 程序加载配置，初始化核心组件（Fetcher、Storage、Engine）。
-3. Engine 通过 entry_points 机制发现并注册所有可用的任务处理器。
-4. Engine 执行所有配置为启用的任务：
-   - 先执行 stock_list 任务（如果启用），确保股票列表是最新的。
-   - 然后根据配置或命令行参数确定目标股票列表。
-   - 依次执行所有其他启用的任务，使用确定的目标股票列表。
-
-## 架构图
-
-```mermaid
-graph TD
-    subgraph 用户与配置
-        A[main.py]
-        F[config.yaml]
-        I[pyproject.toml]
-    end
-
-    subgraph Application Core
-        B(Download Engine)
-        C{Task Handlers (Plugins)}
-        D[Fetcher]
-        E[Storage]
-        J[Rate Limiter]
-    end
-
-    subgraph External / Filesystem
-        G[(Tushare API)]
-        H[/data/*]
-    end
-
-    I -- Defines --> C
-    A -- Starts --> B
-    B -- Reads --> F
-    B -- Discovers & Registers --> C
-    B -- Dispatches to --> C
-    C -- Uses --> D
-    C -- Uses --> E
-    C -- Uses --> J
-    D -- Fetches from --> G
-    G -- Returns data to --> D
-    E -- Reads/Writes to --> H
-```
+现在，只需运行 `dl --group index_group`，你的新插件就会被自动加载并执行。
