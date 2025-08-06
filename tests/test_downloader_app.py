@@ -1,7 +1,8 @@
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
 import logging
-from downloader.main import DownloaderApp, load_config
+from downloader.app import DownloaderApp
+from downloader.config import load_config
 
 
 @pytest.fixture
@@ -102,8 +103,8 @@ class TestDownloaderApp:
         assert overridden is True
 
     def test_create_components(self, downloader_app, sample_config):
-        with patch('downloader.main.TushareFetcher'), \
-             patch('downloader.main.DuckDBStorage') as mock_storage:
+        with patch('downloader.app.TushareFetcher'), \
+             patch('downloader.app.DuckDBStorage') as mock_storage:
             mock_storage.return_value = "storage_instance"
             
             fetcher, storage = downloader_app.create_components(sample_config)
@@ -116,16 +117,16 @@ class TestDownloaderApp:
     def test_create_components_default_storage_path(self, downloader_app):
         config = {}
 
-        with patch('downloader.main.TushareFetcher'), \
-             patch('downloader.main.DuckDBStorage') as mock_storage:
+        with patch('downloader.app.TushareFetcher'), \
+             patch('downloader.app.DuckDBStorage') as mock_storage:
 
             downloader_app.create_components(config)
 
             # DuckDBStorage 现在使用默认的 db_path "data/stock.db"
             mock_storage.assert_called_once_with(db_path="data/stock.db")
 
-    @patch('downloader.main.DownloadEngine')
-    @patch('downloader.main.load_config')
+    @patch('downloader.app.DownloadEngine')
+    @patch('downloader.app.load_config')
     def test_run_download_success(
         self, mock_load_config, mock_engine_class, downloader_app, sample_config
     ):
@@ -141,14 +142,14 @@ class TestDownloaderApp:
 
             assert result is True
 
-    @patch('downloader.main.load_config')
+    @patch('downloader.app.load_config')
     def test_run_download_with_custom_params(
         self, mock_load_config, downloader_app, sample_config
     ):
         mock_load_config.return_value = sample_config
 
         with patch.object(downloader_app, 'create_components') as mock_create, \
-             patch('downloader.main.DownloadEngine') as mock_engine_class:
+             patch('downloader.app.DownloadEngine') as mock_engine_class:
 
             mock_create.return_value = (MagicMock(), MagicMock())
             mock_engine = MagicMock()
@@ -160,7 +161,7 @@ class TestDownloaderApp:
                 force=True
             )
 
-    @patch('downloader.main.load_config')
+    @patch('downloader.app.load_config')
     def test_run_download_file_not_found_error(
         self, mock_load_config, downloader_app, mock_logger
     ):
@@ -169,7 +170,7 @@ class TestDownloaderApp:
         with pytest.raises(FileNotFoundError):
             downloader_app.run_download()
 
-    @patch('downloader.main.load_config')
+    @patch('downloader.app.load_config')
     def test_run_download_value_error(
         self, mock_load_config, downloader_app, mock_logger
     ):
@@ -178,7 +179,7 @@ class TestDownloaderApp:
         with pytest.raises(ValueError):
             downloader_app.run_download()
 
-    @patch('downloader.main.load_config')
+    @patch('downloader.app.load_config')
     def test_run_download_general_exception(
         self, mock_load_config, downloader_app, mock_logger
     ):
@@ -187,14 +188,14 @@ class TestDownloaderApp:
         with pytest.raises(Exception):
             downloader_app.run_download()
 
-    @patch('downloader.main.load_config')
+    @patch('downloader.app.load_config')
     def test_run_download_with_symbols_processing(
         self, mock_load_config, downloader_app, sample_config
     ):
         mock_load_config.return_value = sample_config.copy()
 
         with patch.object(downloader_app, 'create_components') as mock_create, \
-             patch('downloader.main.DownloadEngine') as mock_engine_class:
+             patch('downloader.app.DownloadEngine') as mock_engine_class:
 
             mock_create.return_value = (MagicMock(), MagicMock())
             mock_engine = MagicMock()

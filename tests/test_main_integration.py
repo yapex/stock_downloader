@@ -1,7 +1,8 @@
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
 from typer.testing import CliRunner
-from downloader.main import app, setup_logging, TqdmLoggingHandler
+from downloader.main import app
+from downloader.logging_setup import setup_logging, TqdmLoggingHandler
 
 
 @pytest.fixture
@@ -12,15 +13,21 @@ def cli_runner():
 @pytest.fixture
 def sample_config_content():
     return """
-downloader:
-  symbols:
-    - "600519.SH"
-    - "000001.SZ"
-  tasks:
-    daily:
-      enabled: true
+tasks:
+  daily:
+    name: "日线任务"
+    type: "daily"
+    enabled: true
+groups:
+  default:
+    description: "默认测试组"
+    symbols:
+      - "600519.SH"
+      - "000001.SZ"
+    tasks:
+      - "daily"
 storage:
-  base_path: "test_data"
+  db_path: "test_data"
 """
 
 
@@ -265,7 +272,7 @@ class TestTqdmLoggingHandler:
         handler = TqdmLoggingHandler()
         assert handler is not None
 
-    @patch("downloader.main.tqdm.write")
+    @patch("downloader.logging_setup.tqdm.write")
     def test_tqdm_handler_emit(self, mock_tqdm_write):
         """测试TqdmLoggingHandler的emit方法"""
         handler = TqdmLoggingHandler()
@@ -294,7 +301,7 @@ class TestTqdmLoggingHandler:
         args, kwargs = mock_tqdm_write.call_args
         assert "Test message" in args[0]
 
-    @patch("downloader.main.tqdm.write")
+    @patch("downloader.logging_setup.tqdm.write")
     def test_tqdm_handler_emit_exception_handling(self, mock_tqdm_write):
         """测试TqdmLoggingHandler异常处理"""
         mock_tqdm_write.side_effect = Exception("Write error")
