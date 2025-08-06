@@ -47,7 +47,7 @@ class TestDataDownloadStage:
             mock_rate_limit.return_value = lambda func: func
             
             # 执行单个股票处理
-            success, is_network_error = handler._process_single_symbol("000001.SZ", is_retry=False)
+            success = handler._process_single_symbol("000001.SZ")
             
             # 验证rate_limit装饰器被调用，参数正确
             mock_rate_limit.assert_called_once_with(
@@ -58,7 +58,6 @@ class TestDataDownloadStage:
         # 验证fetcher被调用
         assert mock_fetcher.fetch_daily_history.called
         assert success is True
-        assert is_network_error is False
 
     def test_rate_limit_wrapper_not_applied_when_not_configured(self, mock_fetcher, mock_storage):
         """测试当task_config未配置rate_limit时，直接调用fetcher方法"""
@@ -79,7 +78,7 @@ class TestDataDownloadStage:
         
         with patch('downloader.tasks.base.rate_limit') as mock_rate_limit:
             # 执行单个股票处理
-            success, is_network_error = handler._process_single_symbol("000001.SZ", is_retry=False)
+            success = handler._process_single_symbol("000001.SZ")
             
             # 验证rate_limit装饰器未被调用
             mock_rate_limit.assert_not_called()
@@ -125,10 +124,9 @@ class TestDataDownloadStage:
         for error in network_errors:
             mock_fetcher.fetch_daily_history.side_effect = error
             
-            success, is_network_error = handler._process_single_symbol("000001.SZ", is_retry=False)
+            success = handler._process_single_symbol("000001.SZ")
             
             assert success is False
-            assert is_network_error is True
             
             # 重置mock
             mock_fetcher.reset_mock()
@@ -141,10 +139,9 @@ class TestDataDownloadStage:
         # 模拟非网络错误
         mock_fetcher.fetch_daily_history.side_effect = ValueError("Invalid parameter")
         
-        success, is_network_error = handler._process_single_symbol("000001.SZ", is_retry=False)
+        success = handler._process_single_symbol("000001.SZ")
         
         assert success is False
-        assert is_network_error is False
 
     def test_empty_data_handling(self, mock_fetcher, mock_storage):
         """测试空数据返回处理"""
@@ -153,19 +150,17 @@ class TestDataDownloadStage:
         
         # 测试返回空DataFrame
         mock_fetcher.fetch_daily_history.return_value = pd.DataFrame()
-        success, is_network_error = handler._process_single_symbol("000001.SZ", is_retry=False)
+        success = handler._process_single_symbol("000001.SZ")
         
         assert success is True
-        assert is_network_error is False
         # 空数据不应该保存
         mock_storage.save.assert_not_called()
         
         # 测试返回None
         mock_fetcher.fetch_daily_history.return_value = None  
-        success, is_network_error = handler._process_single_symbol("000001.SZ", is_retry=False)
+        success = handler._process_single_symbol("000001.SZ")
         
-        assert success is True
-        assert is_network_error is False
+        assert success is False
         mock_storage.save.assert_not_called()
 
     def test_retry_task_key_differentiation(self, mock_fetcher, mock_storage):
@@ -185,12 +180,7 @@ class TestDataDownloadStage:
         with patch('downloader.tasks.base.rate_limit') as mock_rate_limit:
             mock_rate_limit.return_value = lambda func: func
             
-            # 测试非重试调用
-            handler._process_single_symbol("000001.SZ", is_retry=False)
+            # 测试调用
+            handler._process_single_symbol("000001.SZ")
             calls = mock_rate_limit.call_args_list
             assert calls[-1][1]['task_key'] == "Test Daily_000001.SZ"
-            
-            # 测试重试调用
-            handler._process_single_symbol("000001.SZ", is_retry=True)  
-            calls = mock_rate_limit.call_args_list
-            assert calls[-1][1]['task_key'] == "Test Daily_000001.SZ_retry"

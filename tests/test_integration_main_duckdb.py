@@ -7,10 +7,14 @@ from pathlib import Path
 @pytest.fixture
 def minimal_config_file(tmp_path):
     config_content = '''
-    storage:
-      db_path: "data/test.db"
-    downloader:
-      symbols: []
+storage:
+  db_path: "data/test.db"
+
+groups:
+  default:
+    description: "测试配置"
+    symbols: []
+    max_concurrent_tasks: 1
     tasks: []
     '''
     config_path = tmp_path / "config.yaml"

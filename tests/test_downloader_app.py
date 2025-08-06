@@ -18,11 +18,16 @@ def downloader_app(mock_logger):
 @pytest.fixture
 def sample_config():
     return {
-        "downloader": {
-            "symbols": ["600519.SH", "000001.SZ"]
-        },
         "storage": {
             "db_path": "test_data/stock.db"
+        },
+        "groups": {
+            "default": {
+                "description": "测试配置",
+                "symbols": ["600519.SH", "000001.SZ"],
+                "max_concurrent_tasks": 1,
+                "tasks": []
+            }
         }
     }
 
@@ -38,39 +43,42 @@ class TestDownloaderApp:
 
     def test_process_symbols_config_no_symbols(self, downloader_app, sample_config):
         original_config = sample_config.copy()
-        result = downloader_app.process_symbols_config(sample_config, None)
+        result, overridden = downloader_app.process_symbols_config(sample_config, None)
         assert result == original_config
+        assert overridden is False
 
     def test_process_symbols_config_empty_symbols(self, downloader_app, sample_config):
         original_config = sample_config.copy()
-        result = downloader_app.process_symbols_config(sample_config, [])
+        result, overridden = downloader_app.process_symbols_config(sample_config, [])
         assert result == original_config
+        assert overridden is False
 
     def test_process_symbols_config_specific_symbols(self, downloader_app, mock_logger):
         config = {}
         symbols = ["600519.SH", "000001.SZ"]
 
-        result = downloader_app.process_symbols_config(config, symbols)
+        result, overridden = downloader_app.process_symbols_config(config, symbols)
 
         assert result["downloader"]["symbols"] == symbols
-        # 不再测试 logger 调用
+        assert overridden is True
 
     def test_process_symbols_config_all_symbol(self, downloader_app, mock_logger):
         config = {}
         symbols = ["all"]
 
-        result = downloader_app.process_symbols_config(config, symbols)
+        result, overridden = downloader_app.process_symbols_config(config, symbols)
 
         assert result["downloader"]["symbols"] == "all"
-        # 不再测试 logger 调用
+        assert overridden is True
 
     def test_process_symbols_config_all_symbol_case_insensitive(self, downloader_app):
         config = {}
         symbols = ["ALL"]
 
-        result = downloader_app.process_symbols_config(config, symbols)
+        result, overridden = downloader_app.process_symbols_config(config, symbols)
 
         assert result["downloader"]["symbols"] == "all"
+        assert overridden is True
 
     def test_process_symbols_config_existing_downloader_section(self, downloader_app):
         config = {
@@ -80,10 +88,11 @@ class TestDownloaderApp:
         }
         symbols = ["600519.SH"]
 
-        result = downloader_app.process_symbols_config(config, symbols)
+        result, overridden = downloader_app.process_symbols_config(config, symbols)
 
         assert result["downloader"]["symbols"] == symbols
         assert result["downloader"]["existing_key"] == "existing_value"
+        assert overridden is True
 
     def test_create_components(self, downloader_app, sample_config):
         with patch('downloader.main.TushareFetcher'), \
@@ -191,12 +200,17 @@ class TestDownloaderApp:
 class TestLoadConfig:
     def test_load_config_success(self):
         yaml_content = """
-        downloader:
-            symbols:
-                - "600519.SH"
-                - "000001.SZ"
-        storage:
-            db_path: "data/stock.db"
+storage:
+  db_path: "data/stock.db"
+
+groups:
+  default:
+    description: "测试配置"
+    symbols:
+      - "600519.SH"
+      - "000001.SZ"
+    max_concurrent_tasks: 1
+    tasks: []
         """
 
         with patch("builtins.open", mock_open(read_data=yaml_content)), \
@@ -204,7 +218,7 @@ class TestLoadConfig:
 
             config = load_config("test_config.yaml")
 
-            assert config["downloader"]["symbols"] == ["600519.SH", "000001.SZ"]
+            assert config["groups"]["default"]["symbols"] == ["600519.SH", "000001.SZ"]
 
     def test_load_config_file_not_found(self):
         with patch("pathlib.Path.exists", return_value=False):

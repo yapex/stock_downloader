@@ -52,6 +52,7 @@ class TestCLIIntegration:
             mock_setup_logging.assert_called_once()
             mock_app.run_download.assert_called_once_with(
                 config_path="config.yaml", 
+                group_name="default",
                 symbols=None, 
                 force=False
             )
@@ -74,6 +75,7 @@ class TestCLIIntegration:
             assert result.exit_code == 0
             mock_app.run_download.assert_called_once_with(
                 config_path="custom.yaml", 
+                group_name="default",
                 symbols=None, 
                 force=False
             )
@@ -96,6 +98,7 @@ class TestCLIIntegration:
             assert result.exit_code == 0
             mock_app.run_download.assert_called_once_with(
                 config_path="config.yaml", 
+                group_name="default",
                 symbols=["600519.SH", "000001.SZ"], 
                 force=False
             )
@@ -118,6 +121,7 @@ class TestCLIIntegration:
             assert result.exit_code == 0
             mock_app.run_download.assert_called_once_with(
                 config_path="config.yaml", 
+                group_name="default",
                 symbols=["all"], 
                 force=False
             )
@@ -140,6 +144,7 @@ class TestCLIIntegration:
             assert result.exit_code == 0
             mock_app.run_download.assert_called_once_with(
                 config_path="config.yaml", 
+                group_name="default",
                 symbols=None, 
                 force=True
             )
@@ -166,6 +171,7 @@ class TestCLIIntegration:
             assert result.exit_code == 0
             mock_app.run_download.assert_called_once_with(
                 config_path="custom.yaml", 
+                group_name="default",
                 symbols=["600519.SH"], 
                 force=True
             )

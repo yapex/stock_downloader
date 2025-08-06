@@ -88,7 +88,7 @@ class DownloaderApp:
 
     def process_symbols_config(
         self, config: Dict[str, Any], symbols: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    ) -> tuple[Dict[str, Any], bool]:
         """
         根据命令行参数调整配置中的股票符号。
 
@@ -97,10 +97,10 @@ class DownloaderApp:
             symbols: 命令行指定的股票符号列表
 
         Returns:
-            修改后的配置字典
+            (修改后的配置字典, 是否被命令行参数覆盖)
         """
         if not symbols:
-            return config
+            return config, False
 
         # 确保 config 中有 downloader 节点
         if "downloader" not in config:
@@ -113,7 +113,7 @@ class DownloaderApp:
             self.logger.debug(f"命令行指定股票池: {list(symbols)}")
             config["downloader"]["symbols"] = list(symbols)
 
-        return config
+        return config, True
 
     def create_components(
         self, config: Dict[str, Any]
@@ -136,6 +136,7 @@ class DownloaderApp:
     def run_download(
         self,
         config_path: str = "config.yaml",
+        group_name: str = "default",
         symbols: Optional[List[str]] = None,
         force: bool = False,
     ) -> bool:
@@ -144,6 +145,7 @@ class DownloaderApp:
 
         Args:
             config_path: 配置文件路径
+            group_name: 要执行的组名
             symbols: 指定的股票符号列表
             force: 是否强制执行
 
@@ -155,17 +157,40 @@ class DownloaderApp:
             ValueError: 配置参数错误
             Exception: 其他异常
         """
-        self.logger.info("开始执行任务")
+        self.logger.info(f"开始执行任务组: {group_name}")
         start_time = time.time()
         
         try:
-            # 加载和处理配置
-            config = load_config(config_path)
-            config = self.process_symbols_config(config, symbols)
+            # 加载配置
+            raw_config = load_config(config_path)
+            
+            # 提取指定的组配置
+            if "groups" not in raw_config:
+                raise ValueError("配置文件缺少 'groups' 节点")
+            
+            if group_name not in raw_config["groups"]:
+                available_groups = list(raw_config["groups"].keys())
+                raise ValueError(f"找不到组 '{group_name}'。可用的组: {available_groups}")
+            
+            group_config = raw_config["groups"][group_name]
+            self.logger.info(f"使用组配置: {group_config.get('description', group_name)}")
+            
+            # 转换为旧格式的配置结构（向后兼容）
+            config = {
+                "storage": raw_config.get("storage", {}),
+                "downloader": {
+                    "symbols": group_config.get("symbols", []),
+                    "max_concurrent_tasks": group_config.get("max_concurrent_tasks", 1)
+                },
+                "tasks": group_config.get("tasks", [])
+            }
+            
+            # 处理命令行股票参数覆盖
+            config, symbols_overridden = self.process_symbols_config(config, symbols)
 
             # 创建组件
             fetcher, storage = self.create_components(config)
-            engine = DownloadEngine(config, fetcher, storage, force_run=force)
+            engine = DownloadEngine(config, fetcher, storage, force_run=force, symbols_overridden=symbols_overridden, group_name=group_name)
 
             # 执行下载
             engine.run()
@@ -200,8 +225,14 @@ def main(
         help=(
             "【可选】指定一个或多个股票代码 (例如 600519.SH 000001.SZ)。"
             "如果第一个是 'all'，则下载所有A股。"
-            "如果未提供，则使用 config.yaml 中的配置。"
+            "如果未提供，则使用配置文件中的设置。"
         ),
+    ),
+    group: str = typer.Option(
+        "default",
+        "--group",
+        "-g",
+        help="指定要执行的任务组。",
     ),
     force: bool = typer.Option(
         False,
@@ -246,7 +277,7 @@ def main(
     app = DownloaderApp(logger)
 
     try:
-        app.run_download(config_path=config_file, symbols=symbols, force=force)
+        app.run_download(config_path=config_file, group_name=group, symbols=symbols, force=force)
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logger.debug(f"\n{separator} 程序运行结束: {timestamp} {separator}\n")
 

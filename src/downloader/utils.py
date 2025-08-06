@@ -27,24 +27,44 @@ def normalize_stock_code(code: str) -> str:
 
     # 根据前缀判断交易所
     if stock_number.startswith("6"):
-        exchange = "SH"
+        exchange = "SH"  # 上海证券交易所
     elif stock_number.startswith(("0", "3")):
-        exchange = "SZ"
-    elif stock_number.startswith(("8", "9")):
-        exchange = "BJ"
+        exchange = "SZ"  # 深圳证券交易所
+    elif stock_number.startswith(("4", "8", "9")):
+        exchange = "BJ"  # 北京证券交易所（新三板转板、原新三板精选层）
     else:
+        # 记录无法识别的股票代码
+        record_failed_task(
+            "股票代码识别", 
+            f"{stock_number}.Unknown", 
+            f"无法识别的股票代码前缀: {stock_number}",
+            "parameter"
+        )
         raise ValueError(f"无法识别的股票代码前缀: {stock_number}")
 
     return f"{stock_number}.{exchange}"
 
 
-def record_failed_task(task_name: str, entity_id: str, reason: str):
+def record_failed_task(task_name: str, entity_id: str, reason: str, error_category: str = "business"):
     """
     将下载失败的任务记录到日志文件。
-    这是一个通用的工具函数。
+    
+    Args:
+        task_name: 任务名称
+        entity_id: 实体ID（如股票代码等）
+        reason: 失败原因
+        error_category: 错误分类，可选值：
+            - "business": 正常业务错误
+            - "test": 测试相关错误
+            - "network": 网络连接错误
+            - "parameter": 参数错误
+            - "system": 系统错误
     """
-    with open("failed_tasks.log", "a", encoding="utf-8") as f:
-        f.write(f"{datetime.now().isoformat()},{task_name},{entity_id},{reason}\n")
+    # 确定日志文件名
+    log_file = "failed_tasks.log" if error_category == "business" else f"failed_tasks_{error_category}.log"
+    
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(f"{datetime.now().isoformat()},{task_name},{entity_id},{reason},{error_category}\n")
 
 
 def is_interval_greater_than_7_days(start_date: str, end_date: str) -> bool:

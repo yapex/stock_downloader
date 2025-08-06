@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 import pandas as pd
 from tqdm import tqdm
 import sys
-import time
 
 # 导入核心组件以进行类型提示，增强代码可读性和健壮性
 from downloader.fetcher import TushareFetcher
@@ -13,6 +12,7 @@ from downloader.rate_limit import rate_limit
 
 # 从新的 utils 模块导入工具函数
 from ..utils import record_failed_task
+from ..error_handler import is_test_task, classify_error, ErrorCategory
 
 
 class BaseTaskHandler(ABC):
@@ -100,39 +100,32 @@ class IncrementalTaskHandler(BaseTaskHandler):
             # 直接使用迭代器而不是进度条
             progress_bar = target_symbols
 
-        network_error_symbols = []
+        # 简化执行逻辑：直接处理每只股票，不再收集网络错误进行二次重试
         is_progress_bar_active = hasattr(progress_bar, 'close')  # 判断是否为真正的进度条
         try:
             for ts_code in progress_bar:
-                is_success, is_network_error = self._process_single_symbol(
-                    ts_code, is_retry=False
-                )
-                if not is_success and is_network_error:
-                    network_error_symbols.append(ts_code)
+                self._process_single_symbol(ts_code)
         finally:
             self._current_progress_bar = None
             if is_progress_bar_active:
                 progress_bar.close()
 
-        if network_error_symbols:
-            self._retry_network_errors(network_error_symbols)
-
-    def _process_single_symbol(self, ts_code: str, is_retry: bool) -> tuple[bool, bool]:
+    def _process_single_symbol(self, ts_code: str) -> bool:
         """
-        处理单个股票的下载、保存和错误处理逻辑。
+        处理单个股票的下载、保存逻辑。
+        重试逻辑已经移至 fetcher 层的 @enhanced_retry 装饰器中。
 
         Args:
             ts_code (str): 股票代码。
-            is_retry (bool): 是否是重试操作。
 
         Returns:
-            tuple[bool, bool]: (是否成功, 是否是网络错误)
+            bool: 是否成功处理
         """
         task_name = self.task_config["name"]
         data_type = self.get_data_type()
         date_col = self.get_date_col()
         
-        desc_prefix = f"重试: {data_type}_{ts_code}" if is_retry else f"处理: {data_type}_{ts_code}"
+        desc_prefix = f"处理: {data_type}_{ts_code}"
         if self._current_progress_bar:
             try:
                 self._current_progress_bar.set_description(desc_prefix)
@@ -142,10 +135,7 @@ class IncrementalTaskHandler(BaseTaskHandler):
                 self._current_progress_bar = None
 
         try:
-            if is_retry:
-                time.sleep(1)
-
-            # 步骤1: TaskHandler 调用 DuckDBStorage.get_latest_date(data_type, ts_code, date_col)
+            # 步骤1: 获取最新日期
             latest_date = self.storage.get_latest_date(
                 data_type, ts_code, date_col=date_col
             )
@@ -153,7 +143,6 @@ class IncrementalTaskHandler(BaseTaskHandler):
             # 步骤2: 根据 latest_date 确定 start_date
             start_date = "19901219"  # 默认起始日期
             if latest_date:
-                # 步骤3: latest_date + 1 天作为 start_date
                 try:
                     # 首先尝试标准的 YYYYMMDD 格式
                     start_date = (
@@ -171,13 +160,12 @@ class IncrementalTaskHandler(BaseTaskHandler):
 
             end_date = datetime.now().strftime("%Y%m%d")
             if start_date > end_date:
-                return True, False
+                return True  # 没有新数据需要下载
 
+            # 步骤3: 获取数据（包含重试逻辑）
             rate_limit_config = self.task_config.get("rate_limit", {})
             calls_per_minute = rate_limit_config.get("calls_per_minute")
-
-            task_key_suffix = "_retry" if is_retry else ""
-            task_key = f"{task_name}_{ts_code}{task_key_suffix}"
+            task_key = f"{task_name}_{ts_code}"
 
             if calls_per_minute is not None:
                 @rate_limit(calls_per_minute=calls_per_minute, task_key=task_key)
@@ -185,83 +173,32 @@ class IncrementalTaskHandler(BaseTaskHandler):
                     return self.fetch_data(ts_code, start_date, end_date)
                 df = _fetch_data()
             else:
+                # fetch_data 方法已经包含 @enhanced_retry 装饰器，会自动处理重试
                 df = self.fetch_data(ts_code, start_date, end_date)
 
-            if df is not None:
-                if not df.empty:
-                    self.storage.save(df, data_type, ts_code, date_col=date_col)
-                    if is_retry:
-                        self._log_info(f"✅ 重试成功: {ts_code}")
-                elif is_retry:
-                    self._log_error(f"❌ 重试失败，数据为空: {ts_code}")
-                    record_failed_task(task_name, f"{data_type}_{ts_code}", "retry_failed_fetch_empty")
-            else:
-                log_msg = f"❌ {'重试' if is_retry else '获取'}失败，返回None: {ts_code}"
-                self._log_error(log_msg)
-                fail_reason = "retry_failed_fetch_none" if is_retry else "fetch_failed"
-                record_failed_task(task_name, f"{data_type}_{ts_code}", fail_reason)
-            
-            return True, False
+            # 步骤4: 保存数据
+            if df is not None and not df.empty:
+                self.storage.save(df, data_type, ts_code, date_col=date_col)
+                return True
+            elif df is not None:  # 空 DataFrame，表示没有新数据
+                return True
+            else:  # None，表示获取失败（已在 fetcher 层记录和重试）
+                return False
 
         except Exception as e:
-            # 检查异常类型和错误消息
-            error_msg = str(e).lower()
+            # Task层的异常（通常是非网络相关的逻辑错误）
+            error_category = classify_error(e)
+            task_category = "test" if is_test_task(task_name) else error_category.value
             
-            # 首先检查异常类型
-            is_network_error = isinstance(e, (ConnectionError, TimeoutError))
-            
-            # 如果不是标准网络异常，检查错误消息中的关键词
-            if not is_network_error:
-                is_network_error = any(
-                    keyword in error_msg
-                    for keyword in ["timeout", "connection", "network", "connect", "ssl", "name or service not known"]
-                )
-
-            if is_network_error:
-                if not is_retry:
-                    self._log_warning(f"网络错误，暂存股票 {ts_code} 以待重试: {e}")
-                else:
-                    self._log_error(f"❌ 重试处理股票 {ts_code} 时再次遇到网络错误: {e}")
-                    record_failed_task(task_name, f"{data_type}_{ts_code}", f"retry_failed_network_{str(e)}")
-                return False, True
-            else:
-                log_msg = f"❌ {'重试' if is_retry else '处理'}股票 {ts_code} 时发生未知错误: {e}"
-                self._log_error(log_msg)
-                fail_reason = f"retry_failed_{str(e)}" if is_retry else str(e)
-                record_failed_task(task_name, f"{data_type}_{ts_code}", fail_reason)
-                return False, False
-
-    def _retry_network_errors(self, symbols: list):
-        """重试因网络错误失败的股票"""
-        if not symbols:
-            return
-            
-        task_name = self.task_config["name"]
-        self._log_info(f"开始重试 {len(symbols)} 只因网络错误失败的股票...")
-
-        try:
-            retry_progress_bar = tqdm(
-                symbols,
-                desc=f"重试: {task_name}",
-                ncols=100,
-                leave=True,
-                file=sys.stdout,
+            self._log_error(f"❌ 处理股票 {ts_code} 时发生错误: {e}")
+            record_failed_task(
+                task_name, 
+                f"{data_type}_{ts_code}", 
+                str(e),
+                task_category
             )
-            self._current_progress_bar = retry_progress_bar
-        except (BrokenPipeError, OSError) as e:
-            self._log_warning(f"重试进度条初始化失败，切换为静默模式: {e}")
-            # 使用静默模式，禁用进度条
-            self._current_progress_bar = None
-            retry_progress_bar = symbols
+            return False
 
-        is_retry_progress_bar_active = hasattr(retry_progress_bar, 'close')
-        try:
-            for ts_code in retry_progress_bar:
-                self._process_single_symbol(ts_code, is_retry=True)
-        finally:
-            self._current_progress_bar = None
-            if is_retry_progress_bar_active:
-                retry_progress_bar.close()
 
     @abstractmethod
     def get_data_type(self) -> str:

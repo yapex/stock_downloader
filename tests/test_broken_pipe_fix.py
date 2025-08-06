@@ -55,7 +55,7 @@ class TestBrokenPipeErrorHandling(unittest.TestCase):
         # 使用patch确保日志不会真正输出到stdout
         with patch.object(self.handler, '_log_warning') as mock_log_warning:
             with patch.object(self.handler, '_process_single_symbol') as mock_process:
-                mock_process.return_value = (True, False)  # 成功，无网络错误
+                mock_process.return_value = True  # 成功
                 
                 # 执行测试
                 self.handler.execute(target_symbols=target_symbols)
@@ -105,7 +105,7 @@ class TestBrokenPipeErrorHandling(unittest.TestCase):
         # Mock tqdm抛出异常，导致使用列表替代
         with patch('downloader.tasks.base.tqdm', side_effect=BrokenPipeError("初始化失败")):
             with patch.object(self.handler, '_process_single_symbol') as mock_process:
-                mock_process.return_value = (True, False)
+                mock_process.return_value = True
                 with patch.object(self.handler, '_log_warning'):
                     
                     # 执行测试 - 不应该抛出AttributeError
@@ -122,28 +122,22 @@ class TestBrokenPipeErrorHandling(unittest.TestCase):
     
     @patch('downloader.tasks.base.tqdm')
     def test_retry_progress_bar_broken_pipe_fallback(self, mock_tqdm_class):
-        """测试重试进度条的BrokenPipeError处理"""
+        """测试进度条的BrokenPipeError处理（不再有重试进度条）"""
         
-        # 第一次调用正常，第二次（重试时）抛出异常
-        normal_progress_bar = Mock()
-        normal_progress_bar.__iter__ = Mock(return_value=iter(["000001.SZ"]))
-        normal_progress_bar.close = Mock()
-        
-        mock_tqdm_class.side_effect = [normal_progress_bar, BrokenPipeError("重试进度条失败")]
+        # 模拟进度条初始化失败
+        mock_tqdm_class.side_effect = BrokenPipeError("进度条失败")
         
         with patch.object(self.handler, '_log_warning') as mock_log_warning:
-            with patch.object(self.handler, '_log_info'):
-                with patch.object(self.handler, '_process_single_symbol') as mock_process:
-                    # 第一次返回网络错误，需要重试
-                    mock_process.side_effect = [(False, True), (True, False)]  # 第一次网络错误，第二次成功
-                    
-                    target_symbols = ["000001.SZ"]
-                    self.handler.execute(target_symbols=target_symbols)
-                    
-                    # 检查是否记录了重试进度条初始化失败的警告
-                    warning_calls = [call[0][0] for call in mock_log_warning.call_args_list]
-                    retry_warning_found = any("重试进度条初始化失败" in msg for msg in warning_calls)
-                    self.assertTrue(retry_warning_found, "应该记录重试进度条初始化失败的警告")
+            with patch.object(self.handler, '_process_single_symbol') as mock_process:
+                mock_process.return_value = True  # 处理成功
+                
+                target_symbols = ["000001.SZ"]
+                self.handler.execute(target_symbols=target_symbols)
+                
+                # 检查是否记录了进度条初始化失败的警告
+                warning_calls = [call[0][0] for call in mock_log_warning.call_args_list]
+                init_warning_found = any("进度条初始化失败" in msg for msg in warning_calls)
+                self.assertTrue(init_warning_found, "应该记录进度条初始化失败的警告")
 
 
 if __name__ == '__main__':

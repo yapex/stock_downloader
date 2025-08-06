@@ -59,6 +59,14 @@ class DuckDBStorage:
                 entity_id VARCHAR
             )
         """)
+        
+        # 初始化组运行时间跟踪表
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS _group_last_run (
+                group_name VARCHAR PRIMARY KEY,
+                last_run_ts TIMESTAMP
+            )
+        """)
 
     def _get_table_name(self, data_type: str, entity_id: str) -> str:
         """根据数据类型和实体ID生成规范的表名。"""
@@ -189,6 +197,29 @@ class DuckDBStorage:
     def overwrite(self, df: pd.DataFrame, data_type: str, entity_id: str):
         """向后兼容的全量保存接口。"""
         self.save_full(df, data_type, entity_id)
+
+    def get_last_run(self, group_name: str) -> datetime | None:
+        """获取指定组的最后运行时间。"""
+        try:
+            result = self.conn.execute(
+                "SELECT last_run_ts FROM _group_last_run WHERE group_name = ?",
+                [group_name]
+            ).fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            logger.error(f"获取组 {group_name} 的 last_run 失败: {e}")
+            return None
+
+    def set_last_run(self, group_name: str, timestamp: datetime):
+        """设置指定组的最后运行时间。"""
+        try:
+            self.conn.execute(
+                "INSERT OR REPLACE INTO _group_last_run (group_name, last_run_ts) VALUES (?, ?)",
+                [group_name, timestamp]
+            )
+            logger.debug(f"已更新组 {group_name} 的 last_run_ts: {timestamp}")
+        except Exception as e:
+            logger.error(f"设置组 {group_name} 的 last_run 失败: {e}")
 
 
 __all__ = ["DuckDBStorage"]

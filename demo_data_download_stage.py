@@ -126,15 +126,15 @@ def demonstrate_error_handling():
     
     for i, error in enumerate(network_errors, 1):
         mock_fetcher.fetch_daily_history.side_effect = error
-        success, is_network_error = handler._process_single_symbol("000001.SZ", is_retry=False)
+        success = handler._process_single_symbol("000001.SZ")
         
-        print(f"  错误{i}: {type(error).__name__}('{error}') -> 网络错误: {is_network_error}, 暂存待重试: {not success and is_network_error}")
+        print(f"  错误{i}: {type(error).__name__}('{error}') -> 返回失败: {not success}, 将由底层自动重试")
     
     # 情况2: 非网络错误
     print("情况2: 模拟非网络错误")
     mock_fetcher.fetch_daily_history.side_effect = ValueError("参数无效")
-    success, is_network_error = handler._process_single_symbol("000002.SZ", is_retry=False)
-    print(f"  ValueError('参数无效') -> 网络错误: {is_network_error}, 不重试: {not is_network_error}")
+    success = handler._process_single_symbol("000002.SZ")
+    print(f"  ValueError('参数无效') -> 返回失败: {not success}, 不会重试")
     
     # 情况3: 空数据处理
     print("情况3: 空数据处理")
@@ -142,13 +142,13 @@ def demonstrate_error_handling():
     # 空DataFrame
     mock_fetcher.fetch_daily_history.side_effect = None
     mock_fetcher.fetch_daily_history.return_value = pd.DataFrame()
-    success, is_network_error = handler._process_single_symbol("000003.SZ", is_retry=False)
+    success = handler._process_single_symbol("000003.SZ")
     print(f"  返回空DataFrame -> 成功: {success}, 但不保存数据")
     
     # 返回None
     mock_fetcher.fetch_daily_history.return_value = None
-    success, is_network_error = handler._process_single_symbol("000004.SZ", is_retry=False)  
-    print(f"  返回None -> 成功: {success}, 记录为获取失败")
+    success = handler._process_single_symbol("000004.SZ")  
+    print(f"  返回None -> 失败: {not success}, 记录为获取失败")
     
     print("✅ 错误处理机制演示完成")
     print()
@@ -216,10 +216,9 @@ def demonstrate_rate_limit_keys():
     
     handler = DailyTaskHandler(config, mock_fetcher, mock_storage)
     
-    # 模拟正常调用和重试调用
-    handler._process_single_symbol("000001.SZ", is_retry=False)
-    handler._process_single_symbol("000001.SZ", is_retry=True)
-    handler._process_single_symbol("000002.SZ", is_retry=False)
+    # 模拟正常调用
+    handler._process_single_symbol("000001.SZ")
+    handler._process_single_symbol("000002.SZ")
     
     print("创建的限速器键:")
     for key, limiter in dynamic_limiter.limiters.items():
@@ -227,7 +226,6 @@ def demonstrate_rate_limit_keys():
     
     expected_keys = [
         "限速键演示_000001.SZ",
-        "限速键演示_000001.SZ_retry", 
         "限速键演示_000002.SZ"
     ]
     
@@ -255,4 +253,4 @@ if __name__ == "__main__":
     print("4. ✅ 处理网络异常，区分网络错误和其他错误")
     print("5. ✅ 网络错误时暂存待重试，非网络错误直接失败")
     print("6. ✅ 处理空数据返回（DataFrame 和 None）")
-    print("7. ✅ 重试时使用不同的 task_key 避免限速器冲突")
+    print("7. ✅ 重试逻辑统一由底层 fetcher 的 @enhanced_retry 装饰器处理")

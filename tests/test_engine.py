@@ -117,3 +117,139 @@ def test_engine_run_with_symbols_all(mock_fetcher, mock_storage, mock_args):
 
         _, kwargs = execute_mock.call_args
         assert kwargs.get("target_symbols") == expected_symbols_from_file
+
+
+def test_is_full_group_run_calculation_with_no_filters(mock_fetcher, mock_storage, mock_args):
+    """
+    测试当没有过滤条件且所有任务都启用时，is_full_group_run 为 True。
+    """
+    config = {
+        "group_name": "test_group",
+        "downloader": {"symbols": ["000001.SZ", "600519.SH"]},
+        "tasks": [
+            {
+                "name": "Test Daily 1",
+                "enabled": True,
+                "type": "daily",
+            },
+            {
+                "name": "Test Daily 2", 
+                "enabled": True,
+                "type": "daily_basic",
+            }
+        ],
+        "defaults": {},
+    }
+
+    mock_daily_handler_class = MagicMock()
+    mock_daily_basic_handler_class = MagicMock()
+    mock_registry = {
+        "daily": mock_daily_handler_class,
+        "daily_basic": mock_daily_basic_handler_class
+    }
+
+    # symbols_overridden=False 表示没有命令行过滤
+    engine = DownloadEngine(config, mock_fetcher, mock_storage, False, False, "test_group")
+
+    with patch.object(engine, "task_registry", mock_registry):
+        engine.run()
+
+        # 验证 set_last_run 被调用（表示 is_full_group_run 为 True）
+        mock_storage.set_last_run.assert_called_once()
+        args, _ = mock_storage.set_last_run.call_args
+        assert args[0] == "test_group"
+
+
+def test_is_full_group_run_false_when_symbols_overridden(mock_fetcher, mock_storage, mock_args):
+    """
+    测试当命令行参数覆盖了股票列表时，is_full_group_run 为 False。
+    """
+    config = {
+        "group_name": "test_group",
+        "downloader": {"symbols": ["000001.SZ", "600519.SH"]},
+        "tasks": [
+            {
+                "name": "Test Daily",
+                "enabled": True,
+                "type": "daily",
+            }
+        ],
+        "defaults": {},
+    }
+
+    mock_daily_handler_class = MagicMock()
+    mock_registry = {"daily": mock_daily_handler_class}
+
+    # symbols_overridden=True 表示命令行参数覆盖了股票列表
+    engine = DownloadEngine(config, mock_fetcher, mock_storage, False, True)
+
+    with patch.object(engine, "task_registry", mock_registry):
+        engine.run()
+
+        # 验证 set_last_run 没有被调用（表示 is_full_group_run 为 False）
+        mock_storage.set_last_run.assert_not_called()
+
+
+def test_is_full_group_run_false_when_tasks_disabled(mock_fetcher, mock_storage, mock_args):
+    """
+    测试当有任务被禁用时，is_full_group_run 为 False。
+    """
+    config = {
+        "group_name": "test_group", 
+        "downloader": {"symbols": ["000001.SZ", "600519.SH"]},
+        "tasks": [
+            {
+                "name": "Test Daily 1",
+                "enabled": True,
+                "type": "daily",
+            },
+            {
+                "name": "Test Daily 2",
+                "enabled": False,  # 这个任务被禁用
+                "type": "daily_basic",
+            }
+        ],
+        "defaults": {},
+    }
+
+    mock_daily_handler_class = MagicMock()
+    mock_registry = {"daily": mock_daily_handler_class}
+
+    engine = DownloadEngine(config, mock_fetcher, mock_storage, False, False)
+
+    with patch.object(engine, "task_registry", mock_registry):
+        engine.run()
+
+        # 验证 set_last_run 没有被调用（表示 is_full_group_run 为 False）
+        mock_storage.set_last_run.assert_not_called()
+
+
+def test_is_full_group_run_false_when_task_fails(mock_fetcher, mock_storage, mock_args):
+    """
+    测试当有任务失败时，is_full_group_run 为 False。
+    """
+    config = {
+        "group_name": "test_group",
+        "downloader": {"symbols": ["000001.SZ", "600519.SH"]},
+        "tasks": [
+            {
+                "name": "Test Daily",
+                "enabled": True,
+                "type": "daily",
+            }
+        ],
+        "defaults": {},
+    }
+
+    mock_daily_handler_class = MagicMock()
+    # 模拟任务执行失败
+    mock_daily_handler_class.return_value.execute.side_effect = Exception("Task failed")
+    mock_registry = {"daily": mock_daily_handler_class}
+
+    engine = DownloadEngine(config, mock_fetcher, mock_storage, False, False)
+
+    with patch.object(engine, "task_registry", mock_registry):
+        engine.run()
+
+        # 验证 set_last_run 没有被调用（表示 is_full_group_run 为 False）
+        mock_storage.set_last_run.assert_not_called()

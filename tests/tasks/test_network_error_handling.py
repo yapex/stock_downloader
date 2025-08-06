@@ -6,68 +6,60 @@ from downloader.tasks.daily import DailyTaskHandler
 
 def test_network_error_handling_and_retry(mock_fetcher, mock_storage, mock_args):
     """
-    测试网络错误处理和重试机制。
+    测试网络错误处理。现在重试逻辑在fetcher层，task层只调用一次。
     """
     task_config = {"name": "Test Daily", "type": "daily", "adjust": "qfq"}
     target_symbols = ["000001.SZ", "600519.SH", "000002.SZ"]
 
-    # 模拟网络错误
+    # 模拟各种错误场景
     mock_fetcher.fetch_daily_history.side_effect = [
         pd.DataFrame({"trade_date": ["20230102"]}),  # 第一个成功
-        ConnectionError("Network connection failed"),  # 第二个网络错误
-        TimeoutError("Request timeout"),  # 第三个超时错误
-        pd.DataFrame({"trade_date": ["20230103"]}),  # 第二个重试成功
-        ConnectionError("Network connection failed"),  # 第三个重试失败
+        ConnectionError("Network connection failed"),  # 第二个网络错误（fetcher层会重试）
+        TimeoutError("Request timeout"),  # 第三个超时错误（fetcher层会重试）
     ]
 
     handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage, mock_args)
     handler.execute(target_symbols=target_symbols)
 
-    # 验证调用次数：初始3次 + 重试2次 = 5次
-    assert mock_fetcher.fetch_daily_history.call_count == 5
-    # 第一个成功 + 第二个重试成功 = 2次保存
-    assert mock_storage.save.call_count == 2
+    # 验证调用次数：每个股票只调用一次，共3次
+    assert mock_fetcher.fetch_daily_history.call_count == 3
+    # 只有第一个成功保存
+    assert mock_storage.save.call_count == 1
 
 
 def test_network_error_retry_success(mock_fetcher, mock_storage, mock_args):
     """
-    测试网络错误重试成功的情况。
+    测试模拟fetcher层重试成功的情况。
     """
     task_config = {"name": "Test Daily", "type": "daily", "adjust": "qfq"}
     target_symbols = ["600519.SH"]
 
-    # 第一次调用失败，第二次调用成功
-    mock_fetcher.fetch_daily_history.side_effect = [
-        ConnectionError("Network connection failed"),  # 第一次网络错误
-        pd.DataFrame({"trade_date": ["20230102"]}),  # 重试成功
-    ]
+    # 模拟fetcher层重试成功，最终返回数据
+    mock_fetcher.fetch_daily_history.return_value = pd.DataFrame({"trade_date": ["20230102"]})
 
     handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage, mock_args)
     handler.execute(target_symbols=target_symbols)
 
-    # 验证调用次数：初始1次 + 重试1次 = 2次
-    assert mock_fetcher.fetch_daily_history.call_count == 2
-    # 重试成功应该保存
+    # 验证调用次数：每个股票只调用一次
+    assert mock_fetcher.fetch_daily_history.call_count == 1
+    # 成功应该保存
     assert mock_storage.save.call_count == 1
 
 
 def test_network_error_retry_failure(mock_fetcher, mock_storage, mock_args):
     """
-    测试网络错误重试仍然失败的情况。
+    测试模拟fetcher层重试仍然失败的情况。
     """
     task_config = {"name": "Test Daily", "type": "daily", "adjust": "qfq"}
     target_symbols = ["600519.SH"]
 
-    # 两次都失败
-    mock_fetcher.fetch_daily_history.side_effect = [
-        ConnectionError("Network connection failed"),  # 第一次网络错误
-        ConnectionError("Network connection failed"),  # 重试仍然失败
-    ]
+    # 模拟fetcher层重试后仍然失败，返回None
+    mock_fetcher.fetch_daily_history.return_value = None
 
     handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage, mock_args)
     handler.execute(target_symbols=target_symbols)
 
-    # 验证调用次数：初始1次 + 重试1次 = 2次
-    assert mock_fetcher.fetch_daily_history.call_count == 2
-    # 重试失败不应该保存
+    # 验证调用次数：每个股票只调用一次
+    assert mock_fetcher.fetch_daily_history.call_count == 1
+    # 失败不应该保存
     assert mock_storage.save.call_count == 0

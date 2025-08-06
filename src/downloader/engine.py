@@ -2,6 +2,7 @@ import logging
 from importlib.metadata import entry_points
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 
 from .fetcher import TushareFetcher
 from .storage import DuckDBStorage
@@ -11,16 +12,20 @@ logger = logging.getLogger(__name__)
 
 class DownloadEngine:
     def __init__(
-        self,
-        config: dict,
-        fetcher: TushareFetcher,
-        storage: DuckDBStorage,
+        self, 
+        config, 
+        fetcher: TushareFetcher, 
+        storage: DuckDBStorage, 
         force_run: bool = False,
+        symbols_overridden: bool = False,
+        group_name: str = "default"
     ):
         self.config = config
         self.fetcher = fetcher
         self.storage = storage
         self.force_run = force_run
+        self.symbols_overridden = symbols_overridden  # 记录股票列表是否被命令行参数覆盖
+        self.group_name = group_name  # 记录组名
         self.task_registry = self._discover_task_handlers()
 
     def _discover_task_handlers(self) -> dict:
@@ -40,10 +45,32 @@ class DownloadEngine:
         tasks = self.config.get("tasks", [])
         defaults = self.config.get("defaults", {})
         downloader_config = self.config.get("downloader", {})
-
+        
+        # 使用实例的组名
+        group_name = self.group_name
+        
         if not tasks:
             logger.warning("配置文件中未找到任何任务。")
             return
+            
+        # ===================================================================
+        #   运行组前，计算 is_full_group_run 条件
+        # ===================================================================
+        
+        # 1. 检查是否有命令行参数过滤（symbols_filter_applied）
+        symbols_filter_applied = self.symbols_overridden
+        
+        # 2. 检查所有任务是否都被启用（all_tasks_enabled）
+        all_tasks_enabled = all(task.get("enabled", False) for task in tasks)
+        
+        # 3. 计算是否为完整组运行
+        is_full_group_run = not symbols_filter_applied and all_tasks_enabled
+        
+        logger.debug(f"完整组运行检查: symbols_filter_applied={symbols_filter_applied}, "
+                    f"all_tasks_enabled={all_tasks_enabled}, is_full_group_run={is_full_group_run}")
+        
+        # 跟踪失败的任务
+        failed_tasks = []
 
         # ===================================================================
         #           核心修正：股票列表的确定逻
@@ -104,20 +131,43 @@ class DownloadEngine:
             logger.debug(
                 f"使用 {max_workers} 个线程并发执行 {len(data_driven_tasks)} 个任务"
             )
-            self._run_tasks_concurrently(
+            failed_tasks = self._run_tasks_concurrently(
                 data_driven_tasks, defaults, target_symbols, max_workers
             )
         else:
             logger.debug(f"顺序执行 {len(data_driven_tasks)} 个任务")
             for task_spec in data_driven_tasks:
-                # 将最终确定的股票列表作为上下文传递
-                context = {"target_symbols": target_symbols}
-                self._dispatch_task(task_spec, defaults, **context)
+                try:
+                    # 将最终确定的股票列表作为上下文传递
+                    context = {"target_symbols": target_symbols}
+                    self._dispatch_task(task_spec, defaults, **context)
+                except Exception as e:
+                    logger.error(f"任务 '{task_spec.get('name')}' 执行失败: {e}")
+                    failed_tasks.append(task_spec.get('name'))
 
         logger.debug("下载引擎所有任务执行完毕。")
+        
+        # ===================================================================
+        #   组内任务完成后，根据 is_full_group_run 和任务成功情况更新 last_run_ts
+        # ===================================================================
+        
+        # 检查所有任务是否都成功（没有失败任务）
+        all_success = len(failed_tasks) == 0
+        
+        if is_full_group_run and all_success:
+            now = datetime.now()
+            self.storage.set_last_run(group_name, now)
+            logger.info(f"完整组运行完成且所有任务成功，已更新 {group_name} 的 last_run_ts: {now}")
+        else:
+            if not is_full_group_run:
+                logger.debug(f"非完整组运行，不更新 {group_name} 的 last_run_ts")
+            elif not all_success:
+                logger.debug(f"有任务失败 {failed_tasks}，不更新 {group_name} 的 last_run_ts")
 
     def _run_tasks_concurrently(self, tasks, defaults, target_symbols, max_workers):
         """Execute tasks concurrently using a thread pool."""
+        failed_tasks = []
+        
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all tasks to the executor
             future_to_task = {
@@ -141,6 +191,9 @@ class DownloadEngine:
                     logger.error(
                         f"任务 '{task_spec['name']}' 执行失败: {e}", exc_info=True
                     )
+                    failed_tasks.append(task_spec.get('name'))
+        
+        return failed_tasks
 
     def _dispatch_task(self, task_spec: dict, defaults: dict, **kwargs):
         task_type = task_spec.get("type")
@@ -165,3 +218,52 @@ class DownloadEngine:
                 f"未找到类型为 '{task_type}' 的任务处理器，"
                 f"已跳过任务 '{task_spec.get('name')}'。"
             )
+
+    def _is_full_group_run(self, configured_symbols, target_symbols, failed_tasks):
+        """
+        判定是否为完整组运行。
+        
+        完整组运行的判定条件：
+        1. DownloadEngine 未指定 --symbols 或 --group 以外的过滤，执行的是该组配置里声明的 *全部* 目标股票。
+        2. 所有组内任务都被调度且未中途失败。
+        
+        Args:
+            configured_symbols: 配置中声明的完整股票池
+            target_symbols: 实际执行的目标股票列表
+            failed_tasks: 失败的任务列表
+        
+        Returns:
+            bool: 是否为完整组运行
+        """
+        # 条件 2: 没有任务失败
+        if failed_tasks:
+            logger.debug(f"由于任务失败 {failed_tasks}，不是完整组运行")
+            return False
+        
+        # 条件 1: 检查是否有命令行参数覆盖
+        if self.symbols_overridden:
+            logger.debug("股票列表被命令行参数覆盖，不是完整组运行")
+            return False
+        
+        # 条件 1: 执行的股票列表应该是配置中声明的完整股票池
+        if configured_symbols == "all":
+            # 如果配置为 "all"，那么实际执行的股票列表应该是从数据库加载的全市场股票
+            # 这里我们认为这是完整组运行（因为是从配置而不是命令行参数得来的）
+            logger.debug("配置为 'all'，认为是完整组运行")
+            return True
+        elif isinstance(configured_symbols, list):
+            # 如果配置为列表，那么实际执行的股票列表应该和配置一致
+            # 如果 target_symbols 和 configured_symbols 一致，则认为是完整组运行
+            configured_set = set(str(s) for s in configured_symbols)
+            target_set = set(str(s) for s in target_symbols)
+            
+            if configured_set == target_set:
+                logger.debug("目标股票列表与配置一致，认为是完整组运行")
+                return True
+            else:
+                logger.debug(f"目标股票列表 {len(target_set)} 与配置股票列表 {len(configured_set)} 不一致，不是完整组运行")
+                return False
+        else:
+            # 未知的配置格式
+            logger.warning(f"未知的 symbols 配置格式: {configured_symbols}")
+            return False

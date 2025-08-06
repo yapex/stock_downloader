@@ -44,16 +44,10 @@ class TestDataDownloadIntegration:
                 "open": [10.0, 10.5],
                 "close": [10.2, 10.8]
             }),
-            # 第二只股票：网络错误，稍后重试成功
+            # 第二只股票：网络错误（fetcher层会重试，但这里我们模拟最终失败）
             ConnectionError("Network connection failed"),
             # 第三只股票：空数据
             pd.DataFrame(),
-            # 第二只股票重试：成功获取数据
-            pd.DataFrame({
-                "trade_date": ["20230101"], 
-                "open": [50.0],
-                "close": [51.0]
-            })
         ]
         
         mock_fetcher.fetch_daily_history.side_effect = mock_responses
@@ -68,11 +62,11 @@ class TestDataDownloadIntegration:
         handler.execute(target_symbols=target_symbols)
         
         # 5. 验证调用情况
-        # 初始3次调用 + 1次重试 = 4次调用
-        assert mock_fetcher.fetch_daily_history.call_count == 4
+        # 现在每个股票只调用一次，共3次调用
+        assert mock_fetcher.fetch_daily_history.call_count == 3
         
-        # 应该有2次成功保存（第一只股票 + 第二只股票重试成功）
-        assert mock_storage.save.call_count == 2
+        # 应该有2次成功保存（第一只股票有数据 + 第三只股票空数据也算成功）
+        assert mock_storage.save.call_count == 1
         
         # 验证保存的数据类型和参数
         save_calls = mock_storage.save.call_args_list
@@ -155,8 +149,8 @@ class TestDataDownloadIntegration:
         dynamic_limiter.limiters.clear()
         
         # 执行任务
-        daily_handler._process_single_symbol("000001.SZ", is_retry=False)
-        basic_handler._process_single_symbol("000001.SZ", is_retry=False)
+        daily_handler._process_single_symbol("000001.SZ")
+        basic_handler._process_single_symbol("000001.SZ")
         
         # 验证创建了不同的限制器
         assert len(dynamic_limiter.limiters) == 2
@@ -185,15 +179,13 @@ class TestDataDownloadIntegration:
         
         # 模拟多种错误场景
         error_scenarios = [
-            # 网络超时 -> 重试成功  
-            TimeoutError("Request timeout"),
+            # 网络超时（fetcher层重试后假设成功）  
             pd.DataFrame({"trade_date": ["20230101"]}),
             
-            # 连接错误 -> 重试失败
+            # 连接错误（fetcher层重试后失败）
             ConnectionError("Network connection failed"), 
-            ConnectionError("Network connection failed"),
             
-            # 非网络错误 -> 不重试
+            # 非网络错误
             ValueError("Invalid parameter"),
         ]
         
@@ -205,10 +197,10 @@ class TestDataDownloadIntegration:
         
         handler.execute(target_symbols=target_symbols)
         
-        # 验证调用次数：初始3次 + 重试2次 = 5次
-        assert mock_fetcher.fetch_daily_history.call_count == 5
+        # 验证调用次数：现在每个股票只调用一次，共3次
+        assert mock_fetcher.fetch_daily_history.call_count == 3
         
-        # 验证成功保存次数：只有第一只股票重试成功
+        # 验证成功保存次数：只有第一只股票成功
         assert mock_storage.save.call_count == 1
 
     def test_data_type_and_date_col_configuration(self, mock_fetcher, mock_storage):

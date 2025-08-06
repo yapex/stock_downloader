@@ -66,7 +66,7 @@ def test_fetch_stock_list_exception_handling(mock_pro_api, caplog):
     fetcher = TushareFetcher()
     result_df = fetcher.fetch_stock_list()
     assert result_df is None
-    assert "获取A股列表失败" in caplog.text
+    assert "[获取A股列表] 最终失败" in caplog.text
 
 
 def test_fetch_stock_list(mock_pro_api):
@@ -133,7 +133,7 @@ def test_fetch_daily_history_handles_api_exception(adjust, monkeypatch, caplog):
     # 断言返回值是 None
     assert result_df is None
 
-    assert "获取 000003.SZ 的日线数据失败: 模拟网络错误" in caplog.text
+    assert "[日K线数据] 最终失败" in caplog.text
 
 
 def test_fetch_income_balancesheet_cashflow(mock_pro_api, caplog):
@@ -172,9 +172,9 @@ def test_fetch_income_balancesheet_cashflow(mock_pro_api, caplog):
         assert result_balance is None  
         assert result_cashflow is None
 
-        assert "获取 600519.SH 的利润表失败" in caplog.text
-        assert "获取 600519.SH 的资产负债表失败" in caplog.text
-        assert "获取 600519.SH 的现金流量表失败" in caplog.text
+        assert "[财务报表-利润表] 最终失败" in caplog.text
+        assert "[财务报表-资产负债表] 最终失败" in caplog.text
+        assert "[财务报表-现金流量表] 最终失败" in caplog.text
 
 
 # ===================================================================
@@ -221,7 +221,7 @@ def test_fetch_daily_basic_exception(mock_pro_api, caplog):
     result = fetcher.fetch_daily_basic("600519", "20230101", "20230131")
 
     assert result is None
-    assert "获取 600519.SH 的每日指标失败" in caplog.text
+    assert "[每日指标] 最终失败" in caplog.text
 
 
 # ===================================================================
@@ -293,7 +293,7 @@ def test_financial_methods_exception(
     result = method("600519", "20230101", "20231231")
 
     assert result is None
-    assert f"获取 600519.SH 的{error_msg}失败" in caplog.text
+    assert f"[财务报表-{error_msg}] 最终失败" in caplog.text
 
 
 # ===================================================================
