@@ -1,7 +1,6 @@
 import pandas as pd
 import pytest
 from pathlib import Path
-import duckdb
 import logging
 from unittest.mock import Mock
 

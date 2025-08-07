@@ -1,7 +1,5 @@
 import unittest
-import sys
-from unittest.mock import Mock, patch, MagicMock
-from tqdm import tqdm
+from unittest.mock import Mock, patch
 
 from downloader.tasks.base import IncrementalTaskHandler
 

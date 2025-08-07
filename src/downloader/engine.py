@@ -1,13 +1,11 @@
 import logging
 from importlib.metadata import entry_points
-import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
 from .fetcher import TushareFetcher
 from .storage import DuckDBStorage
 from .buffer_pool import DataBufferPool
-from .utils import record_failed_task
 
 logger = logging.getLogger(__name__)
 

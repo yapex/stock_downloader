@@ -214,14 +214,14 @@ def summary(
                     all_existing_stock_codes.add(standard_code)
                     business_type_stats[business_type].add(standard_code)
 
-        print(f"\n=== 数据完整性检查结果 ===")
+        print("\n=== 数据完整性检查结果 ===")
         print(f"应有股票总数: {len(all_stock_codes)}")
         print(f"实际有数据的股票数(并集): {len(all_existing_stock_codes)}")
 
         # 收集所有业务类型的缺失股票代码并合并去重
         all_missing_stocks = set()
         if business_type_stats:
-            print(f"\n=== 各业务类型数据统计 ===")
+            print("\n=== 各业务类型数据统计 ===")
 
             for business_type in sorted(business_type_stats.keys()):
                 existing_count = len(business_type_stats[business_type])
@@ -236,7 +236,7 @@ def summary(
         # 显示合并去重后的缺失股票代码摘要
         if all_missing_stocks:
             missing_stocks_sorted = sorted(list(all_missing_stocks))
-            print(f"\n=== 缺失股票代码汇总 ===")
+            print("\n=== 缺失股票代码汇总 ===")
             print(f"缺失股票总数: {len(missing_stocks_sorted)}")
 
             # 将完整的缺失股票列表输出到日志文件
@@ -250,7 +250,7 @@ def summary(
             log_file = os.path.join(log_dir, "missing_stocks.log")
 
             with open(log_file, "w", encoding="utf-8") as f:
-                f.write(f"缺失股票代码统计报告\n")
+                f.write("缺失股票代码统计报告\n")
                 f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write(f"应有股票总数: {len(all_stock_codes)}\n")
                 f.write(f"缺失股票总数: {len(missing_stocks_sorted)}\n\n")

@@ -2,14 +2,12 @@ import os
 import tushare as ts
 import pandas as pd
 import logging
-from .utils import normalize_stock_code, is_interval_greater_than_7_days, record_failed_task
-from .rate_limit import rate_limit
+from ratelimit import limits, sleep_and_retry
+from .utils import normalize_stock_code, is_interval_greater_than_7_days
 from .error_handler import (
     enhanced_retry, 
     NETWORK_RETRY_STRATEGY, 
-    API_LIMIT_RETRY_STRATEGY,
-    is_test_task,
-    classify_error
+    API_LIMIT_RETRY_STRATEGY
 )
 
 logger = logging.getLogger(__name__)
@@ -41,7 +39,8 @@ class TushareFetcher:
             raise
 
     @enhanced_retry(strategy=NETWORK_RETRY_STRATEGY, task_name="获取A股列表")
-    @rate_limit(calls_per_minute=200)
+    @sleep_and_retry
+    @limits(calls=200, period=60)
     def fetch_stock_list(self) -> pd.DataFrame | None:
         """获取所有A股的列表。"""
         logger.debug("开始从 Tushare 获取A股列表...")
@@ -54,7 +53,8 @@ class TushareFetcher:
         return df
 
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="日K线数据")
-    @rate_limit(calls_per_minute=500)
+    @sleep_and_retry
+    @limits(calls=500, period=60)
     def fetch_daily_history(
         self, ts_code: str, start_date: str, end_date: str, adjust: str
     ) -> pd.DataFrame | None:
@@ -88,7 +88,8 @@ class TushareFetcher:
         return df
 
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="每日指标")
-    @rate_limit(calls_per_minute=200)
+    @sleep_and_retry
+    @limits(calls=200, period=60)
     def fetch_daily_basic(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
@@ -109,7 +110,8 @@ class TushareFetcher:
 
     # ---> 新增的财务报表获取方法 <---
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="财务报表-利润表")
-    @rate_limit(calls_per_minute=200)
+    @sleep_and_retry
+    @limits(calls=200, period=60)
     def fetch_income(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
@@ -122,7 +124,8 @@ class TushareFetcher:
         return df
 
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="财务报表-资产负债表")
-    @rate_limit(calls_per_minute=200)
+    @sleep_and_retry
+    @limits(calls=200, period=60)
     def fetch_balancesheet(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
@@ -135,7 +138,8 @@ class TushareFetcher:
         return df
 
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="财务报表-现金流量表")
-    @rate_limit(calls_per_minute=200)
+    @sleep_and_retry
+    @limits(calls=200, period=60)
     def fetch_cashflow(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:

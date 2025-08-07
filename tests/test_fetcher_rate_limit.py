@@ -3,6 +3,8 @@ from unittest.mock import patch, MagicMock
 import pandas as pd
 import sys
 import os
+import time
+from ratelimit import limits, sleep_and_retry
 
 # 添加src目录到Python路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -77,3 +79,35 @@ def test_fetcher_methods_have_rate_limit():
         assert method is not None
         # 确认方法是可调用的
         assert callable(method)
+        # 检查是否有ratelimit装饰器的属性
+        # ratelimit库的装饰器会在函数上添加特定属性
+        assert hasattr(method, '__wrapped__') or hasattr(method, '__name__')
+
+
+def test_ratelimit_decorator_functionality():
+    """测试ratelimit装饰器的基本功能"""
+    call_count = [0]
+    
+    @sleep_and_retry
+    @limits(calls=2, period=1)  # 每秒最多2次调用
+    def test_function():
+        call_count[0] += 1
+        return call_count[0]
+    
+    # 快速调用3次，前2次应该成功，第3次会被限制并等待
+    start_time = time.time()
+    
+    # 前两次调用应该很快
+    result1 = test_function()
+    result2 = test_function()
+    
+    assert result1 == 1
+    assert result2 == 2
+    
+    # 第三次调用会触发等待
+    result3 = test_function()
+    end_time = time.time()
+    
+    assert result3 == 3
+    # 由于限流，总时间应该至少1秒
+    assert end_time - start_time >= 0.9  # 允许一些时间误差

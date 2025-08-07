@@ -9,11 +9,11 @@ import tempfile
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
-from src.downloader.storage import DuckDBStorage
-from src.downloader.engine import DownloadEngine
-from src.downloader.fetcher import TushareFetcher
+from downloader.storage import DuckDBStorage
+from downloader.engine import DownloadEngine
+from downloader.fetcher import TushareFetcher
 
 
 class TestLastRunTracking:
@@ -207,7 +207,6 @@ class TestLastRunTracking:
 
     def test_full_group_updates_timestamp(self, storage, mock_fetcher):
         """测试：不传 --symbols，跑完季度组 → 断言 last_run_ts 更新"""
-        import pandas as pd
         
         # 配置一个季度组
         config = {
@@ -260,7 +259,6 @@ class TestLastRunTracking:
 
     def test_partial_symbol_does_not_touch_timestamp(self, storage, mock_fetcher):
         """测试：传 --symbols 600519 → 断言 last_run_ts 未变"""
-        import pandas as pd
         
         config = {
             "tasks": [

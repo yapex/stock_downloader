@@ -9,11 +9,11 @@ import sys
 from ..fetcher import TushareFetcher
 from ..storage import DuckDBStorage
 from ..buffer_pool import DataBufferPool
-from ..rate_limit import rate_limit
+# rate_limit装饰器已移至各个fetcher方法中使用ratelimit库
 
 # 从新的 utils 模块导入工具函数
 from ..utils import record_failed_task
-from ..error_handler import is_test_task, classify_error, ErrorCategory
+from ..error_handler import is_test_task, classify_error
 
 
 class BaseTaskHandler(ABC):
@@ -167,17 +167,9 @@ class IncrementalTaskHandler(BaseTaskHandler):
 
             # 步骤3: 获取数据（包含重试逻辑）
             rate_limit_config = self.task_config.get("rate_limit", {})
-            calls_per_minute = rate_limit_config.get("calls_per_minute")
-            task_key = f"{task_name}_{ts_code}"
-
-            if calls_per_minute is not None:
-                @rate_limit(calls_per_minute=calls_per_minute, task_key=task_key)
-                def _fetch_data():
-                    return self.fetch_data(ts_code, start_date, end_date)
-                df = _fetch_data()
-            else:
-                # fetch_data 方法已经包含 @enhanced_retry 装饰器，会自动处理重试
-                df = self.fetch_data(ts_code, start_date, end_date)
+            # 限流现在由fetcher方法中的ratelimit库处理
+            # fetch_data 方法已经包含重试机制
+            df = self.fetch_data(ts_code, start_date, end_date)
 
             # 步骤4: 保存数据
             if df is not None and not df.empty:

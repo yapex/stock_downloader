@@ -1,8 +1,8 @@
 import threading
 import time
-from collections import defaultdict, deque
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 import pandas as pd
 import logging
 from datetime import datetime

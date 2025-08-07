@@ -2,7 +2,7 @@ from downloader.tasks.financials import FinancialsTaskHandler
 from unittest.mock import ANY  # 导入 ANY 用于匹配不关心的参数
 
 
-def test_financials_handler_executes_correctly(mock_fetcher, mock_storage, mock_args):
+def test_financials_handler_executes_correctly(mock_fetcher, mock_storage):
     """
     测试 FinancialsTaskHandler 是否会为每个股票调用正确的 fetcher 方法，
     并传递所有必需参数。
@@ -15,7 +15,7 @@ def test_financials_handler_executes_correctly(mock_fetcher, mock_storage, mock_
     }
     target_symbols = ["000001.SZ", "600519.SH"]
 
-    handler = FinancialsTaskHandler(task_config, mock_fetcher, mock_storage, mock_args)
+    handler = FinancialsTaskHandler(task_config, mock_fetcher, mock_storage)
     handler.execute(target_symbols=target_symbols)
 
     # 验证 fetch_income 方法被正确调用了N次

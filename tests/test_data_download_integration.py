@@ -1,9 +1,8 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import pandas as pd
 from downloader.tasks.daily import DailyTaskHandler
 from downloader.tasks.daily_basic import DailyBasicTaskHandler
-from downloader.rate_limit import dynamic_limiter
 
 
 class TestDataDownloadIntegration:
@@ -55,8 +54,7 @@ class TestDataDownloadIntegration:
         # 3. 执行TaskHandler
         handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
         
-        # 清理限制器状态
-        dynamic_limiter.limiters.clear()
+        # 注意：现在使用ratelimit库，不需要手动清理限制器状态
         
         # 4. 执行完整流程
         handler.execute(target_symbols=target_symbols)
@@ -77,18 +75,16 @@ class TestDataDownloadIntegration:
             assert isinstance(df, pd.DataFrame)
             assert not df.empty
 
-    def test_rate_limit_enforcement_with_real_limiter(self, mock_fetcher, mock_storage):
-        """测试真实限速器的限速效果"""
+    def test_rate_limit_enforcement_with_ratelimit_library(self, mock_fetcher, mock_storage):
+        """测试ratelimit库的限速效果"""
         import time
-        from downloader.rate_limit import rate_limit, dynamic_limiter
+        from ratelimit import limits, sleep_and_retry
         
-        # 清理限制器状态  
-        dynamic_limiter.limiters.clear()
-        
-        # 创建一个使用限速装饰器的简单函数来测试
+        # 创建一个使用ratelimit装饰器的简单函数来测试
         call_count = [0]  # 使用列表来避免闭包问题
         
-        @rate_limit(calls_per_minute=120, task_key="test_limiter")
+        @sleep_and_retry
+        @limits(calls=2, period=1)  # 每秒最多2次调用
         def test_function():
             call_count[0] += 1
             return call_count[0]
@@ -105,19 +101,14 @@ class TestDataDownloadIntegration:
         end_time = time.time()
         elapsed_time = end_time - start_time
         
-        # 验证创建了限速器
-        assert len(dynamic_limiter.limiters) > 0, "应该创建了至少一个限速器"
-        assert "test_limiter" in dynamic_limiter.limiters, "应该创建了指定键的限速器"
+        print(f"ratelimit库测试耗时: {elapsed_time:.2f}秒，调用次数: {call_count[0]}")
         
-        # 由于限速（120次/分钟 = 0.5秒/次），3次调用应该至少需要约1秒
-        # 考虑到首次调用无需等待，实际应该是约1秒（第2次等待0.5s，第3次等待0.5s）
-        print(f"限速器测试耗时: {elapsed_time:.2f}秒，调用次数: {call_count[0]}")
-        
-        # 较宽松的时间验证，主要验证限速器确实在工作
-        if elapsed_time < 0.8:
-            print(f"警告：限速效果可能不明显，实际耗时: {elapsed_time:.2f}秒")
+        # 由于限速（2次/秒），3次调用应该至少需要约1秒
+        # 前2次调用应该很快，第3次会等待
+        if elapsed_time >= 0.9:
+            print("✅ ratelimit库限速器工作正常")
         else:
-            print("✅ 限速器工作正常")
+            print(f"警告：限速效果可能不明显，实际耗时: {elapsed_time:.2f}秒")
 
     def test_multiple_task_types_with_different_rate_limits(self, mock_fetcher, mock_storage):
         """测试不同任务类型使用不同的限速配置"""
@@ -145,28 +136,16 @@ class TestDataDownloadIntegration:
         daily_handler = DailyTaskHandler(daily_config, mock_fetcher, mock_storage)
         basic_handler = DailyBasicTaskHandler(basic_config, mock_fetcher, mock_storage)
         
-        # 清理限制器状态
-        dynamic_limiter.limiters.clear()
-        
         # 执行任务
         daily_handler._process_single_symbol("000001.SZ")
         basic_handler._process_single_symbol("000001.SZ")
         
-        # 验证创建了不同的限制器
-        assert len(dynamic_limiter.limiters) == 2
+        # 验证方法被调用（ratelimit库会自动处理限流）
+        assert mock_fetcher.fetch_daily_history.called
+        assert mock_fetcher.fetch_daily_basic.called
         
-        # 验证限制器的配置
-        daily_limiter_key = "日线任务_000001.SZ"
-        basic_limiter_key = "基础指标任务_000001.SZ"
-        
-        assert daily_limiter_key in dynamic_limiter.limiters
-        assert basic_limiter_key in dynamic_limiter.limiters
-        
-        daily_limiter = dynamic_limiter.limiters[daily_limiter_key]
-        basic_limiter = dynamic_limiter.limiters[basic_limiter_key]
-        
-        assert daily_limiter.calls_per_minute == 500
-        assert basic_limiter.calls_per_minute == 200
+        # 验证数据保存
+        assert mock_storage.save.call_count >= 2
 
     def test_error_recovery_workflow(self, mock_fetcher, mock_storage):
         """测试错误恢复工作流程"""

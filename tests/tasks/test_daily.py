@@ -3,14 +3,14 @@ from datetime import datetime
 from downloader.tasks.daily import DailyTaskHandler
 
 
-def test_daily_task_handler_executes_correctly(mock_fetcher, mock_storage, mock_args):
+def test_daily_task_handler_executes_correctly(mock_fetcher, mock_storage):
     """
     测试DailyTaskHandler是否会为target_symbols中的每个股票调用fetcher和storage。
     """
     task_config = {"name": "Test Daily", "type": "daily", "adjust": "qfq"}
     target_symbols = ["000001.SZ", "600519.SH"]
 
-    handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage, mock_args)
+    handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
     handler.execute(target_symbols=target_symbols)
 
     assert mock_fetcher.fetch_daily_history.call_count == len(target_symbols)
@@ -18,7 +18,7 @@ def test_daily_task_handler_executes_correctly(mock_fetcher, mock_storage, mock_
 
 
 def test_daily_handler_skips_if_no_symbols_provided(
-    mock_fetcher, mock_storage, mock_args
+    mock_fetcher, mock_storage
 ):
     """
     测试当target_symbols为空时，处理器是否会优雅地跳过执行。
@@ -26,7 +26,7 @@ def test_daily_handler_skips_if_no_symbols_provided(
     task_config = {"name": "Test Daily", "type": "daily"}
     target_symbols = []
 
-    handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage, mock_args)
+    handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
     handler.execute(target_symbols=target_symbols)
 
     mock_fetcher.fetch_daily_history.assert_not_called()
@@ -37,7 +37,7 @@ def test_daily_handler_skips_if_no_symbols_provided(
 
 
 def test_daily_task_handler_calculates_incremental_start_date_correctly(
-    mock_fetcher, mock_storage, mock_args
+    mock_fetcher, mock_storage
 ):
     """
     【专项测试】验证增量更新时，是否能正确计算出下一次请求的 start_date。
@@ -47,7 +47,7 @@ def test_daily_task_handler_calculates_incremental_start_date_correctly(
 
     mock_storage.get_latest_date.return_value = "20231110"
 
-    handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage, mock_args)
+    handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
     handler.execute(target_symbols=target_symbols)
 
     mock_fetcher.fetch_daily_history.assert_called_once()
@@ -62,7 +62,7 @@ def test_daily_task_handler_calculates_incremental_start_date_correctly(
 
 
 def test_daily_task_handler_handles_no_existing_data(
-    mock_fetcher, mock_storage, mock_args
+    mock_fetcher, mock_storage
 ):
     """
     【专项测试】验证当 storage 中无历史数据时，start_date 是否为默认的早期日期。
@@ -72,7 +72,7 @@ def test_daily_task_handler_handles_no_existing_data(
 
     mock_storage.get_latest_date.return_value = None
 
-    handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage, mock_args)
+    handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
     handler.execute(target_symbols=target_symbols)
 
     mock_fetcher.fetch_daily_history.assert_called_once()
@@ -85,7 +85,7 @@ def test_daily_task_handler_handles_no_existing_data(
 
 
 def test_daily_task_handler_skips_if_data_is_up_to_date(
-    mock_fetcher, mock_storage, mock_args
+    mock_fetcher, mock_storage
 ):
     """
     【专项测试】验证当本地数据已经是最新时，是否会跳过网络请求。
@@ -97,7 +97,7 @@ def test_daily_task_handler_skips_if_data_is_up_to_date(
     today = datetime.now().strftime("%Y%m%d")
     mock_storage.get_latest_date.return_value = today
 
-    handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage, mock_args)
+    handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
     handler.execute(target_symbols=target_symbols)
 
     mock_fetcher.fetch_daily_history.assert_not_called()

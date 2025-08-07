@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 import tempfile
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest.mock import Mock, patch
 
 from downloader.storage import DuckDBStorage

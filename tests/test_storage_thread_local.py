@@ -4,7 +4,6 @@ import pytest
 import pandas as pd
 import threading
 import time
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from downloader.storage import DuckDBStorage
 

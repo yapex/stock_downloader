@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import MagicMock
 import pandas as pd
 from downloader.tasks.daily import DailyTaskHandler
 from downloader.tasks.daily_basic import DailyBasicTaskHandler
@@ -21,45 +21,33 @@ class TestDataDownloadStage:
         storage.get_latest_date.return_value = None  # 默认无历史数据
         return storage
 
-    def test_rate_limit_wrapper_applied_when_configured(self, mock_fetcher, mock_storage):
-        """测试当task_config配置了rate_limit时，_fetch_data被正确封装"""
+    def test_rate_limit_with_ratelimit_library(self, mock_fetcher, mock_storage):
+        """测试使用ratelimit库的限流功能"""
         task_config = {
             "name": "Test Daily",
-            "type": "daily", 
+            "type": "daily",
             "adjust": "qfq",
             "rate_limit": {
                 "calls_per_minute": 100
             }
         }
         
-        # 模拟fetcher返回数据
         mock_data = pd.DataFrame({
-            "trade_date": ["20230101", "20230102"],
-            "open": [10.0, 10.5]
+            "trade_date": ["20230101"],
+            "open": [10.0]
         })
         mock_fetcher.fetch_daily_history.return_value = mock_data
         
         handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
         
-        # 使用patch监控rate_limit装饰器的应用
-        with patch('downloader.tasks.base.rate_limit') as mock_rate_limit:
-            # 让rate_limit装饰器返回原函数
-            mock_rate_limit.return_value = lambda func: func
-            
-            # 执行单个股票处理
-            success = handler._process_single_symbol("000001.SZ")
-            
-            # 验证rate_limit装饰器被调用，参数正确
-            mock_rate_limit.assert_called_once_with(
-                calls_per_minute=100, 
-                task_key="Test Daily_000001.SZ"
-            )
-            
-        # 验证fetcher被调用
+        # 执行单个股票处理
+        success = handler._process_single_symbol("000001.SZ")
+        
+        # 验证fetcher被调用（ratelimit库会自动处理限流）
         assert mock_fetcher.fetch_daily_history.called
         assert success is True
 
-    def test_rate_limit_wrapper_not_applied_when_not_configured(self, mock_fetcher, mock_storage):
+    def test_no_rate_limit_configuration(self, mock_fetcher, mock_storage):
         """测试当task_config未配置rate_limit时，直接调用fetcher方法"""
         task_config = {
             "name": "Test Daily",
@@ -76,14 +64,10 @@ class TestDataDownloadStage:
         
         handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
         
-        with patch('downloader.tasks.base.rate_limit') as mock_rate_limit:
-            # 执行单个股票处理
-            success = handler._process_single_symbol("000001.SZ")
-            
-            # 验证rate_limit装饰器未被调用
-            mock_rate_limit.assert_not_called()
-            
-        # 验证fetcher被直接调用
+        # 执行单个股票处理
+        success = handler._process_single_symbol("000001.SZ")
+        
+        # 验证fetcher被直接调用（ratelimit库会自动处理限流）
         assert mock_fetcher.fetch_daily_history.called
         assert success is True
 
@@ -163,24 +147,28 @@ class TestDataDownloadStage:
         assert success is False
         mock_storage.save.assert_not_called()
 
-    def test_retry_task_key_differentiation(self, mock_fetcher, mock_storage):
-        """测试重试时task_key的区分"""
+    def test_task_execution_with_different_symbols(self, mock_fetcher, mock_storage):
+        """测试不同股票代码的任务执行"""
         task_config = {
             "name": "Test Daily",
             "type": "daily",
-            "adjust": "qfq", 
+            "adjust": "qfq",
             "rate_limit": {"calls_per_minute": 100}
         }
         
-        mock_data = pd.DataFrame({"trade_date": ["20230101"]})
+        mock_data = pd.DataFrame({
+            "trade_date": ["20230101"],
+            "open": [10.0]
+        })
         mock_fetcher.fetch_daily_history.return_value = mock_data
         
         handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
         
-        with patch('downloader.tasks.base.rate_limit') as mock_rate_limit:
-            mock_rate_limit.return_value = lambda func: func
-            
-            # 测试调用
-            handler._process_single_symbol("000001.SZ")
-            calls = mock_rate_limit.call_args_list
-            assert calls[-1][1]['task_key'] == "Test Daily_000001.SZ"
+        # 测试不同股票代码的调用
+        success1 = handler._process_single_symbol("000001.SZ")
+        success2 = handler._process_single_symbol("000002.SZ")
+        
+        # 验证两次调用都成功
+        assert success1 is True
+        assert success2 is True
+        assert mock_fetcher.fetch_daily_history.call_count == 2

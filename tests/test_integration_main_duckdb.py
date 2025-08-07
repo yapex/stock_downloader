@@ -1,4 +1,3 @@
-import os
 import logging
 import pytest
 from downloader.main import DownloaderApp

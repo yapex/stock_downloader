@@ -7,7 +7,6 @@ import sys
 import os
 import pandas as pd
 import time
-from datetime import datetime
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -34,7 +33,7 @@ def test_buffer_pool():
         max_buffer_memory_mb=10
     )
     
-    print(f"缓冲池创建完成，配置: max_buffer_size=5, flush_interval_seconds=3s")
+    print("缓冲池创建完成，配置: max_buffer_size=5, flush_interval_seconds=3s")
     
     # 创建测试数据
     test_data = [

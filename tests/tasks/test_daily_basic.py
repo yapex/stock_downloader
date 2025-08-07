@@ -2,7 +2,7 @@ from downloader.tasks.daily_basic import DailyBasicTaskHandler
 
 
 def test_daily_basic_task_handler_executes_correctly(
-    mock_fetcher, mock_storage, mock_args
+    mock_fetcher, mock_storage
 ):
     """
     测试 DailyBasicTaskHandler 是否会为 target_symbols 中的每个股票
@@ -11,7 +11,7 @@ def test_daily_basic_task_handler_executes_correctly(
     task_config = {"name": "Test Daily Basic", "type": "daily_basic"}
     target_symbols = ["000001.SZ", "600519.SH"]
 
-    handler = DailyBasicTaskHandler(task_config, mock_fetcher, mock_storage, mock_args)
+    handler = DailyBasicTaskHandler(task_config, mock_fetcher, mock_storage)
     handler.execute(target_symbols=target_symbols)
 
     # ---> 核心修正：断言正确的方法名 <---
