@@ -10,12 +10,13 @@ from .config import load_config
 from .engine import DownloadEngine
 from .fetcher import TushareFetcher
 from .storage import DuckDBStorage
+from .progress_manager import progress_manager
 
 
 class DownloaderApp:
     """
     主应用程序类，封装了数据下载的核心业务逻辑。
-    这个类将业务逻辑从 UI 层分离，使其更容易测试。
+    精简版本，主要通过 DownloadEngine 处理任务。
     """
 
     def __init__(self, logger: Optional[logging.Logger] = None):
@@ -76,7 +77,7 @@ class DownloaderApp:
         force: bool = False,
     ) -> bool:
         """
-        执行��据下载任务。
+        执行数据下载任务。精简版本，快速移交控制权给 DownloadEngine。
 
         Args:
             config_path: 配置文件路径
@@ -92,7 +93,8 @@ class DownloaderApp:
             ValueError: 配置参数错误
             Exception: 其他异常
         """
-        self.logger.info(f"开始执行任务组: {group_name}")
+        # 快速加载配置，不做过多日志输出
+        self.logger.debug(f"加载任务组: {group_name}")
         start_time = time.time()
         
         try:

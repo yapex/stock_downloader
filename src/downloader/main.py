@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 命令行接口 (CLI) 入口点。
+
+简洁的命令行接口：
+- uv run dl                    # 执行默认组任务
+- uv run dl --symbol 600519    # 下载特定股票
+- uv run dl --group daily      # 执行特定组任务
+- uv run dl retry              # 重试死信任务
+- uv run dl verify             # 验证数据库状态
 """
 
 import logging
@@ -15,6 +22,7 @@ from dotenv import load_dotenv
 from .app import DownloaderApp
 from .config import load_config
 from .logging_setup import setup_logging
+from .progress_manager import progress_manager
 
 # --- 忽略来自 tushare 的 FutureWarning ---
 warnings.filterwarnings("ignore", category=FutureWarning, module="tushare")
@@ -23,8 +31,8 @@ load_dotenv()
 
 # --- Typer 应用定义 ---
 app = typer.Typer(
-    name="downloader",
-    help="一个基于 Tushare Pro 的、可插拔的个人量化数据下载器。",
+    name="dl",
+    help="股票数据下载器 - 基于 Tushare Pro 的量化数据下载工具",
     add_completion=False,
     context_settings={"help_option_names": ["-h", "--help"]},
 )
@@ -33,243 +41,287 @@ app = typer.Typer(
 @app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
-    symbols: Optional[List[str]] = typer.Option(
+    symbol: Optional[str] = typer.Option(
         None,
-        "--symbols",
-        "-s",
-        help=(
-            "【可选】指定一个或多个股票代码 "
-            "(例如 --symbols 600519.SH -s 000001.SZ)。"
-            "如果第一个是 'all'，则下载所有A股。"
-            "如果未提供，则使用配置文件中的设置。"
-        ),
+        "--symbol",
+        "-s", 
+        help="下载特定股票代码 (例如: 600519, 000001.SZ)"
     ),
     group: str = typer.Option(
         "default",
         "--group",
         "-g",
-        help="指定要执行的任务组。",
+        help="执行指定的任务组",
     ),
     force: bool = typer.Option(
         False,
         "--force",
         "-f",
-        help="强制执行所有启用的任务，无视冷却期。",
+        help="强制执行，忽略冷却期",
         show_default=False,
     ),
     config_file: str = typer.Option(
         "config.yaml",
         "--config",
         "-c",
-        help="指定配置文件的路径。",
+        help="配置文件路径",
     ),
 ):
     """
-    程序的主执行函数。Typer 要求
+    股票数据下载器主命令
+    
+    示例:
+    \b
+      uv run dl                    # 执行默认组任务
+      uv run dl --symbol 600519    # 下载特定股票
+      uv run dl --group daily      # 执行daily组任务  
+      uv run dl --force            # 强制执行忽略冷却期
     """
     if ctx.invoked_subcommand is not None:
         return
 
-    # 创建临时的启动处理器，确保"正在启动..."消息能够即时输出
-    root_logger = logging.getLogger()
-    startup_handler = logging.StreamHandler(sys.stdout)
-    startup_handler.setFormatter(logging.Formatter("%(message)s"))
-    root_logger.addHandler(startup_handler)
-    root_logger.setLevel(logging.INFO)
-
-    logging.info("正在启动...")
-
+    # 精简启动流程
     setup_logging()
-    logger = logging.getLogger(__name__)
-
-    logger.info("初始化组件...")
-
-    separator = "=" * 30
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logger.debug(f"\n\n{separator} 程序开始运行: {timestamp} {separator}\n")
-
-    downloader_app = DownloaderApp(logger)
-
+    
+    # 转换单个symbol为symbols列表
+    symbols = [symbol] if symbol else None
+    
+    progress_manager.print_info(f"启动下载器 - 组: {group}{'，股票: ' + symbol if symbol else ''}")
+    
+    # 创建并启动下载应用
+    downloader_app = DownloaderApp()
+    
     try:
         downloader_app.run_download(
-            config_path=config_file, group_name=group, symbols=symbols, force=force
+            config_path=config_file, 
+            group_name=group, 
+            symbols=symbols, 
+            force=force
         )
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        logger.debug(f"\n{separator} 程序运行结束: {timestamp} {separator}\n")
-
+        
     except (ValueError, FileNotFoundError) as e:
-        logger.critical(f"程序启动失败: {e}")
+        progress_manager.print_error(f"启动失败: {e}")
+        raise typer.Exit(code=1)
+    except KeyboardInterrupt:
+        progress_manager.print_warning("用户中断下载")
+        raise typer.Exit(code=0)
     except Exception as e:
-        logger.critical(f"程序主流程发生严重错误: {e}", exc_info=True)
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        logger.fatal(f"\n{separator} 程序异常终止: {timestamp} {separator}\n")
+        progress_manager.print_error(f"执行异常: {e}")
+        logging.getLogger(__name__).critical(f"程序执行异常: {e}", exc_info=True)
+        raise typer.Exit(code=1)
 
 
 @app.command()
-def list_groups(
-    config_file: str = typer.Option(
-        "config.yaml",
-        "--config",
-        "-c",
-        help="指定配置文件的路径。",
+def retry(
+    task_type: Optional[str] = typer.Option(
+        None, "--task-type", "-t", 
+        help="过滤特定任务类型 (daily, stock_list, etc.)"
+    ),
+    symbol: Optional[str] = typer.Option(
+        None, "--symbol", "-s",
+        help="过滤特定股票代码"
+    ),
+    limit: Optional[int] = typer.Option(
+        None, "--limit", "-l",
+        help="限制重试任务数量"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", "-n",
+        help="预演模式，仅显示将要重试的任务"
+    ),
+    log_path: str = typer.Option(
+        "logs/dead_letter.jsonl",
+        "--log-path",
+        help="死信日志文件路径"
     ),
 ):
     """
-    列出配置文件中所有可用的任务组。
+    重试死信队列中的失败任务
+    
+    示例:
+    \b
+      uv run dl retry              # 重试所有失败任务
+      uv run dl retry --symbol 600519  # 重试特定股票的失败任务  
+      uv run dl retry --task-type daily  # 重试特定类型的失败任务
+      uv run dl retry --dry-run    # 预览将要重试的任务
     """
     try:
-        config = load_config(config_file)
-        if "groups" not in config or not config["groups"]:
-            print("配置文件中没有定义任何组。")
-            return
-
-        print("可用的任务组:")
-        for name, group_info in config["groups"].items():
-            desc = group_info.get("description", "无描述")
-            print(f"  - {name}: {desc}")
-
-    except FileNotFoundError:
-        print(f"错误: 配置文件 '{config_file}' 未找到。")
+        from .dead_letter_cli import DeadLetterCLI
+        import asyncio
+        
+        cli = DeadLetterCLI(log_path)
+        
+        # 运行异步重试函数
+        asyncio.run(cli.retry_failed_tasks(
+            task_type=task_type,
+            symbol_pattern=symbol,
+            limit=limit,
+            dry_run=dry_run
+        ))
+        
     except Exception as e:
-        print(f"读取配置时出错: {e}")
+        progress_manager.print_error(f"重试失败任务时出错: {e}")
+        raise typer.Exit(code=1)
 
 
 @app.command()
-def summary(
+def verify(
     config_file: str = typer.Option(
         "config.yaml",
         "--config",
-        "-c",
-        help="指定配置文件的路径。",
+        "-c", 
+        help="配置文件路径",
+    ),
+    show_missing: bool = typer.Option(
+        True,
+        "--show-missing/--no-missing",
+        help="显示/隐藏缺失股票信息"
+    ),
+    log_path: str = typer.Option(
+        "logs/dead_letter.jsonl",
+        "--log-path",
+        help="死信日志文件路径"
     ),
 ):
     """
-    显示数据库中所有表的记录数摘要，并检查缺失的股票数据。
+    验证数据库状态，显示数据完整性和死信统计
+    
+    示例:
+    \b
+      uv run dl verify             # 显示完整验证信息
+      uv run dl verify --no-missing  # 不显示缺失股票详情
     """
     try:
         from .storage import DuckDBStorage
+        from .dead_letter_cli import DeadLetterCLI
         import re
-
+        import os
+        
+        # 加载配置
         config = load_config(config_file)
         storage_config = config.get("storage", {})
-        db_path = storage_config.get("db_path", "data/stock.db")
-
-        print("\n=== 数据完整性检查 ===")
-        if storage_config.get("type", "duckdb") != "duckdb":
-            print("错误: 'summary' 命令仅支持 'duckdb' 存储类型。")
+        db_path = storage_config.get("db_path") or config.get("database", {}).get("path", "data/stock.db")
+        
+        print("\n🔍 数据库验证报告")
+        print("=" * 50)
+        
+        # 检查数据库是否存在
+        if not os.path.exists(db_path):
+            print(f"❌ 数据库文件不存在: {db_path}")
             raise typer.Exit(code=1)
-
+            
         storage = DuckDBStorage(db_path)
-        summary_data = storage.get_summary()
-
+        
+        # 获取表摘要信息
+        try:
+            summary_data = storage.get_summary()
+        except AttributeError:
+            # 如果get_summary方法不存在，使用基础信息
+            tables = storage.list_tables()
+            summary_data = [{"table_name": table, "record_count": "N/A"} for table in tables]
+        
         if not summary_data:
-            print("数据库中没有找到任何表。")
-            return
-
-        # 检查数据完整性
-
-        # 获取 sys_stock_list 表的记录数
-        stock_list_count = None
-        for item in summary_data:
-            if item["table_name"] == "sys_stock_list":
-                stock_list_count = item["record_count"]
-                break
-
-        if stock_list_count is None:
-            print("未找到 sys_stock_list 表，无法进行数据完整性检查。")
-            return
-
-        # 获取所有股票代码
-        stock_list_df = storage.query("system", "stock_list")
-        if stock_list_df.empty:
-            print("sys_stock_list 表为空，无法进行检查。")
-            return
-
-        all_stock_codes = set(stock_list_df["ts_code"].tolist())
-        print(f"实际获取到 {len(all_stock_codes)} 个股票代码")
-
-        # 分析业务表，收集所有存在的股票代码并统计各业务类型
-        all_existing_stock_codes = set()
-        business_type_stats = {}
-        # 匹配表名格式：任务类型_股票代码，例如 daily_basic_000001_SZ
-        table_pattern = re.compile(r"^(\w+)_(.+_\w+)$")
-
-        for item in summary_data:
-            table_name = item["table_name"]
-            if table_name.startswith("sys_"):
-                continue
-
-            match = table_pattern.match(table_name)
-            if match:
-                business_type = match.group(1)
-                stock_code_part = match.group(2)
-
-                # 统计业务类型
-                if business_type not in business_type_stats:
-                    business_type_stats[business_type] = set()
-
-                # 将下划线转换回点号，例如 000001_SZ -> 000001.SZ
-                if "_" in stock_code_part:
-                    standard_code = stock_code_part.replace("_", ".")
-                    all_existing_stock_codes.add(standard_code)
-                    business_type_stats[business_type].add(standard_code)
-
-        print("\n=== 数据完整性检查结果 ===")
-        print(f"应有股票总数: {len(all_stock_codes)}")
-        print(f"实际有数据的股票数(并集): {len(all_existing_stock_codes)}")
-
-        # 收集所有业务类型的缺失股票代码并合并去重
-        all_missing_stocks = set()
-        if business_type_stats:
-            print("\n=== 各业务类型数据统计 ===")
-
-            for business_type in sorted(business_type_stats.keys()):
-                existing_count = len(business_type_stats[business_type])
-                missing_for_type = all_stock_codes - business_type_stats[business_type]
-                missing_count = len(missing_for_type)
-
-                print(f"{business_type}: {existing_count} (缺失: {missing_count})")
-
-                # 将缺失的股票代码加入总集合
-                all_missing_stocks.update(missing_for_type)
-
-        # 显示合并去重后的缺失股票代码摘要
-        if all_missing_stocks:
-            missing_stocks_sorted = sorted(list(all_missing_stocks))
-            print("\n=== 缺失股票代码汇总 ===")
-            print(f"缺失股票总数: {len(missing_stocks_sorted)}")
-
-            # 将完整的缺失股票列表输出到日志文件
-            import os
-            from datetime import datetime
-
-            log_dir = "logs"
-            if not os.path.exists(log_dir):
-                os.makedirs(log_dir)
-
-            log_file = os.path.join(log_dir, "missing_stocks.log")
-
-            with open(log_file, "w", encoding="utf-8") as f:
-                f.write("缺失股票代码统计报告\n")
-                f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"应有股票总数: {len(all_stock_codes)}\n")
-                f.write(f"缺失股票总数: {len(missing_stocks_sorted)}\n\n")
-                f.write("缺失的股票代码列表 (Python数组格式):\n")
-                f.write(str(missing_stocks_sorted))
-
-            print(f"\n📝 完整的缺失股票列表已保存到: {log_file}")
+            print("📊 数据库中没有找到任何表")
         else:
-            print("\n✅ 所有业务表的数据都完整，没有缺失的股票。")
-
-    except FileNotFoundError:
-        print(f"错误: 配置文件 '{config_file}' 未找到。")
-    except ImportError:
-        print("错误: 'tabulate' 未安装。请运行 'pip install tabulate'。")
+            print(f"📊 数据库概览 ({len(summary_data)} 个表)")
+            
+            # 分类统计
+            sys_tables = []
+            data_tables = []
+            
+            for item in summary_data:
+                table_name = item["table_name"]
+                if table_name.startswith("sys_") or table_name.startswith("_"):
+                    sys_tables.append(item)
+                else:
+                    data_tables.append(item)
+            
+            if sys_tables:
+                print(f"\n  系统表 ({len(sys_tables)}个):")
+                for item in sys_tables:
+                    count = item.get("record_count", "N/A")
+                    print(f"    {item['table_name']}: {count} 条记录")
+            
+            if data_tables:
+                print(f"\n  数据表 ({len(data_tables)}个)")
+                
+                # 按业务类型分组统计
+                type_stats = {}
+                table_pattern = re.compile(r"^(\w+)_(.+)$")
+                
+                for item in data_tables:
+                    table_name = item["table_name"]
+                    match = table_pattern.match(table_name)
+                    if match:
+                        business_type = match.group(1)
+                        if business_type not in type_stats:
+                            type_stats[business_type] = 0
+                        type_stats[business_type] += 1
+                
+                for btype, count in sorted(type_stats.items()):
+                    print(f"    {btype}: {count} 个股票")
+        
+        # 检查死信日志
+        print(f"\n💀 死信队列状态")
+        if os.path.exists(log_path):
+            cli = DeadLetterCLI(log_path)
+            stats = cli.dead_letter_logger.get_statistics()
+            
+            if stats['total_count'] > 0:
+                print(f"   ⚠️  失败任务: {stats['total_count']} 个")
+                
+                if stats['by_task_type']:
+                    print("   按类型分布:")
+                    for task_type, count in stats['by_task_type'].items():
+                        print(f"     {task_type}: {count}")
+                
+                print("\n   💡 提示: 使用 'uv run dl retry' 重试失败任务")
+            else:
+                print("   ✅ 无失败任务")
+        else:
+            print("   ✅ 死信日志文件不存在，无失败任务")
+        
+        # 数据完整性检查（可选）
+        if show_missing and summary_data:
+            try:
+                # 尝试获取股票列表进行完整性检查
+                stock_list_df = storage.query("system", "stock_list")
+                if not stock_list_df.empty:
+                    all_stock_codes = set(stock_list_df["ts_code"].tolist())
+                    
+                    # 统计有数据的股票
+                    existing_stocks = set()
+                    table_pattern = re.compile(r"^\w+_(.+_\w+)$")
+                    
+                    for item in summary_data:
+                        table_name = item["table_name"]
+                        if not table_name.startswith(("sys_", "_")):
+                            match = table_pattern.match(table_name)
+                            if match:
+                                stock_code_part = match.group(1)
+                                if "_" in stock_code_part:
+                                    standard_code = stock_code_part.replace("_", ".")
+                                    existing_stocks.add(standard_code)
+                    
+                    missing_count = len(all_stock_codes) - len(existing_stocks)
+                    completion_rate = len(existing_stocks) / len(all_stock_codes) * 100 if all_stock_codes else 0
+                    
+                    print(f"\n📈 数据完整性")
+                    print(f"   总股票数: {len(all_stock_codes)}")
+                    print(f"   有数据股票: {len(existing_stocks)}")
+                    print(f"   完整度: {completion_rate:.1f}%")
+                    
+                    if missing_count > 0:
+                        print(f"   缺失: {missing_count} 个股票")
+            except Exception:
+                # 如果完整性检查失败，跳过但不报错
+                pass
+        
+        print("\n✅ 验证完成")
+        
     except Exception as e:
-        print(f"执行摘要时出错: {e}")
-        import traceback
-
-        traceback.print_exc()
+        progress_manager.print_error(f"验证时出错: {e}")
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

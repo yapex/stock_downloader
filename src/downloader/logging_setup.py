@@ -54,20 +54,22 @@ def setup_logging():
     console_handler.setFormatter(console_formatter)
     console_handler.setLevel(logging.INFO)
     
-    # 添加过滤器，控制台只显示特定的消息
+    # 添加过滤器，控制台只显示关键警告和错误，进度由 tqdm 管理
     class TerminalFilter(logging.Filter):
         def filter(self, record):
-            # 只允许特定的消息在终端显示
-            terminal_messages = [
+            # 只允许关键警告和错误在终端显示（WARNING 级别及以上）
+            # 同时排除一些特定的调试/信息消息，让进度条独占终端
+            if record.levelno >= logging.WARNING:
+                return True
+            
+            # 允许一些关键的启动信息
+            critical_messages = [
                 "正在启动...",
-                "初始化组件...", 
-                "开始执行任务组:",
-                "使用组配置:",
-                "全部任务已完成",
-                "程序运行完成",
-                "执行统计"
+                "程序启动失败",
+                "程序主流程发生严重错误",
+                "用户中断下载"
             ]
-            return any(msg in record.getMessage() for msg in terminal_messages)
+            return any(msg in record.getMessage() for msg in critical_messages)
     
     console_handler.addFilter(TerminalFilter())
 
