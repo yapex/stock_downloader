@@ -2,6 +2,7 @@
 """
 命令行接口 (CLI) 入口点。
 """
+
 import logging
 import sys
 import warnings
@@ -37,7 +38,8 @@ def main(
         "--symbols",
         "-s",
         help=(
-            "【可选】指定一个或多个股票代码 (例如 --symbols 600519.SH --symbols 000001.SZ)。"
+            "【可选】指定一个或多个股票代码 "
+            "(例如 --symbols 600519.SH -s 000001.SZ)。"
             "如果第一个是 'all'，则下载所有A股。"
             "如果未提供，则使用配置文件中的设置。"
         ),
@@ -63,7 +65,7 @@ def main(
     ),
 ):
     """
-    程序的主执行函数。
+    程序的主执行函数。Typer 要求
     """
     if ctx.invoked_subcommand is not None:
         return
@@ -74,12 +76,12 @@ def main(
     startup_handler.setFormatter(logging.Formatter("%(message)s"))
     root_logger.addHandler(startup_handler)
     root_logger.setLevel(logging.INFO)
-    
+
     logging.info("正在启动...")
 
     setup_logging()
     logger = logging.getLogger(__name__)
-    
+
     logger.info("初始化组件...")
 
     separator = "=" * 30
@@ -89,7 +91,9 @@ def main(
     downloader_app = DownloaderApp(logger)
 
     try:
-        downloader_app.run_download(config_path=config_file, group_name=group, symbols=symbols, force=force)
+        downloader_app.run_download(
+            config_path=config_file, group_name=group, symbols=symbols, force=force
+        )
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logger.debug(f"\n{separator} 程序运行结束: {timestamp} {separator}\n")
 
@@ -148,7 +152,7 @@ def summary(
 
         config = load_config(config_file)
         storage_config = config.get("storage", {})
-        db_path = storage_config.get("path", "data/stock_data.db")
+        db_path = storage_config.get("db_path", "data/stock_data.db")
 
         if storage_config.get("type", "duckdb") != "duckdb":
             print("错误: 'summary' 命令仅支持 'duckdb' 存储类型。")
@@ -163,10 +167,12 @@ def summary(
 
         # 排序数据
         summary_data.sort(key=lambda x: x["table_name"])
-        
+
         # 准备表格数据
         headers = ["表名", "记录数"]
-        table_data = [[item["table_name"], item["record_count"]] for item in summary_data]
+        table_data = [
+            [item["table_name"], item["record_count"]] for item in summary_data
+        ]
 
         print("数据库内容摘要:")
         print(tabulate(table_data, headers=headers, tablefmt="grid"))
