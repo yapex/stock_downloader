@@ -14,5 +14,11 @@ data/
 # Virtual environments
 .venv
 .DS_Store
+
+# Testing and coverage files
 .coverage
 .coverage*
+htmlcov/
+.pytest_cache/
+*.jsonl
+*.tmp

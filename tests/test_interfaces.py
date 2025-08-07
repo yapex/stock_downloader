@@ -7,7 +7,7 @@ import pytest
 from datetime import datetime
 from unittest.mock import MagicMock
 
-from src.downloader.interfaces import (
+from downloader.interfaces import (
     TaskMessage, DataMessage, TaskType, Priority,
     ExponentialBackoffRetryPolicy, PerformanceMetrics
 )

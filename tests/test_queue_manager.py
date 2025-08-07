@@ -8,8 +8,8 @@ import pytest_asyncio
 import asyncio
 from unittest.mock import patch
 
-from src.downloader.interfaces import TaskMessage, DataMessage, TaskType, Priority
-from src.downloader.queue_manager import MemoryQueueManager, QueueManagerFactory
+from downloader.interfaces import TaskMessage, DataMessage, TaskType, Priority
+from downloader.queue_manager import MemoryQueueManager, QueueManagerFactory
 
 
 class TestMemoryQueueManager:
