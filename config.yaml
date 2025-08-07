@@ -1,5 +1,17 @@
+# 存储配置
 storage:
-  db_path: "/Users/yapex/workspace/stock_data/stock.db"
+  path: "/Users/yapex/workspace/stock_data/stock.db"
+
+# 缓冲池配置 - 数据下载与写入分离优化
+buffer_pool:
+  max_buffer_size: 500           # 最大缓冲条目数（减少内存占用）
+  max_buffer_memory_mb: 50       # 最大缓冲内存（MB）
+  flush_interval_seconds: 15     # 自动刷新间隔（秒，更频繁刷新）
+  auto_flush: true               # 启用自动刷新
+
+# 并发控制配置
+concurrency:
+  max_concurrent_tasks: 5        # 最大并发任务数
 
 # 任务模板定义：只定义任务的核心类型和参数
 tasks:
@@ -50,17 +62,14 @@ groups:
       "000333", "002415", "000895", "603288", "600900",
       "601100", "603568", "600636", "000651", "600570",
       "000858"]
-    max_concurrent_tasks: 3
     tasks: ["update_stock_list", "daily_qfq", "daily_none", "daily_basic", "financial_income", "financial_balance", "financial_cashflow"]
     
   daily:
     description: "仅下载日K线数据"
     symbols: "all"
-    max_concurrent_tasks: 3
     tasks: ["update_stock_list", "daily_qfq", "daily_none", "daily_basic"]
     
   financial:
     description: "仅下载财务报表数据"
     symbols: "all"
-    max_concurrent_tasks: 3
     tasks: ["update_stock_list", "financial_income", "financial_balance", "financial_cashflow"]

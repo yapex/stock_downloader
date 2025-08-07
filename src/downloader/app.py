@@ -141,7 +141,7 @@ class DownloaderApp:
                 "storage": raw_config.get("storage", {}),
                 "downloader": {
                     "symbols": group_config.get("symbols", []),
-                    "max_concurrent_tasks": group_config.get("max_concurrent_tasks", 1)
+                    "max_concurrent_tasks": raw_config.get("concurrency", {}).get("max_concurrent_tasks", 1)
                 },
                 "tasks": resolved_tasks
             }

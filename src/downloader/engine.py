@@ -6,6 +6,8 @@ from datetime import datetime
 
 from .fetcher import TushareFetcher
 from .storage import DuckDBStorage
+from .buffer_pool import DataBufferPool
+from .utils import record_failed_task
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,17 @@ class DownloadEngine:
         self.force_run = force_run
         self.symbols_overridden = symbols_overridden  # 记录股票列表是否被命令行参数覆盖
         self.group_name = group_name  # 记录组名
+        
+        # 初始化缓冲池
+        buffer_config = config.get("buffer_pool", {})
+        self.buffer_pool = DataBufferPool(
+            storage=self.storage,
+            max_buffer_size=buffer_config.get("max_buffer_size", 500),
+            max_buffer_memory_mb=buffer_config.get("max_buffer_memory_mb", 50),
+            flush_interval_seconds=buffer_config.get("flush_interval_seconds", 15),
+            auto_flush=buffer_config.get("auto_flush", True)
+        )
+        
         self.task_registry = self._discover_task_handlers()
         # 执行统计
         self.execution_stats = {
@@ -155,9 +168,21 @@ class DownloadEngine:
 
         logger.debug("下载引擎所有任务执行完毕。")
         
+        # 确保缓冲池数据全部写入
+        logger.info("正在刷新缓冲池数据...")
+        self.buffer_pool.flush_all()
+        self.buffer_pool.shutdown()
+        logger.info("缓冲池数据刷新完成")
+        
         # 更新执行统计
         self.execution_stats['total_symbols'] = len(target_symbols)
         self.execution_stats['failed_tasks'] = failed_tasks
+        
+        # 输出缓冲池统计信息
+        stats = self.buffer_pool.get_stats()
+        logger.info(f"缓冲池统计 - 总缓冲: {stats['total_buffered']}, 总刷新: {stats['total_flushed']}, 当前缓冲: {stats['current_buffer_size']}")
+        logger.info(f"缓冲池统计 - 刷新次数: {stats['flush_count']}, 最后刷新: {stats['last_flush_time']}")
+        logger.info(f"缓冲池统计 - 内存使用: {stats['current_buffer_memory_mb']:.2f} MB")
         
         # ===================================================================
         #   组内任务完成后，根据 is_full_group_run 和任务成功情况更新 last_run_ts
@@ -216,7 +241,7 @@ class DownloadEngine:
             final_task_config.update(task_spec)
             try:
                 handler_instance = handler_class(
-                    final_task_config, self.fetcher, self.storage, self.force_run
+                    final_task_config, self.fetcher, self.storage, self.buffer_pool, self.force_run
                 )
                 handler_instance.execute(**kwargs)
             except Exception as e:

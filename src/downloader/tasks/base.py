@@ -6,9 +6,10 @@ from tqdm import tqdm
 import sys
 
 # 导入核心组件以进行类型提示，增强代码可读性和健壮性
-from downloader.fetcher import TushareFetcher
-from downloader.storage import DuckDBStorage
-from downloader.rate_limit import rate_limit
+from ..fetcher import TushareFetcher
+from ..storage import DuckDBStorage
+from ..buffer_pool import DataBufferPool
+from ..rate_limit import rate_limit
 
 # 从新的 utils 模块导入工具函数
 from ..utils import record_failed_task
@@ -23,11 +24,13 @@ class BaseTaskHandler(ABC):
         task_config: dict,
         fetcher: TushareFetcher,
         storage: DuckDBStorage,
+        buffer_pool: DataBufferPool = None,
         force_run: bool = False,
     ):
         self.task_config = task_config
         self.fetcher = fetcher
         self.storage = storage
+        self.buffer_pool = buffer_pool
         self.force_run = force_run
         self.logger = logging.getLogger(self.__class__.__name__)
         self._current_progress_bar = None
@@ -178,7 +181,13 @@ class IncrementalTaskHandler(BaseTaskHandler):
 
             # 步骤4: 保存数据
             if df is not None and not df.empty:
-                self.storage.save(df, data_type, ts_code, date_col=date_col)
+                if self.buffer_pool:
+                    # 使用缓冲池
+                    task_name = self.task_config.get('name', data_type)
+                    self.buffer_pool.add_data(df, data_type, ts_code, date_col, task_name)
+                else:
+                    # 直接写入数据库（向后兼容）
+                    self.storage.save(df, data_type, ts_code, date_col=date_col)
                 return True
             elif df is not None:  # 空 DataFrame，表示没有新数据
                 return True
