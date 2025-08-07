@@ -185,12 +185,12 @@ class DownloaderApp:
         if total_symbols == 0:
             # 没有股票符号的任务（如更新股票列表）
             if failed_tasks:
-                self.logger.info(f"执行统计: 任务失败 - {', '.join(failed_tasks)} (详细信息请查看 downloader.log)")
+                self.logger.info(f"执行统计: 任务失败 - {', '.join(failed_tasks)} (详细信息请查看 logs/downloader.log)")
             else:
                 self.logger.info("执行统计: 所有任务成功完成")
         else:
             # 有股票符号的任务
             if failed_tasks:
-                self.logger.info(f"执行统计: 处理 {total_symbols} 只股票，任务失败 - {', '.join(failed_tasks)} (详细信息请查看 downloader.log)")
+                self.logger.info(f"执行统计: 处理 {total_symbols} 只股票，任务失败 - {', '.join(failed_tasks)} (详细信息请查看 logs/downloader.log)")
             else:
                 self.logger.info(f"执行统计: 成功处理 {total_symbols} 只股票")

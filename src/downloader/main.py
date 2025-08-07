@@ -188,40 +188,78 @@ def summary(
         all_stock_codes = set(stock_list_df["ts_code"].tolist())
         print(f"实际获取到 {len(all_stock_codes)} 个股票代码")
 
-        # 分析业务表，收集所有存在的股票代码
+        # 分析业务表，收集所有存在的股票代码并统计各业务类型
         all_existing_stock_codes = set()
+        business_type_stats = {}
         # 匹配表名格式：任务类型_股票代码，例如 daily_basic_000001_SZ
-        table_pattern = re.compile(r"^\w+_(.+_\w+)$")
-        # 用tqdm显示进度
-        from tqdm import tqdm
+        table_pattern = re.compile(r"^(\w+)_(.+_\w+)$")
 
-        for item in tqdm(summary_data, desc="检查业务表"):
+        for item in summary_data:
             table_name = item["table_name"]
             if table_name.startswith("sys_"):
                 continue
 
             match = table_pattern.match(table_name)
             if match:
-                stock_code_part = match.group(1)
+                business_type = match.group(1)
+                stock_code_part = match.group(2)
+
+                # 统计业务类型
+                if business_type not in business_type_stats:
+                    business_type_stats[business_type] = set()
+
                 # 将下划线转换回点号，例如 000001_SZ -> 000001.SZ
                 if "_" in stock_code_part:
                     standard_code = stock_code_part.replace("_", ".")
                     all_existing_stock_codes.add(standard_code)
-
-        # 找出缺失的股票代码
-        missing_stocks = all_stock_codes - all_existing_stock_codes
+                    business_type_stats[business_type].add(standard_code)
 
         print(f"\n=== 数据完整性检查结果 ===")
         print(f"应有股票总数: {len(all_stock_codes)}")
-        print(f"实际有数据的股票数: {len(all_existing_stock_codes)}")
-        print(f"缺失股票数: {len(missing_stocks)}")
+        print(f"实际有数据的股票数(并集): {len(all_existing_stock_codes)}")
 
-        if missing_stocks:
-            missing_stocks_sorted = sorted(list(missing_stocks))
-            print(f"\n=== 缺失的股票代码 (共{len(missing_stocks_sorted)}个) ===")
-            print(missing_stocks_sorted)
+        # 收集所有业务类型的缺失股票代码并合并去重
+        all_missing_stocks = set()
+        if business_type_stats:
+            print(f"\n=== 各业务类型数据统计 ===")
+
+            for business_type in sorted(business_type_stats.keys()):
+                existing_count = len(business_type_stats[business_type])
+                missing_for_type = all_stock_codes - business_type_stats[business_type]
+                missing_count = len(missing_for_type)
+
+                print(f"{business_type}: {existing_count} (缺失: {missing_count})")
+
+                # 将缺失的股票代码加入总集合
+                all_missing_stocks.update(missing_for_type)
+
+        # 显示合并去重后的缺失股票代码摘要
+        if all_missing_stocks:
+            missing_stocks_sorted = sorted(list(all_missing_stocks))
+            print(f"\n=== 缺失股票代码汇总 ===")
+            print(f"缺失股票总数: {len(missing_stocks_sorted)}")
+
+            # 将完整的缺失股票列表输出到日志文件
+            import os
+            from datetime import datetime
+
+            log_dir = "logs"
+            if not os.path.exists(log_dir):
+                os.makedirs(log_dir)
+
+            log_file = os.path.join(log_dir, "missing_stocks.log")
+
+            with open(log_file, "w", encoding="utf-8") as f:
+                f.write(f"缺失股票代码统计报告\n")
+                f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"应有股票总数: {len(all_stock_codes)}\n")
+                f.write(f"缺失股票总数: {len(missing_stocks_sorted)}\n\n")
+                f.write("缺失的股票代码列表 (Python数组格式):\n")
+                f.write(str(missing_stocks_sorted))
+
+            print(f"\n📝 完整的缺失股票列表已保存到: {log_file}")
         else:
-            print("\n✅ 所有股票都有数据，数据完整。")
+            print("\n✅ 所有业务表的数据都完整，没有缺失的股票。")
 
     except FileNotFoundError:
         print(f"错误: 配置文件 '{config_file}' 未找到。")

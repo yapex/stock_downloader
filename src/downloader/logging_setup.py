@@ -40,7 +40,12 @@ def setup_logging():
     console_formatter = logging.Formatter("%(message)s")  # 终端只显示消息内容
 
     # 文件处理器 - 记录所有级别的日志
-    file_handler = logging.FileHandler("downloader.log", mode="a", encoding="utf-8")
+    import os
+    log_dir = "logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    log_file = os.path.join(log_dir, "downloader.log")
+    file_handler = logging.FileHandler(log_file, mode="w", encoding="utf-8")
     file_handler.setFormatter(file_formatter)
     file_handler.setLevel(logging.DEBUG)
 

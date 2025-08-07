@@ -1,6 +1,9 @@
 import re
 from datetime import datetime
 
+# 用于跟踪日志文件是否已经在当前运行中被初始化（覆盖）
+_log_files_initialized = set()
+
 
 def normalize_stock_code(code: str) -> str:
     """
@@ -60,10 +63,25 @@ def record_failed_task(task_name: str, entity_id: str, reason: str, error_catego
             - "parameter": 参数错误
             - "system": 系统错误
     """
-    # 确定日志文件名
-    log_file = "failed_tasks.log" if error_category == "business" else f"failed_tasks_{error_category}.log"
+    # 确保logs目录存在
+    import os
+    log_dir = "logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
     
-    with open(log_file, "a", encoding="utf-8") as f:
+    # 确定日志文件名
+    log_filename = "failed_tasks.log" if error_category == "business" else f"failed_tasks_{error_category}.log"
+    log_file = os.path.join(log_dir, log_filename)
+    
+    # 确定写入模式：第一次写入覆盖，后续追加
+    global _log_files_initialized
+    if log_file not in _log_files_initialized:
+        mode = "w"  # 覆盖模式
+        _log_files_initialized.add(log_file)
+    else:
+        mode = "a"  # 追加模式
+    
+    with open(log_file, mode, encoding="utf-8") as f:
         f.write(f"{datetime.now().isoformat()},{task_name},{entity_id},{reason},{error_category}\n")
 
 

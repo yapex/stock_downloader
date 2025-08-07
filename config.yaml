@@ -1,5 +1,5 @@
 storage:
-  db_path: "data/stock.db"
+  db_path: "/Users/yapex/workspace/stock_data/stock.db"
 
 # 任务模板定义：只定义任务的核心类型和参数
 tasks:
