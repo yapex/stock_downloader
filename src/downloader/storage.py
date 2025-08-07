@@ -221,5 +221,18 @@ class DuckDBStorage:
         except Exception as e:
             logger.error(f"设置组 {group_name} 的 last_run 失败: {e}")
 
+    def get_summary(self) -> list[dict]:
+        """获取数据库中所有表的记录数摘要。"""
+        summary_data = []
+        tables = self.list_tables()
+        for table_name in tables:
+            try:
+                count = self.conn.execute(f'SELECT COUNT(*) FROM "{table_name}"').fetchone()[0]
+                summary_data.append({"table_name": table_name, "record_count": count})
+            except Exception as e:
+                logger.error(f"无法获取表 '{table_name}' 的摘要: {e}")
+                summary_data.append({"table_name": table_name, "record_count": "错误"})
+        return summary_data
+
 
 __all__ = ["DuckDBStorage"]

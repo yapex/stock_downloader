@@ -103,7 +103,7 @@ class TestCLIIntegration:
             patch("builtins.open", mock_open(read_data=sample_config_content)),
             patch("pathlib.Path.exists", return_value=True),
         ):
-            result = cli_runner.invoke(app, ["600519.SH", "000001.SZ"])
+            result = cli_runner.invoke(app, ["--symbols", "600519.SH", "--symbols", "000001.SZ"])
 
             assert result.exit_code == 0
             mock_app.run_download.assert_called_once_with(
@@ -127,7 +127,7 @@ class TestCLIIntegration:
             patch("builtins.open", mock_open(read_data=sample_config_content)),
             patch("pathlib.Path.exists", return_value=True),
         ):
-            result = cli_runner.invoke(app, ["all"])
+            result = cli_runner.invoke(app, ["--symbols", "all"])
 
             assert result.exit_code == 0
             mock_app.run_download.assert_called_once_with(
@@ -176,7 +176,7 @@ class TestCLIIntegration:
             patch("pathlib.Path.exists", return_value=True),
         ):
             result = cli_runner.invoke(
-                app, ["--config", "custom.yaml", "--force", "600519.SH"]
+                app, ["--config", "custom.yaml", "--force", "--group", "default", "--symbols", "600519.SH"]
             )
 
             assert result.exit_code == 0

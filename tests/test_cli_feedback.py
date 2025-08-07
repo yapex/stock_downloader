@@ -236,7 +236,7 @@ class TestCLIFeedback:
             
             # 设置日志级别为 INFO 以捕获关键信息
             with caplog.at_level(logging.INFO):
-                result = cli_runner.invoke(app, ["600519.SH", "000001.SZ"])
+                result = cli_runner.invoke(app, ["--symbols", "600519.SH", "--symbols", "000001.SZ"])
         
         # 断言程序正常退出
         assert result.exit_code == 0

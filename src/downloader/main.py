@@ -32,12 +32,14 @@ app = typer.Typer(
 @app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
-    symbols: Optional[List[str]] = typer.Argument(
+    symbols: Optional[List[str]] = typer.Option(
         None,
+        "--symbols",
+        "-s",
         help=(
-            "【可选】指定一个或多个股票代码 (例如 600519.SH 000001.SZ)。"
+            "【可选】指定一个或多个股票代码 (例如 --symbols 600519.SH --symbols 000001.SZ)。"
             "如果第一个是 'all'，则下载所有A股。"
-            "如果未提供，则使用置文件中的设置。"
+            "如果未提供，则使用配置文件中的设置。"
         ),
     ),
     group: str = typer.Option(
@@ -126,6 +128,55 @@ def list_groups(
         print(f"错误: 配置文件 '{config_file}' 未找到。")
     except Exception as e:
         print(f"读取配置时出错: {e}")
+
+
+@app.command()
+def summary(
+    config_file: str = typer.Option(
+        "config.yaml",
+        "--config",
+        "-c",
+        help="指定配置文件的路径。",
+    ),
+):
+    """
+    显示数据库中所有表的记录数摘要。
+    """
+    try:
+        from tabulate import tabulate
+        from .storage import DuckDBStorage
+
+        config = load_config(config_file)
+        storage_config = config.get("storage", {})
+        db_path = storage_config.get("path", "data/stock_data.db")
+
+        if storage_config.get("type", "duckdb") != "duckdb":
+            print("错误: 'summary' 命令仅支持 'duckdb' 存储类型。")
+            raise typer.Exit(code=1)
+
+        storage = DuckDBStorage(db_path)
+        summary_data = storage.get_summary()
+
+        if not summary_data:
+            print("数据库中没有找到任何表。")
+            return
+
+        # 排序数据
+        summary_data.sort(key=lambda x: x["table_name"])
+        
+        # 准备表格数据
+        headers = ["表名", "记录数"]
+        table_data = [[item["table_name"], item["record_count"]] for item in summary_data]
+
+        print("数据库内容摘要:")
+        print(tabulate(table_data, headers=headers, tablefmt="grid"))
+
+    except FileNotFoundError:
+        print(f"错误: 配置文件 '{config_file}' 未找到。")
+    except ImportError:
+        print("错误: 'tabulate' 未安装。请运行 'pip install tabulate'。")
+    except Exception as e:
+        print(f"执行摘要时出错: {e}")
 
 
 if __name__ == "__main__":
