@@ -144,16 +144,17 @@ def summary(
     ),
 ):
     """
-    显示数据库中所有表的记录数摘要。
+    显示数据库中所有表的记录数摘要，并检查缺失的股票数据。
     """
     try:
-        from tabulate import tabulate
         from .storage import DuckDBStorage
+        import re
 
         config = load_config(config_file)
         storage_config = config.get("storage", {})
-        db_path = storage_config.get("db_path", "data/stock_data.db")
+        db_path = storage_config.get("db_path", "data/stock.db")
 
+        print("\n=== 数据完整性检查 ===")
         if storage_config.get("type", "duckdb") != "duckdb":
             print("错误: 'summary' 命令仅支持 'duckdb' 存储类型。")
             raise typer.Exit(code=1)
@@ -165,17 +166,62 @@ def summary(
             print("数据库中没有找到任何表。")
             return
 
-        # 排序数据
-        summary_data.sort(key=lambda x: x["table_name"])
+        # 检查数据完整性
 
-        # 准备表格数据
-        headers = ["表名", "记录数"]
-        table_data = [
-            [item["table_name"], item["record_count"]] for item in summary_data
-        ]
+        # 获取 sys_stock_list 表的记录数
+        stock_list_count = None
+        for item in summary_data:
+            if item["table_name"] == "sys_stock_list":
+                stock_list_count = item["record_count"]
+                break
 
-        print("数据库内容摘要:")
-        print(tabulate(table_data, headers=headers, tablefmt="grid"))
+        if stock_list_count is None:
+            print("未找到 sys_stock_list 表，无法进行数据完整性检查。")
+            return
+
+        # 获取所有股票代码
+        stock_list_df = storage.query("system", "stock_list")
+        if stock_list_df.empty:
+            print("sys_stock_list 表为空，无法进行检查。")
+            return
+
+        all_stock_codes = set(stock_list_df["ts_code"].tolist())
+        print(f"实际获取到 {len(all_stock_codes)} 个股票代码")
+
+        # 分析业务表，收集所有存在的股票代码
+        all_existing_stock_codes = set()
+        # 匹配表名格式：任务类型_股票代码，例如 daily_basic_000001_SZ
+        table_pattern = re.compile(r"^\w+_(.+_\w+)$")
+        # 用tqdm显示进度
+        from tqdm import tqdm
+
+        for item in tqdm(summary_data, desc="检查业务表"):
+            table_name = item["table_name"]
+            if table_name.startswith("sys_"):
+                continue
+
+            match = table_pattern.match(table_name)
+            if match:
+                stock_code_part = match.group(1)
+                # 将下划线转换回点号，例如 000001_SZ -> 000001.SZ
+                if "_" in stock_code_part:
+                    standard_code = stock_code_part.replace("_", ".")
+                    all_existing_stock_codes.add(standard_code)
+
+        # 找出缺失的股票代码
+        missing_stocks = all_stock_codes - all_existing_stock_codes
+
+        print(f"\n=== 数据完整性检查结果 ===")
+        print(f"应有股票总数: {len(all_stock_codes)}")
+        print(f"实际有数据的股票数: {len(all_existing_stock_codes)}")
+        print(f"缺失股票数: {len(missing_stocks)}")
+
+        if missing_stocks:
+            missing_stocks_sorted = sorted(list(missing_stocks))
+            print(f"\n=== 缺失的股票代码 (共{len(missing_stocks_sorted)}个) ===")
+            print(missing_stocks_sorted)
+        else:
+            print("\n✅ 所有股票都有数据，数据完整。")
 
     except FileNotFoundError:
         print(f"错误: 配置文件 '{config_file}' 未找到。")
@@ -183,6 +229,9 @@ def summary(
         print("错误: 'tabulate' 未安装。请运行 'pip install tabulate'。")
     except Exception as e:
         print(f"执行摘要时出错: {e}")
+        import traceback
+
+        traceback.print_exc()
 
 
 if __name__ == "__main__":
