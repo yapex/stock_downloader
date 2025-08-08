@@ -1,0 +1,279 @@
+# 代码清理计划 - 安全删除候选清单
+# 基于静态分析、引用检查和测试覆盖率分析
+
+version: "1.0"
+analysis_date: "2025-01-13"
+project: "stock_downloader"
+total_modules: 54
+orphaned_modules: 13
+
+# =======================================================
+# HIGH PRIORITY: 立即删除 (无引用且0%覆盖率)
+# =======================================================
+high_priority:
+  description: "无任何运行时引用，0%测试覆盖率，可立即安全删除"
+  
+  candidates:
+    - name: "enhanced_queue_manager"
+      file_path: "src/downloader/enhanced_queue_manager.py"
+      size_lines: 382
+      coverage: "0%"
+      references: []
+      dependencies: []
+      import_changes_needed: []
+      entry_points_changes: []
+      reason: "完整的队列管理器实现，但无任何模块引用，被queue_manager.py (92%覆盖率) 替代"
+      risk_level: "无风险"
+      action: "立即删除"
+
+    - name: "find_unused_script"
+      file_path: "scripts/find_unused.py"
+      size_lines: ~300
+      coverage: "0%"
+      references: []
+      dependencies: []
+      import_changes_needed: []
+      entry_points_changes: []
+      reason: "一次性分析脚本，已完成其使命"
+      risk_level: "无风险"
+      action: "立即删除"
+
+    - name: "dead_letter_csv"
+      file_path: "src/downloader/dead_letter_csv.py"
+      size_lines: 122
+      coverage: "83%"
+      references: []
+      dependencies: []
+      import_changes_needed: []
+      entry_points_changes: []
+      reason: "虽有测试但无运行时引用，可能是废弃功能"
+      risk_level: "低风险"
+      action: "删除并移除对应测试"
+
+    - name: "domain_init"
+      file_path: "src/downloader/domain/__init__.py"
+      size_lines: 0
+      coverage: "100%"
+      references: []
+      dependencies: ["domain/category_service.py"]
+      import_changes_needed: []
+      entry_points_changes: []
+      reason: "空文件，domain包结构可简化"
+      risk_level: "无风险"
+      action: "删除空__init__.py"
+
+# =======================================================
+# MEDIUM PRIORITY: 有少量引用或替换易实现
+# =======================================================
+medium_priority:
+  description: "有少量引用或已有替代方案，需要少量修改即可删除"
+  
+  candidates:
+    - name: "tasks_init_files"
+      file_path: "src/downloader/tasks/__init__.py"
+      size_lines: 0
+      coverage: "100%"
+      references: []
+      dependencies: ["tasks/base.py", "tasks/daily.py", "tasks/daily_basic.py", "tasks/financials.py", "tasks/stock_list.py"]
+      import_changes_needed:
+        - file: "src/downloader/engine.py"
+          changes: "将 from downloader.tasks.xxx 改为直接路径导入"
+      entry_points_changes: []
+      reason: "空的__init__.py，可简化包结构"
+      risk_level: "低风险"
+      action: "删除并更新导入路径"
+
+    - name: "duplicate_category_service"
+      file_path: "stock_downloader/domain/category_service.py"
+      size_lines: 39
+      coverage: "100%"
+      references: []
+      dependencies: []
+      import_changes_needed: []
+      entry_points_changes: []
+      reason: "与src/downloader/domain/category_service.py重复"
+      risk_level: "低风险"
+      action: "删除重复文件"
+
+    - name: "unused_task_handlers"
+      file_path: ["src/downloader/tasks/base.py", "src/downloader/tasks/daily.py", "src/downloader/tasks/daily_basic.py", "src/downloader/tasks/financials.py", "src/downloader/tasks/stock_list.py"]
+      size_lines: [108, 11, 9, 17, 18]
+      coverage: ["83%", "100%", "100%", "82%", "83%"]
+      references: []
+      dependencies: []
+      import_changes_needed: []
+      entry_points_changes:
+        - file: "pyproject.toml"
+          section: "[project.entry-points.\"stock_downloader.task_handlers\"]"
+          action: "删除对应的entry-points配置"
+      reason: "任务处理器模式未被实际使用，插件系统未激活"
+      risk_level: "中等风险"
+      action: "评估后考虑删除整个tasks包"
+
+# =======================================================  
+# LOW PRIORITY: 覆盖率低但仍需核心功能
+# =======================================================
+low_priority:
+  description: "覆盖率较低但属于核心功能，需要增加测试而不是删除"
+  
+  candidates:
+    - name: "buffer_pool"
+      file_path: "src/downloader/buffer_pool.py"
+      size_lines: 153
+      coverage: "22%"
+      references: ["src/downloader/engine.py", "src/downloader/tasks/base.py"]
+      dependencies: ["storage.py", "models.py"]
+      import_changes_needed: []
+      entry_points_changes: []
+      reason: "核心缓冲池功能，被engine大量使用，需要补充测试"
+      risk_level: "高风险"
+      action: "保留，增加测试覆盖率至80%+"
+
+    - name: "consumer_pool"
+      file_path: "src/downloader/consumer_pool.py"
+      size_lines: 254
+      coverage: "22%"
+      references: ["src/downloader/engine.py"]
+      dependencies: ["storage.py", "models.py", "progress_manager.py"]
+      import_changes_needed: []
+      entry_points_changes: []
+      reason: "生产者-消费者模式的核心组件，在engine中被大量使用"
+      risk_level: "高风险"
+      action: "保留，增加测试覆盖率至80%+"
+
+    - name: "producer_pool"
+      file_path: "src/downloader/producer_pool.py"
+      size_lines: 219
+      coverage: "26%"
+      references: ["src/downloader/engine.py"]
+      dependencies: ["fetcher.py", "models.py", "retry_policy.py"]
+      import_changes_needed: []
+      entry_points_changes: []
+      reason: "生产者线程池管理，engine的核心组件"
+      risk_level: "高风险"
+      action: "保留，增加测试覆盖率至80%+"
+
+    - name: "storage"
+      file_path: "src/downloader/storage.py"
+      size_lines: 274
+      coverage: "31%"
+      references: ["src/downloader/main.py", "src/downloader/missing_symbols.py", "src/downloader/app.py", "src/downloader/engine.py", "src/downloader/consumer_pool.py", "src/downloader/tasks/base.py", "tests/test_storage.py", "examples/minimal_run.py"]
+      dependencies: []
+      import_changes_needed: []
+      entry_points_changes: []
+      reason: "DuckDB存储层核心实现，被整个系统广泛使用"
+      risk_level: "高风险"
+      action: "保留，扩展现有测试至80%+"
+
+    - name: "progress_manager"
+      file_path: "src/downloader/progress_manager.py"
+      size_lines: 86
+      coverage: "34%"
+      references: ["src/downloader/main.py", "src/downloader/engine.py", "src/downloader/app.py"]
+      dependencies: []
+      import_changes_needed: []
+      entry_points_changes: []
+      reason: "用户交互的重要组件，提供实时进度显示"
+      risk_level: "中等风险"
+      action: "保留，增加测试覆盖率至75%+"
+
+    - name: "logging_setup"
+      file_path: "src/downloader/logging_setup.py"
+      size_lines: 41
+      coverage: "17%"
+      references: ["src/downloader/main.py"]
+      dependencies: []
+      import_changes_needed: []
+      entry_points_changes: []
+      reason: "基础设施组件，配置应用程序日志系统"
+      risk_level: "低风险"
+      action: "保留，增加测试覆盖率至70%+"
+
+# =======================================================
+# EXECUTION PLAN: 执行计划
+# =======================================================
+execution_plan:
+  phase_1:
+    name: "立即删除阶段"
+    priority: "high"
+    estimated_time: "1小时"
+    actions:
+      - "删除 enhanced_queue_manager.py"
+      - "删除 scripts/find_unused.py"
+      - "删除 dead_letter_csv.py 及其测试"
+      - "删除空的 __init__.py 文件"
+      - "删除 stock_downloader/domain/category_service.py"
+    validation:
+      - "运行完整测试套件确保无破坏"
+      - "检查import语句无错误"
+
+  phase_2:
+    name: "中等优先级清理"
+    priority: "medium"
+    estimated_time: "2-3小时"
+    actions:
+      - "评估tasks包的实际使用情况"
+      - "如确认未使用，删除整个tasks目录"
+      - "更新pyproject.toml移除相关entry-points"
+      - "简化导入路径"
+    validation:
+      - "运行完整测试套件"
+      - "检查entry-points配置正确性"
+
+  phase_3:
+    name: "测试覆盖率提升"
+    priority: "low"
+    estimated_time: "10-15小时"
+    actions:
+      - "为核心组件编写完整测试"
+      - "目标覆盖率: buffer_pool(80%+), consumer_pool(80%+), producer_pool(80%+), storage(80%+)"
+      - "基础组件适度提升: progress_manager(75%+), logging_setup(70%+)"
+    validation:
+      - "达成整体覆盖率70%+的目标"
+      - "确保所有核心功能稳定可靠"
+
+# =======================================================
+# RISK ASSESSMENT: 风险评估
+# =======================================================
+risk_assessment:
+  overall_risk: "低到中等"
+  
+  high_risk_operations:
+    - action: "删除tasks包"
+      risk: "可能影响插件系统的未来扩展"
+      mitigation: "仔细评估entry-points使用情况，保留必要的扩展点"
+    
+    - action: "删除dead_letter_csv"
+      risk: "可能有未发现的运行时引用"
+      mitigation: "运行集成测试确保无隐藏依赖"
+
+  low_risk_operations:
+    - "删除enhanced_queue_manager.py - 已确认无任何引用"
+    - "删除find_unused.py - 分析工具脚本"
+    - "删除空__init__.py文件 - 结构简化"
+
+# =======================================================
+# SUCCESS METRICS: 成功指标
+# =======================================================
+success_metrics:
+  code_reduction:
+    target: "删除20-30%的无用代码"
+    current_total: 3027
+    expected_after: 2100-2400
+    
+  coverage_improvement:
+    current: "55%"
+    target: "70%+"
+    
+  maintenance_burden:
+    description: "减少维护负担，聚焦核心功能"
+    measurement: "减少未使用模块数量从13个到0-2个"
+
+# =======================================================
+# NOTES: 备注
+# =======================================================
+notes:
+  - "此计划基于静态分析和运行时引用检查"
+  - "建议分阶段执行，每阶段后运行完整测试"
+  - "保持现有功能完整性，优先提升代码质量"
+  - "entry-points删除需特别谨慎，可能影响CLI功能"

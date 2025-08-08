@@ -1,0 +1,70 @@
+=================================================== test session starts ===================================================
+platform darwin -- Python 3.13.3, pytest-8.4.1, pluggy-1.6.0
+rootdir: /Users/yapex/workspace/stock_downloader
+configfile: pytest.ini
+plugins: asyncio-1.1.0, cov-6.2.1
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 160 items                                                                                                       
+
+tests/tasks/test_daily.py .....                                                                                     [  3%]
+tests/tasks/test_daily_basic.py .                                                                                   [  3%]
+tests/tasks/test_financials.py .                                                                                    [  4%]
+tests/tasks/test_network_error_handling.py ...                                                                      [  6%]
+tests/tasks/test_stock_list.py .                                                                                    [  6%]
+tests/test_app.py ...................                                                                               [ 18%]
+tests/test_category_service.py ....                                                                                 [ 21%]
+tests/test_dead_letter_csv_logging_and_errors.py .....                                                              [ 24%]
+tests/test_engine.py ....                                                                                           [ 26%]
+tests/test_fetcher.py ............................                                                                  [ 44%]
+tests/test_interfaces.py .......................                                                                    [ 58%]
+tests/test_main_verify.py ......                                                                                    [ 62%]
+tests/test_missing_sets.py ......                                                                                   [ 66%]
+tests/test_missing_symbols.py .........                                                                             [ 71%]
+tests/test_queue_manager.py ..............                                                                          [ 80%]
+tests/test_retry_policy.py ............                                                                             [ 88%]
+tests/test_storage.py .........                                                                                     [ 93%]
+tests/test_utils.py ..........                                                                                      [100%]
+
+==================================================== warnings summary =====================================================
+.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:1533
+  /Users/yapex/workspace/stock_downloader/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py:1533: PytestConfigWarning: No files were found in testpaths; consider removing or adjusting your testpaths configuration. Searching recursively from the current directory instead.
+    self.args, self.args_source = self._decide_args(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+===================================================== tests coverage ======================================================
+____________________________________ coverage: platform darwin, python 3.13.3-final-0 _____________________________________
+
+Name                                        Stmts   Miss  Cover   Missing
+-------------------------------------------------------------------------
+src/downloader/__init__.py                      1      0   100%
+src/downloader/app.py                          79     11    86%   106, 109-110, 125, 134-135, 140, 189-192, 198
+src/downloader/buffer_pool.py                 153    119    22%   50-73, 96-122, 127-137, 142-143, 147-148, 152-158, 162, 166-195, 199-243, 247-253, 257-260, 264-269, 273-277, 281-292, 295, 298
+src/downloader/config.py                        8      0   100%
+src/downloader/consumer_pool.py               254    198    22%   58-80, 85-88, 92-113, 117-118, 122-126, 130-151, 155-171, 175-197, 202-247, 251-262, 266-278, 283-296, 351-376, 384-399, 403-412, 416-425, 429-449, 467-481, 486, 491
+src/downloader/dead_letter_csv.py             122     21    83%   26, 36-38, 42, 57, 66, 69-72, 93, 96, 144, 150, 162, 165, 188-192
+src/downloader/domain/__init__.py               0      0   100%
+src/downloader/domain/category_service.py      39      0   100%
+src/downloader/engine.py                      352    202    43%   90-91, 99, 157-185, 191-194, 198, 207-242, 246-261, 266-274, 278-281, 285-300, 304-325, 329-377, 404-406, 411-413, 430-473, 490-491, 504-506, 515, 521-540, 562-564, 570-574, 580-607, 610-632, 654-686, 690, 696, 701
+src/downloader/enhanced_queue_manager.py      182    182     0%   6-382
+src/downloader/error_handler.py               109     27    75%   78, 85, 90, 96-97, 118, 126, 130, 134, 152, 171-177, 197, 224-226, 230, 238-249
+src/downloader/fetcher.py                      75      3    96%   37-39
+src/downloader/interfaces.py                  208     24    88%   132, 138, 143, 149, 158, 163, 168, 174, 183, 188, 193, 199, 208, 213, 218, 303, 308, 313, 318, 323, 328, 334, 340, 345
+src/downloader/logging_setup.py                41     34    17%   14, 17-22, 26-79
+src/downloader/main.py                        140     57    59%   85-112, 151-200, 221-228, 299-301
+src/downloader/missing_symbols.py             125     14    89%   80-82, 125-127, 137, 146, 161-162, 178, 256-258
+src/downloader/models.py                       91     25    73%   55, 58-60, 64, 68, 81, 95-99, 124-125, 130, 135, 140, 144, 157-159, 165-166, 177, 198
+src/downloader/producer_pool.py               219    162    26%   45-69, 90-100, 104, 113-132, 136-151, 155-156, 160-165, 169-216, 220-244, 248-254, 264-289, 297-310, 358-383, 390-405, 409-418, 422-425, 429-432, 447-464, 469, 474, 479
+src/downloader/progress_manager.py             86     57    34%   31-39, 50-73, 77-100, 104-117, 121-122, 133, 140, 146-149
+src/downloader/queue_manager.py               135     11    92%   53, 71-72, 78-79, 173, 177, 198, 205, 251, 255
+src/downloader/retry_policy.py                127     15    88%   68, 96, 114, 174-175, 184, 201-202, 226-228, 246-247, 264-265
+src/downloader/storage.py                     274    190    31%   52, 88-92, 109-123, 129-131, 165-166, 171-172, 184-185, 191-206, 210, 214-215, 228-236, 240-247, 260-280, 294-369, 392-407, 417-470, 474-485, 493-522, 530-543, 558-597
+src/downloader/tasks/__init__.py                0      0   100%
+src/downloader/tasks/base.py                  108     18    83%   44, 55, 99-104, 135-138, 154-162, 178-179, 185
+src/downloader/tasks/daily.py                  11      0   100%
+src/downloader/tasks/daily_basic.py             9      0   100%
+src/downloader/tasks/financials.py             17      3    82%   23-28
+src/downloader/tasks/stock_list.py             18      3    83%   26-27, 37
+src/downloader/utils.py                        44      1    98%   109
+-------------------------------------------------------------------------
+TOTAL                                        3027   1377    55%
+======================================== 160 passed, 1 warning in 63.44s (0:01:03) ========================================

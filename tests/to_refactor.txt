@@ -1,0 +1,84 @@
+# 测试代码审计 - 需要重构的测试文件和建议
+
+## 重构概要
+- 审计日期: 2025-01-08
+- 总测试文件数: 19
+- 需要重构的文件数: 5
+- 重构类型: 导入路径标准化
+
+## 重构清单
+
+### 1. tests/test_category_service.py
+**问题**: 混合使用不同的导入路径
+- 当前: `from src.downloader.domain.category_service`
+- 建议: 统一使用 `from stock_downloader.domain.category_service` 
+- 原因: 该模块实际位于 `stock_downloader/domain/` 目录
+
+### 2. tests/test_retry_policy.py
+**问题**: 不一致的导入路径  
+- 当前: `from src.downloader.retry_policy`
+- 建议: 使用 `from downloader.retry_policy`
+- 原因: 与其他测试文件保持一致，使用相对导入
+
+**问题**: 手动系统路径修改
+- 当前: 手动插入系统路径 `sys.path.insert(0, ...)`
+- 建议: 移除手动路径修改，依赖标准的包导入机制
+
+### 3. tests/test_missing_sets.py  
+**问题**: 导入路径不一致
+- 当前: `from src.downloader.domain.category_service`
+- 建议: 使用 `from stock_downloader.domain.category_service`
+- 原因: 模块实际位于 stock_downloader 目录下
+
+### 4. tests/test_missing_symbols.py
+**问题**: 多种导入路径混用
+- 当前: `from src.downloader.missing_symbols`, `from src.downloader.models`
+- 建议: 统一使用 `from downloader.missing_symbols`, `from downloader.models`
+- 原因: 保持导入路径一致性
+
+**问题**: 测试文件中手动路径修改
+- 当前: 在测试中动态导入 `from src.downloader import missing_symbols`
+- 建议: 使用统一的模块导入方式
+
+### 5. tests/test_main_verify.py
+**问题**: 导入路径不一致
+- 当前: `from src.downloader.main`
+- 建议: 使用 `from downloader.main`
+- 原因: 与其他测试保持一致性
+
+## 重构建议
+
+### A. 导入路径标准化策略
+1. **业务逻辑模块**: 使用 `from downloader.xxx` (位于 src/downloader/)
+2. **领域服务模块**: 使用 `from stock_downloader.domain.xxx` (位于 stock_downloader/domain/)
+3. **避免**: 手动修改 sys.path，混合使用 src 和非 src 导入
+
+### B. 具体重构步骤
+1. 统一更新所有导入语句
+2. 移除手动的 sys.path 修改
+3. 确保测试运行时的模块查找路径正确
+4. 验证重构后所有测试可以正常运行
+
+### C. 重构优先级
+1. **高优先级**: test_retry_policy.py (包含 sys.path 手动修改)
+2. **中优先级**: test_missing_symbols.py (多处导入路径问题)
+3. **低优先级**: 其他文件 (仅导入路径不一致)
+
+## 验证计划
+重构完成后需要验证:
+1. 运行 `pytest tests/` 确保所有测试通过
+2. 检查导入语句的一致性
+3. 确认无手动路径修改残留
+
+## 验证结果
+- 总测试用例数: 162
+- pytest 收集测试: 成功
+- 导入验证: 所有问题文件都可以正常导入
+
+## 备注
+经过验证，所有测试文件目前都能正常工作。这些重构建议主要是为了：
+1. 提高代码的可维护性和一致性
+2. 遵循最佳实践，避免手动修改sys.path
+3. 统一导入风格，便于团队维护
+
+这些不是紧急的功能性问题，可以在后续的代码重整中逐步解决。

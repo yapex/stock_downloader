@@ -8,14 +8,14 @@ _log_files_initialized = set()
 def get_table_name(data_type: str, entity_id: str) -> str:
     """
     根据数据类型和实体ID生成规范的表名。
-    
+
     Args:
         data_type: 数据类型，如 'daily', 'daily_basic' 等
         entity_id: 实体ID，如股票代码或系统标识
-        
+
     Returns:
         str: 规范化的表名
-        
+
     Examples:
         >>> get_table_name('daily', '600519.SH')
         'daily_600519_SH'
@@ -23,6 +23,9 @@ def get_table_name(data_type: str, entity_id: str) -> str:
         'sys_stock_list'
         >>> get_table_name('stock_list_basic', 'list_system')
         'sys_stock_list'
+    当前业务表：
+        stock_list, daily_qfq, daily_none, daily_basic, financial_income,
+        financial_balance, financial_cashflow
     """
     if data_type.startswith("stock_list_") or entity_id == "list_system":
         # stock_list 相关的特殊处理
@@ -71,20 +74,22 @@ def normalize_stock_code(code: str) -> str:
     else:
         # 记录无法识别的股票代码
         record_failed_task(
-            "股票代码识别", 
-            f"{stock_number}.Unknown", 
+            "股票代码识别",
+            f"{stock_number}.Unknown",
             f"无法识别的股票代码前缀: {stock_number}",
-            "parameter"
+            "parameter",
         )
         raise ValueError(f"无法识别的股票代码前缀: {stock_number}")
 
     return f"{stock_number}.{exchange}"
 
 
-def record_failed_task(task_name: str, entity_id: str, reason: str, error_category: str = "business"):
+def record_failed_task(
+    task_name: str, entity_id: str, reason: str, error_category: str = "business"
+):
     """
     将下载失败的任务记录到日志文件。
-    
+
     Args:
         task_name: 任务名称
         entity_id: 实体ID（如股票代码等）
@@ -98,14 +103,19 @@ def record_failed_task(task_name: str, entity_id: str, reason: str, error_catego
     """
     # 确保logs目录存在
     import os
+
     log_dir = "logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    
+
     # 确定日志文件名
-    log_filename = "failed_tasks.log" if error_category == "business" else f"failed_tasks_{error_category}.log"
+    log_filename = (
+        "failed_tasks.log"
+        if error_category == "business"
+        else f"failed_tasks_{error_category}.log"
+    )
     log_file = os.path.join(log_dir, log_filename)
-    
+
     # 确定写入模式：第一次写入覆盖，后续追加
     global _log_files_initialized
     if log_file not in _log_files_initialized:
@@ -113,9 +123,11 @@ def record_failed_task(task_name: str, entity_id: str, reason: str, error_catego
         _log_files_initialized.add(log_file)
     else:
         mode = "a"  # 追加模式
-    
+
     with open(log_file, mode, encoding="utf-8") as f:
-        f.write(f"{datetime.now().isoformat()},{task_name},{entity_id},{reason},{error_category}\n")
+        f.write(
+            f"{datetime.now().isoformat()},{task_name},{entity_id},{reason},{error_category}\n"
+        )
 
 
 def is_interval_greater_than_7_days(start_date: str, end_date: str) -> bool:
