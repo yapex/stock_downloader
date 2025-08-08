@@ -7,6 +7,7 @@ from unittest.mock import Mock
 from downloader.storage import DuckDBStorage
 from downloader.engine import DownloadEngine
 from downloader.fetcher import TushareFetcher
+from downloader.utils import get_table_name
 
 
 @pytest.fixture
@@ -52,9 +53,8 @@ def test_initialization(db_path: Path):
 
 def test_get_table_name(db_path: Path):
     """测试表名生成逻辑。"""
-    storage = DuckDBStorage(db_path)
-    assert storage._get_table_name("daily", "000001.SZ") == "daily_000001_SZ"
-    assert storage._get_table_name("system", "stock_list") == "sys_stock_list"
+    assert get_table_name("daily", "000001.SZ") == "daily_000001_SZ"
+    assert get_table_name("system", "stock_list") == "sys_stock_list"
 
 
 def test_save_and_get_latest_date(storage: DuckDBStorage, sample_df: pd.DataFrame):
@@ -75,7 +75,7 @@ def test_save_upsert_logic(
     storage.save(updated_df, "daily", "000001.SZ", date_col="trade_date")
 
     # 3. 验证结果
-    table_name = storage._get_table_name("daily", "000001.SZ")
+    table_name = get_table_name("daily", "000001.SZ")
     result_df = storage.conn.table(table_name).to_df()
 
     # 检查总行数是否正确（应该是 3 行）
@@ -101,7 +101,7 @@ def test_overwrite(storage: DuckDBStorage, sample_df: pd.DataFrame):
     storage.overwrite(overwrite_df, "daily", "000001.SZ")
 
     # 验证
-    table_name = storage._get_table_name("daily", "000001.SZ")
+    table_name = get_table_name("daily", "000001.SZ")
     result_df = storage.conn.table(table_name).to_df()
     assert len(result_df) == 1
     assert result_df["value"].iloc[0] == 200
@@ -118,7 +118,7 @@ def test_save_empty_dataframe(storage: DuckDBStorage):
     storage.save(empty_df, "daily", "000001.SZ", date_col="trade_date")
     
     # 验证数据库中没有创建对应的表
-    table_name = storage._get_table_name("daily", "000001.SZ")
+    table_name = get_table_name("daily", "000001.SZ")
     res = storage.conn.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';").fetchall()
     # duckdb should use duckdb_tables()
     res = storage.conn.execute(f"SELECT table_name FROM duckdb_tables() WHERE table_name='{table_name}';").fetchall()
@@ -133,7 +133,7 @@ def test_save_dataframe_without_date_col(storage: DuckDBStorage, caplog):
         assert "缺少日期列" in caplog.text
     
     # 验证数据库中没有创建对应的表
-    table_name = storage._get_table_name("daily", "000001.SZ")
+    table_name = get_table_name("daily", "000001.SZ")
     res = storage.conn.execute(f"SELECT table_name FROM duckdb_tables() WHERE table_name='{table_name}';").fetchall()
     assert len(res) == 0
 

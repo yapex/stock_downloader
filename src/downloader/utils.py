@@ -5,6 +5,39 @@ from datetime import datetime
 _log_files_initialized = set()
 
 
+def get_table_name(data_type: str, entity_id: str) -> str:
+    """
+    根据数据类型和实体ID生成规范的表名。
+    
+    Args:
+        data_type: 数据类型，如 'daily', 'daily_basic' 等
+        entity_id: 实体ID，如股票代码或系统标识
+        
+    Returns:
+        str: 规范化的表名
+        
+    Examples:
+        >>> get_table_name('daily', '600519.SH')
+        'daily_600519_SH'
+        >>> get_table_name('system', 'stock_list_system')
+        'sys_stock_list'
+        >>> get_table_name('stock_list_basic', 'list_system')
+        'sys_stock_list'
+    """
+    if data_type.startswith("stock_list_") or entity_id == "list_system":
+        # stock_list 相关的特殊处理
+        return "sys_stock_list"
+    elif data_type == "system" or entity_id == "system" or "_system" in entity_id:
+        # 系统表使用简单命名
+        return f"sys_{entity_id.replace('_system', '').replace('system', 'stock_list')}"
+    else:
+        # 股票数据表包含标准化的股票代码
+        safe_entity_id = "".join(
+            c if c.isalnum() else "_" for c in normalize_stock_code(entity_id)
+        )
+        return f"{data_type}_{safe_entity_id}"
+
+
 def normalize_stock_code(code: str) -> str:
     """
     将股票代码标准化为 `代码.市场` 的格式，例如 `600519.SH`。

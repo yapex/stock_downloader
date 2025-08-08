@@ -16,7 +16,7 @@
 
 跟随以下步骤，在5分钟内开始您的第一次数据下载。
 
-### 1. 环境准���
+### 1. 环境准备
 
 - **Python**: 确保您的环境是 Python 3.13 或更高版本。
 - **Tushare Pro 账户**: 您需要一个 [Tushare Pro](https://tushare.pro/home) 账户以获取 API Token。
@@ -108,24 +108,10 @@ groups:
 
 ```bash
 # 执行默认组 (default) 的下载任务
-dl
+uv run dl
 ```
 
 你会看到一个进度条，显示正在下载的数据。下载完成后，所有数据都会保存在 `data/stock.db` 文件中。
-
-## 示例演示
-
-如果您想先看看项目是如何工作的，可以运行最小化演示脚本：
-
-```bash
-# 运行最小化演示（需要先设置TUSHARE_TOKEN）
-python examples/minimal_run.py
-```
-
-这个演示会：
-1. 下载A股股票列表
-2. 下载几只示例股票的日K线数据
-3. 展示如何查询和验证下载的数据
 
 ## 常用命令
 
@@ -135,15 +121,7 @@ python examples/minimal_run.py
 
 ```bash
 # 执行 'daily_all' 组
-dl --group daily_all
-```
-
-#### 列出所有可用的任务组
-
-查看配置文件中定义的所有组及其描述。
-
-```bash
-dl list-groups
+uv run dl --group daily_all
 ```
 
 #### 强制更新数据
@@ -152,20 +130,78 @@ dl list-groups
 
 ```bash
 # 强制执行默认组
-dl --force
+uv run dl --force
 ```
 
-#### 临时覆盖股票列表
-
-在命令行临时指定要下载的股票，这会覆盖配置文件中的 `symbols` 设置。
+#### 按股票过滤
 
 ```bash
-# 只下载贵州茅台和宁德时代的数据
-dl 600519.SH 300750.SZ
-
-# 临时下载所有A股数据
-dl all
+# 只下载贵州茅台
+uv run dl --symbol 600519
 ```
+
+## 验证与排错
+
+### 验证数据库状态（uv run dl verify）
+
+命令：
+
+```bash
+uv run dl verify [--config PATH] [--show-missing/--no-missing] [--log-path PATH]
+```
+
+参数说明：
+- --config, -c: 配置文件路径（默认 config.yaml）
+- --show-missing/--no-missing: 是否显示按业务分类的缺口汇总（默认显示）
+- --log-path: 死信日志路径（默认 logs/dead_letter.jsonl）
+
+示例输出：
+```
+总股票数: 5024 | 已覆盖: 4987 | 缺失: 37
+日线: 缺 12
+基础面: 缺 25
+失败任务: 8
+```
+
+### Dead-letter 重试流程
+
+1) 生成/合并重试候选：
+```bash
+# 可选：扫描业务表缺失的股票，写入缺失日志（覆盖）
+uv run dl scan_missing --config config.yaml --missing-log logs/missing_symbols.jsonl
+```
+
+2) 预演（不执行，只看将要重试哪些任务）：
+```bash
+uv run dl retry --dry-run \
+  --task-type daily \
+  --symbol 6005 \
+  --limit 50 \
+  --log-path logs/dead_letter.jsonl \
+  --missing-log logs/missing_symbols.jsonl
+```
+
+3) 执行重试：
+```bash
+uv run dl retry \
+  --task-type daily \
+  --log-path logs/dead_letter.jsonl \
+  --missing-log logs/missing_symbols.jsonl
+```
+
+说明：
+- 会读取死信日志与缺失符号日志，按 (symbol, task_type) 去重后重试。
+- 预演模式仅打印即将重试的任务，不会执行。
+- 当前不会自动归档已成功处理的死信记录，如需清理可手动处理日志文件。
+
+### 用测试验证变更
+
+运行测试：
+```bash
+uv test
+```
+
+`pyproject.toml` 已配置 `tool.uv.test`，可直接调用。
 
 ## 架构与开发
 
@@ -196,8 +232,6 @@ stock_downloader/
 1.  在 `src/downloader/tasks/` 目录下创建一个新的 Python 文件（例如 `analyst_rating.py`）。
 2.  在该文件中，创建一个继承自 `BaseTaskHandler` 的类，并实现数据获取逻辑。
 3.  在 `pyproject.toml` 的 `[project.entry-points."stock_downloader.task_handlers"]` 部分，注册您的新任务处理器。
-
-更详细的架构和开发指南，请参阅 [arch.md](arch.md)。
 
 ## 更新日志
 

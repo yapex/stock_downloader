@@ -1,6 +1,6 @@
 import pytest
 
-from downloader.utils import normalize_stock_code, is_interval_greater_than_7_days
+from downloader.utils import normalize_stock_code, is_interval_greater_than_7_days, get_table_name
 
 
 def test_normalize_stock_code_sh():
@@ -62,3 +62,38 @@ def test_interval_greater_than_7_days():
     # 测试无效日期格式的情况
     with pytest.raises(ValueError):
         is_interval_greater_than_7_days("invalid", "20250110")
+
+
+def test_get_table_name_stock_data():
+    """测试股票数据表名生成"""
+    # 测试标准股票代码
+    assert get_table_name("daily", "600519.SH") == "daily_600519_SH"
+    assert get_table_name("daily_basic", "000001.SZ") == "daily_basic_000001_SZ"
+    assert get_table_name("financials", "300750.SZ") == "financials_300750_SZ"
+    
+    # 测试需要标准化的股票代码
+    assert get_table_name("daily", "600519") == "daily_600519_SH"
+    assert get_table_name("daily", "SH600519") == "daily_600519_SH"
+    assert get_table_name("daily_basic", "000001") == "daily_basic_000001_SZ"
+
+
+def test_get_table_name_system_tables():
+    """测试系统表名生成"""
+    # 测试系统表
+    assert get_table_name("system", "stock_list_system") == "sys_stock_list"
+    assert get_table_name("system", "system") == "sys_stock_list"
+    assert get_table_name("any_type", "list_system") == "sys_stock_list"
+    
+    # 测试包含_system的实体ID
+    assert get_table_name("daily", "test_system") == "sys_test"
+    assert get_table_name("basic", "config_system") == "sys_config"
+
+
+def test_get_table_name_stock_list():
+    """测试股票列表相关表名生成"""
+    # 测试stock_list_开头的数据类型
+    assert get_table_name("stock_list_basic", "any_entity") == "sys_stock_list"
+    assert get_table_name("stock_list_info", "600519.SH") == "sys_stock_list"
+    
+    # 测试list_system实体ID
+    assert get_table_name("basic_info", "list_system") == "sys_stock_list"

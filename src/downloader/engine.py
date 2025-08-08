@@ -218,25 +218,47 @@ class DownloadEngine:
         try:
             # 根据任务类型确定日期列
             date_column = self._get_date_column_for_task_type(task_type)
+            
+            # 获取正确的data_type（而不是task_type）
+            data_type = self._get_data_type_for_task_spec(task_spec)
 
             # 尝试获取最新日期
             storage = self._get_runtime_storage()
-            latest_date = storage.get_latest_date(task_type, symbol, date_column)
+            latest_date = storage.get_latest_date(data_type, symbol, date_column)
             if latest_date:
                 # 从最新日期的下一天开始
                 next_date = datetime.strptime(latest_date, "%Y%m%d") + timedelta(days=1)
                 start_date = next_date.strftime("%Y%m%d")
                 logger.debug(
-                    f"增量下载 {symbol} {task_type}，从 {start_date} 开始（最新数据: {latest_date}）"
+                    f"增量下载 {symbol} {data_type}，从 {start_date} 开始（最新数据: {latest_date}）"
                 )
                 return start_date, end_date
         except Exception as e:
             logger.debug(
-                f"获取 {symbol} {task_type} 最新日期失败，使用默认开始日期: {e}"
+                f"获取 {symbol} {data_type} 最新日期失败，使用默认开始日期: {e}"
             )
 
         # 如果没有历史数据或获取失败，使用默认起始日期
         return default_start, end_date
+
+    def _get_data_type_for_task_spec(self, task_spec: Dict[str, Any]) -> str:
+        """根据任务配置获取正确的data_type"""
+        task_type = task_spec.get("type", "")
+        
+        if task_type == "daily":
+            # 对于daily任务，data_type需要包含adjust参数
+            adjust = task_spec.get("adjust", "none")
+            return f"daily_{adjust or 'none'}"
+        elif task_type == "daily_basic":
+            return "daily_basic"
+        elif task_type == "financials":
+            statement_type = task_spec.get("statement_type", "")
+            return f"financials_{statement_type}" if statement_type else "financials"
+        elif task_type == "stock_list":
+            return "stock_list"
+        else:
+            # 对于其他类型，直接返回task_type
+            return task_type
 
     def _get_date_column_for_task_type(self, task_type: str) -> str:
         """根据任务类型返回对应的日期列名"""
@@ -459,6 +481,8 @@ class DownloadEngine:
 
     def _prepare_target_symbols(self, enabled_tasks: List[Dict[str, Any]]) -> List[str]:
         """准备目标股票列表"""
+        from .utils import normalize_stock_code
+        
         # 检查是否有需要股票列表的任务
         needs_symbols = any(task.get("type") != "stock_list" for task in enabled_tasks)
 
@@ -471,7 +495,15 @@ class DownloadEngine:
         target_symbols = []
 
         if isinstance(symbols_config, list):
-            target_symbols = symbols_config
+            # 标准化股票代码格式
+            target_symbols = []
+            for symbol in symbols_config:
+                try:
+                    normalized_symbol = normalize_stock_code(symbol)
+                    target_symbols.append(normalized_symbol)
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"跳过无效的股票代码 '{symbol}': {e}")
+                    continue
             logger.info(f"使用配置指定的 {len(target_symbols)} 只股票")
         elif symbols_config == "all":
             # 这里需要数据库连接来获取股票列表

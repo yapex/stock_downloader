@@ -2,6 +2,15 @@ import pytest
 from unittest.mock import MagicMock
 import pandas as pd
 import argparse
+import sys
+import os
+
+# 确保测试环境下可以直接从 src 导入包
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+# 对于命名空间包（PEP 420），需要把项目根目录放入sys.path，
+# 这样 `src` 目录可作为命名空间包被导入。
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 
 @pytest.fixture

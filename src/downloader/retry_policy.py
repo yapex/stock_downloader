@@ -350,6 +350,61 @@ class DeadLetterLogger:
             ]
         }
     
+    def log_missing_symbols(self, btype: str, symbols: list[str]) -> None:
+        """批量写入缺失股票的死信记录
+        
+        Args:
+            btype: 任务类型字符串
+            symbols: 缺失的股票代码列表
+        """
+        if not symbols:
+            return
+        
+        try:
+            # 验证任务类型是否有效
+            task_type = TaskType(btype)
+            
+            # 批量写入记录
+            with open(self.log_path, 'a', encoding='utf-8') as f:
+                for symbol in symbols:
+                    # 构造DownloadTask
+                    task = DownloadTask(
+                        symbol=symbol,
+                        task_type=task_type,
+                        params={},
+                        priority=Priority.NORMAL,
+                        retry_count=0,
+                        max_retries=0  # 缺失数据不需要重试
+                    )
+                    
+                    # 创建死信记录，error_type统一为"MISSING_DATA"
+                    record = DeadLetterRecord(
+                        task_id=task.task_id,
+                        symbol=task.symbol,
+                        task_type=task.task_type.value,
+                        params=task.params,
+                        priority=task.priority.value,
+                        retry_count=task.retry_count,
+                        max_retries=task.max_retries,
+                        error_message=f"Symbol {symbol} not found in data source",
+                        error_type="MISSING_DATA",
+                        failed_at=datetime.now(),
+                        original_created_at=task.created_at
+                    )
+                    
+                    # 写入JSON Lines格式
+                    json.dump(record.to_dict(), f, ensure_ascii=False)
+                    f.write('\n')
+            
+            self.logger.info(f"Logged {len(symbols)} missing symbols for task type {btype}")
+            
+        except ValueError as e:
+            self.logger.error(f"Invalid task type '{btype}': {e}")
+            raise
+        except Exception as e:
+            self.logger.error(f"Failed to log missing symbols: {e}")
+            raise
+    
     def archive_processed(self, processed_task_ids: List[str]) -> None:
         """归档已处理的死信记录
         

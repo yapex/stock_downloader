@@ -230,10 +230,16 @@ class ConsumerWorker:
             # 按日期去重，保留最新的数据
             combined_df = combined_df.drop_duplicates(subset=['ts_code', existing_date_col], keep='last')
         
-        # 从cache_key解析数据类型和实体ID
-        parts = cache_key.split('_', 1)
-        data_type = parts[0]
-        entity_id = parts[1] if len(parts) > 1 else 'system'
+        # 从第一个批次的元数据中获取正确的数据类型和实体ID
+        if batches:
+            first_batch = batches[0]
+            data_type = first_batch.meta.get('task_type', 'unknown')
+            entity_id = first_batch.symbol or 'system'
+        else:
+            # 备用方案：从cache_key解析（但这种情况不应该发生）
+            parts = cache_key.split('_', 1)
+            data_type = parts[0]
+            entity_id = parts[1] if len(parts) > 1 else 'system'
         
         # 调用DuckDBStorage的批量插入方法
         self.storage.bulk_insert(combined_df, data_type, entity_id, existing_date_col)

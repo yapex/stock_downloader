@@ -2,12 +2,12 @@ import os
 import tushare as ts
 import pandas as pd
 import logging
-from ratelimit import limits, sleep_and_retry
+from ratelimit import limits
 from .utils import normalize_stock_code, is_interval_greater_than_7_days
 from .error_handler import (
-    enhanced_retry, 
-    NETWORK_RETRY_STRATEGY, 
-    API_LIMIT_RETRY_STRATEGY
+    enhanced_retry,
+    NETWORK_RETRY_STRATEGY,
+    API_LIMIT_RETRY_STRATEGY,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,6 @@ class TushareFetcher:
             raise
 
     @enhanced_retry(strategy=NETWORK_RETRY_STRATEGY, task_name="获取A股列表")
-    @sleep_and_retry
     @limits(calls=200, period=60)
     def fetch_stock_list(self) -> pd.DataFrame | None:
         """获取所有A股的列表。"""
@@ -53,8 +52,7 @@ class TushareFetcher:
         return df
 
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="日K线数据")
-    @sleep_and_retry
-    @limits(calls=500, period=60)
+    @limits(calls=200, period=60)
     def fetch_daily_history(
         self, ts_code: str, start_date: str, end_date: str, adjust: str
     ) -> pd.DataFrame | None:
@@ -71,9 +69,7 @@ class TushareFetcher:
 
         # ---> 如果间隔时间大于 7 天，才需要警告 <---
         if (
-            is_interval_greater_than_7_days(
-                start_date=start_date, end_date=end_date
-            )
+            is_interval_greater_than_7_days(start_date=start_date, end_date=end_date)
             and df is None
         ):
             # 这种情况可能发生在 Tushare 服务器返回非标准空数据时
@@ -88,7 +84,6 @@ class TushareFetcher:
         return df
 
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="每日指标")
-    @sleep_and_retry
     @limits(calls=200, period=60)
     def fetch_daily_basic(
         self, ts_code: str, start_date: str, end_date: str
@@ -110,21 +105,17 @@ class TushareFetcher:
 
     # ---> 新增的财务报表获取方法 <---
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="财务报表-利润表")
-    @sleep_and_retry
     @limits(calls=200, period=60)
     def fetch_income(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
         ts_code = normalize_stock_code(ts_code)
-        df = self.pro.income(
-            ts_code=ts_code, start_date=start_date, end_date=end_date
-        )
+        df = self.pro.income(ts_code=ts_code, start_date=start_date, end_date=end_date)
         if df is not None and not df.empty:
             df.sort_values(by="ann_date", inplace=True, ignore_index=True)
         return df
 
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="财务报表-资产负债表")
-    @sleep_and_retry
     @limits(calls=200, period=60)
     def fetch_balancesheet(
         self, ts_code: str, start_date: str, end_date: str
@@ -138,7 +129,6 @@ class TushareFetcher:
         return df
 
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="财务报表-现金流量表")
-    @sleep_and_retry
     @limits(calls=200, period=60)
     def fetch_cashflow(
         self, ts_code: str, start_date: str, end_date: str

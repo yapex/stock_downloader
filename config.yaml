@@ -1,6 +1,6 @@
 # 数据库配置 (用于新架构)
 database:
-  path: "/Users/yapex/workspace/stock_data/stock.db"
+  path: "data/stock.db"
 
 # 下载器配置
 downloader:
