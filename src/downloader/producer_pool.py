@@ -27,7 +27,7 @@ from .retry_policy import (
     RetryPolicy, 
     DEFAULT_RETRY_POLICY, 
     NETWORK_RETRY_POLICY,
-    DeadLetterLogger
+    RetryLogger
 )
 from .utils import record_failed_task
 
@@ -92,7 +92,7 @@ class ProducerWorker:
         self.task_queue = task_queue
         self.data_queue = data_queue
         self.retry_policy = retry_policy_config or DEFAULT_RETRY_POLICY
-        self.dead_letter_logger = DeadLetterLogger(dead_letter_path)
+        self.retry_logger = RetryLogger(dead_letter_path)
         self.running = False
         self.logger = logging.getLogger(f"{__name__}.worker_{worker_id}")
         
@@ -292,9 +292,9 @@ class ProducerWorker:
         # self.task_queue.task_done()
     
     def _write_to_deadletter(self, task: DownloadTask, error: Exception) -> None:
-        """写入死信日志"""
-        # 使用新的DeadLetterLogger写入死信记录
-        self.dead_letter_logger.write_dead_letter(task, error)
+        """写入重试日志"""
+        # 使用新的RetryLogger记录失败的股票代码
+        self.retry_logger.log_failed_symbol(task.symbol)
         
         # 同时保持原有的记录方式以兼容性
         error_category = classify_error(error)
@@ -307,7 +307,7 @@ class ProducerWorker:
             error_category=error_category.value
         )
         
-        self.logger.error(f"Task {task.task_id} sent to dead letter: {reason}")
+        self.logger.error(f"Task {task.task_id} sent to retry list: {reason}")
 
 
 class ProducerPool:

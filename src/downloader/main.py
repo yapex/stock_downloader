@@ -114,10 +114,6 @@ def main(
 
 @app.command()
 def retry(
-    task_type: Optional[str] = typer.Option(
-        None, "--task-type", "-t", 
-        help="过滤特定任务类型 (daily, stock_list, etc.)"
-    ),
     symbol: Optional[str] = typer.Option(
         None, "--symbol", "-s",
         help="过滤特定股票代码"
@@ -128,122 +124,76 @@ def retry(
     ),
     dry_run: bool = typer.Option(
         False, "--dry-run", "-n",
-        help="预演模式，仅显示将要重试的任务"
+        help="预演模式，仅显示将要重试的股票代码"
     ),
     log_path: str = typer.Option(
-        "logs/dead_letter.jsonl",
+        "logs/retry_symbols.py",
         "--log-path",
-        help="死信日志文件路径"
+        help="重试日志文件路径"
     ),
-    missing_log: str = typer.Option(
-        "logs/missing_symbols.jsonl",
-        "--missing-log",
-        help="缺失符号日志路径，用于与死信任务合并去重"
+    config_file: str = typer.Option(
+        "config.yaml",
+        "--config",
+        "-c",
+        help="配置文件路径",
     ),
 ):
     """
-    重试死信队列中的失败任务，并可合并缺失符号扫描结果。
+    重试失败的股票代码。
     
-    步骤：
-    1) 尝试读取缺失符号日志并转换为任务
-    2) 读取死信日志任务
-    3) 合并并按(symbol, task_type)去重
-    4) 根据过滤参数筛选，支持dry-run
+    该命令会：
+    1. 从重试日志中读取股票代码
+    2. 为这些股票代码创建下载任务
+    3. 执行下载任务
+    
+    支持按股票代码过滤，以及限制重试数量。
     """
     try:
-        from .dead_letter_cli import DeadLetterCLI
-        from .missing_symbols import MissingSymbolsLogger
-        from .models import TaskType
-        import asyncio
+        from .retry_policy import RetryLogger
         
-        cli = DeadLetterCLI(log_path)
-        ms_logger = MissingSymbolsLogger(missing_log)
+        retry_logger = RetryLogger(log_path)
         
-        # 准备任务集合
-        combined_tasks: list = []
+        # 读取重试股票代码
+        retry_symbols = retry_logger.read_symbols()
         
-        # 1) 缺失符号日志任务
-        missing_tasks = ms_logger.convert_to_tasks()
-        if missing_tasks:
-            combined_tasks.extend(missing_tasks)
-        
-        # 2) 死信任务
-        # 读取后转换在 DeadLetterCLI 内部完成，这里先取记录，再转任务
-        records = cli.dead_letter_logger.read_dead_letters(
-            limit=limit,
-            task_type=task_type,
-            symbol_pattern=symbol
-        )
-        combined_tasks.extend(cli.dead_letter_logger.convert_to_tasks(records))
-        
-        if not combined_tasks:
-            progress_manager.print_info("没有可重试的任务或缺失符号")
+        if not retry_symbols:
+            progress_manager.print_info("没有可重试的股票代码")
             return
         
-        # 3) 合并去重：按 (symbol, task_type)
-        unique_map = {}
-        for t in combined_tasks:
-            key = (t.symbol, t.task_type.value)
-            if key not in unique_map:
-                unique_map[key] = t
-        deduped_tasks = list(unique_map.values())
-        
-        # 4) 再次应用过滤（如传入task_type/symbol）
-        if task_type:
-            deduped_tasks = [t for t in deduped_tasks if t.task_type.value == task_type]
+        # 应用过滤
         if symbol:
-            deduped_tasks = [t for t in deduped_tasks if symbol in t.symbol]
+            retry_symbols = [s for s in retry_symbols if symbol in s]
         if limit:
-            deduped_tasks = deduped_tasks[:limit]
+            retry_symbols = retry_symbols[:limit]
         
         if dry_run:
-            print(f"预演模式：将重试 {len(deduped_tasks)} 个任务(含缺失符号)")
-            for t in deduped_tasks[:50]:
-                print(f"  {t.symbol} - {t.task_type.value}")
+            print(f"预演模式：将重试 {len(retry_symbols)} 个股票代码")
+            for s in retry_symbols[:50]:
+                print(f"  {s}")
             return
         
-        # 直接基于线程池的生产者/消费者执行任务，避免引入额外复杂度
-        async def _run_custom_tasks(tasks):
-            from .producer_pool import ProducerPool
-            from .consumer_pool import ConsumerPool
-            from queue import Queue
-            import asyncio as _aio
-            
-            task_q: Queue = Queue(maxsize=1000)
-            data_q: Queue = Queue(maxsize=5000)
-            
-            producer_pool = ProducerPool(
-                max_producers=2,
-                task_queue=task_q,
-                data_queue=data_q
-            )
-            consumer_pool = ConsumerPool(
-                max_consumers=1,
-                data_queue=data_q
-            )
-            
-            try:
-                producer_pool.start()
-                consumer_pool.start()
-                
-                # 提交任务
-                for t in tasks:
-                    producer_pool.submit_task(t, timeout=1.0)
-                
-                print("任务已提交，等待处理完成...")
-                
-                # 简单轮询直到任务队列清空且数据基本处理完成
-                while not task_q.empty() or not data_q.empty():
-                    print(f"任务队列: {task_q.qsize()}, 数据队列: {data_q.qsize()}")
-                    await _aio.sleep(3)
-                
-                # 给消费者一点时间刷新缓存
-                await _aio.sleep(2)
-            finally:
-                consumer_pool.stop()
-                producer_pool.stop()
+        if not retry_symbols:
+            progress_manager.print_info("过滤后没有可重试的股票代码")
+            return
         
-        asyncio.run(_run_custom_tasks(deduped_tasks))
+        # 使用DownloaderApp执行重试
+        downloader_app = DownloaderApp()
+        
+        try:
+            downloader_app.run_download(
+                config_path=config_file,
+                group_name="default",
+                symbols=retry_symbols,
+                force=True
+            )
+            
+            # 重试成功后清空重试日志
+            retry_logger.clear_symbols()
+            progress_manager.print_info("重试完成，已清空重试日志")
+            
+        except Exception as e:
+            progress_manager.print_error(f"重试执行失败: {e}")
+            raise
         
     except Exception as e:
         progress_manager.print_error(f"重试失败任务时出错: {e}")
@@ -287,22 +237,22 @@ def verify(
         help="配置文件路径",
     ),
     log_path: str = typer.Option(
-        "logs/dead_letter.jsonl",
+        "logs/retry_symbols.py",
         "--log-path",
-        help="死信日志文件路径"
+        help="重试日志文件路径"
     ),
 ):
     """
-    验证数据库状态，按业务分类检查缺失股票数据并写入死信日志。
+    验证数据库状态，按业务分类检查缺失股票数据并写入重试日志。
 
     功能：
     - 按业务分类（daily_qfq, daily_none, daily_basic, financial_income, financial_balance, financial_cashflow）检查缺失数据
-    - 将缺失的股票数据去重后写入 logs/dead_letter.jsonl
+    - 将缺失的股票代码去重后写入 logs/retry_symbols.py
     - 输出按业务分类的缺失数量统计
     """
     try:
         from .storage import DuckDBStorage
-        from .dead_letter_cli import DeadLetterCLI
+        
         import json
         import os
         from datetime import datetime
@@ -365,8 +315,11 @@ def verify(
                         break
             business_coverage[business_name] = covered_stocks
 
-        # 计算缺失数据并准备死信任务
-        missing_tasks = []
+        # 计算缺失数据并收集缺失股票代码
+        from .retry_policy import RetryLogger
+        
+        retry_logger = RetryLogger(log_path)
+        all_missing_symbols = set()
         total_count = len(all_stock_codes)
         
         print(f"总股票数: {total_count}")
@@ -379,57 +332,18 @@ def verify(
             
             print(f"{business_name}: 已覆盖 {covered_count} | 缺失 {missing_count}")
             
-            # 为缺失的股票创建死信任务
-            for stock_code in missing_stocks:
-                task_data = {
-                    "task_id": f"{business_name}_{stock_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                    "task_type": business_types[business_name],
-                    "symbol": stock_code,
-                    "business_name": business_name,
-                    "error_message": "Missing data detected by verify command",
-                    "timestamp": datetime.now().isoformat(),
-                    "retry_count": 0
-                }
-                missing_tasks.append(task_data)
+            # 收集缺失的股票代码
+            all_missing_symbols.update(missing_stocks)
 
-        # 去重任务（基于 task_type + symbol 组合）
-        unique_tasks = {}
-        for task in missing_tasks:
-            key = f"{task['task_type']}_{task['symbol']}"
-            if key not in unique_tasks:
-                unique_tasks[key] = task
-
-        # 写入死信日志文件
-        if unique_tasks:
-            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        # 写入重试日志
+        if all_missing_symbols:
+            missing_symbols_list = sorted(list(all_missing_symbols))
+            retry_logger.log_missing_symbols(missing_symbols_list)
             
-            # 读取现有的死信日志（如果存在）
-            existing_tasks = {}
-            if os.path.exists(log_path):
-                try:
-                    with open(log_path, 'r', encoding='utf-8') as f:
-                        for line in f:
-                            if line.strip():
-                                existing_task = json.loads(line.strip())
-                                key = f"{existing_task.get('task_type', '')}_{existing_task.get('symbol', '')}"
-                                existing_tasks[key] = existing_task
-                except Exception as e:
-                    progress_manager.print_error(f"读取现有死信日志失败: {e}")
-            
-            # 合并新任务和现有任务（新任务优先）
-            all_tasks = {**existing_tasks, **unique_tasks}
-            
-            # 重写死信日志文件
-            with open(log_path, 'w', encoding='utf-8') as f:
-                for task in all_tasks.values():
-                    f.write(json.dumps(task, ensure_ascii=False) + '\n')
-            
-            new_count = len(unique_tasks)
-            total_count = len(all_tasks)
-            print(f"\n已写入死信日志: {log_path}")
-            print(f"新增任务: {new_count} | 总任务数: {total_count}")
+            print(f"\n已写入重试日志: {log_path}")
+            print(f"缺失股票代码数量: {len(missing_symbols_list)}")
         else:
-            print("\n无缺失数据，未生成死信任务")
+            print("\n无缺失数据，未生成重试任务")
 
     except Exception as e:
         progress_manager.print_error(f"验证时出错: {e}")

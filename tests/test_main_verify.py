@@ -59,23 +59,18 @@ class TestVerifyCommand:
             # 验证死信日志文件被创建
             assert os.path.exists(log_path)
             
-            # 验证死信日志内容
-            with open(log_path, 'r', encoding='utf-8') as f:
-                tasks = [json.loads(line.strip()) for line in f if line.strip()]
+            # 验证重试日志内容
+            from src.downloader.retry_policy import RetryLogger
+            retry_logger = RetryLogger(log_path)
+            symbols = retry_logger.read_symbols()
             
-            # 应该有缺失的任务
-            assert len(tasks) > 0
+            # 应该有缺失的股票代码
+            assert len(symbols) > 0
             
-            # 验证任务格式
-            for task in tasks:
-                assert 'task_id' in task
-                assert 'task_type' in task
-                assert 'symbol' in task
-                assert 'business_name' in task
-                assert 'error_message' in task
-                assert 'timestamp' in task
-                assert 'retry_count' in task
-                assert task['retry_count'] == 0
+            # 验证包含预期的缺失股票代码
+            expected_symbols = ['000001.SZ', '000002.SZ']
+            for symbol in expected_symbols:
+                assert symbol in symbols, f"缺失预期的股票代码: {symbol}"
 
     @patch('src.downloader.storage.DuckDBStorage')
     @patch('src.downloader.main.load_config')
@@ -124,16 +119,18 @@ class TestVerifyCommand:
             # 验证命令执行成功
             assert result.exit_code == 0
             
-            # 验证死信日志文件内容
-            with open(log_path, 'r', encoding='utf-8') as f:
-                tasks = [json.loads(line.strip()) for line in f if line.strip()]
+            # 验证重试日志文件内容
+            from src.downloader.retry_policy import RetryLogger
+            retry_logger = RetryLogger(log_path)
+            symbols = retry_logger.read_symbols()
             
-            # 验证去重：相同的 task_type + symbol 组合应该只有一个任务
-            task_keys = set()
-            for task in tasks:
-                key = f"{task['task_type']}_{task['symbol']}"
-                assert key not in task_keys, f"发现重复任务: {key}"
-                task_keys.add(key)
+            # 验证去重：相同的股票代码应该只出现一次
+            assert len(symbols) == len(set(symbols)), "发现重复的股票代码"
+            
+            # 验证包含预期的缺失股票代码（基于mock的股票列表）
+            expected_symbols = ['000001.SZ', '600519.SH']
+            for symbol in expected_symbols:
+                assert symbol in symbols, f"缺失预期的股票代码: {symbol}"
 
     @patch('src.downloader.storage.DuckDBStorage')
     @patch('src.downloader.main.load_config')

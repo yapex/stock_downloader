@@ -27,7 +27,7 @@ from .error_handler import (
 from .retry_policy import (
     RetryPolicy, 
     DEFAULT_RETRY_POLICY,
-    DeadLetterLogger
+    RetryLogger
 )
 from .utils import record_failed_task
 
