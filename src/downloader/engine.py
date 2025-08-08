@@ -9,7 +9,6 @@ from time import sleep
 
 from .fetcher import TushareFetcher
 from .storage import DuckDBStorage
-from .buffer_pool import DataBufferPool
 from .producer_pool import ProducerPool
 from .consumer_pool import ConsumerPool
 from .models import DownloadTask, TaskType, Priority
@@ -41,8 +40,6 @@ class DownloadEngine:
         # 为了支持增量下载，需要在运行时创建存储实例
         self._runtime_storage: Optional[DuckDBStorage] = None
 
-        # 向后兼容性支持
-        self.buffer_pool = None  # 旧架构兼容
 
         # 解析配置
         downloader_config = self.config.get("downloader", {})
@@ -618,8 +615,7 @@ class DownloadEngine:
                     final_task_config,
                     self.fetcher,
                     self.storage,
-                    self.buffer_pool,
-                    self.force_run,
+                    force_run=self.force_run,
                 )
                 handler_instance.execute(**kwargs)
             except Exception as e:
