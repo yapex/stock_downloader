@@ -87,20 +87,16 @@ class MemoryQueueManager(IQueueManager):
         priority_value = -task.priority.value  # 反转优先级值
         priority_item = (priority_value, time.time(), task)
         
-        try:
-            # 使用线程池执行阻塞操作
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None, 
-                lambda: self._task_queue.put(priority_item, timeout=self._queue_timeout)
-            )
-            
-            # 更新指标
-            with self._metrics_lock:
-                self._metrics.tasks_total += 1
-                
-        except queue.Full:
-            raise RuntimeError(f"Task queue is full (size: {self._task_queue_size})")
+        # 使用线程池执行阻塞操作，队列满时会阻塞等待
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None, 
+            lambda: self._task_queue.put(priority_item, block=True)
+        )
+        
+        # 更新指标
+        with self._metrics_lock:
+            self._metrics.tasks_total += 1
     
     async def get_task(self, timeout: Optional[float] = None) -> Optional[TaskMessage]:
         """从任务队列获取任务"""
@@ -129,20 +125,16 @@ class MemoryQueueManager(IQueueManager):
         if not self._running:
             raise RuntimeError("Queue manager is not running")
         
-        try:
-            # 使用线程池执行阻塞操作
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None,
-                lambda: self._data_queue.put(data, timeout=self._queue_timeout)
-            )
-            
-            # 更新指标
-            with self._metrics_lock:
-                self._metrics.data_messages_total += 1
-                
-        except queue.Full:
-            raise RuntimeError(f"Data queue is full (size: {self._data_queue_size})")
+        # 使用线程池执行阻塞操作，队列满时会阻塞等待
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: self._data_queue.put(data, block=True)
+        )
+        
+        # 更新指标
+        with self._metrics_lock:
+            self._metrics.data_messages_total += 1
     
     async def get_data(self, timeout: Optional[float] = None) -> Optional[DataMessage]:
         """从数据队列获取数据"""

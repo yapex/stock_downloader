@@ -118,7 +118,7 @@ class DownloadEngine:
             data_queue=self.data_queue,
             retry_policy_config=self.retry_policy,
             dead_letter_path="logs/dead_letter.jsonl",
-            fetcher_rate_limit=self.config.get("fetcher", {}).get("rate_limit", 150),
+            fetcher=self.fetcher,
         )
 
         # 创建消费者池

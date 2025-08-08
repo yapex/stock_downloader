@@ -123,8 +123,8 @@ class TestMemoryQueueManager:
         assert data is None
     
     @pytest.mark.asyncio
-    async def test_queue_full_error(self):
-        """测试队列满时的错误处理"""
+    async def test_queue_blocking_behavior(self):
+        """测试队列满时的阻塞行为"""
         # 创建小容量队列
         manager = MemoryQueueManager(task_queue_size=1, data_queue_size=1)
         await manager.start()
@@ -134,19 +134,32 @@ class TestMemoryQueueManager:
             task1 = TaskMessage.create(TaskType.DAILY, {"symbol": "001"})
             await manager.put_task(task1)
             
-            # 再添加一个任务应该抛出错误
+            # 验证队列已满
+            assert manager.task_queue_size == 1
+            
+            # 启动一个任务来消费队列中的任务
+            async def consume_task():
+                await asyncio.sleep(0.1)  # 短暂延迟
+                return await manager.get_task()
+            
+            # 同时添加新任务和消费任务
             task2 = TaskMessage.create(TaskType.DAILY, {"symbol": "002"})
-            with pytest.raises(RuntimeError, match="Task queue is full"):
-                await manager.put_task(task2)
             
-            # 填满数据队列
-            data1 = DataMessage.create("task-1", "daily", [{"close": 10.5}])
-            await manager.put_data(data1)
+            # 使用asyncio.gather来并发执行
+            consumer_task = asyncio.create_task(consume_task())
+            producer_task = asyncio.create_task(manager.put_task(task2))
             
-            # 再添加一个数据应该抛出错误
-            data2 = DataMessage.create("task-2", "daily", [{"close": 11.5}])
-            with pytest.raises(RuntimeError, match="Data queue is full"):
-                await manager.put_data(data2)
+            # 等待两个任务完成
+            consumed_task, _ = await asyncio.gather(consumer_task, producer_task)
+            
+            # 验证消费的任务是第一个任务
+            assert consumed_task is not None
+            assert consumed_task.params["symbol"] == "001"
+            
+            # 验证第二个任务已经在队列中
+            remaining_task = await manager.get_task(timeout=0.1)
+            assert remaining_task is not None
+            assert remaining_task.params["symbol"] == "002"
                 
         finally:
             await manager.stop()

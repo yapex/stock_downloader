@@ -6,12 +6,11 @@
 """
 
 import logging
-import threading
 import time
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional, Callable, Dict, Any
+from typing import Optional, Dict, Any
 from queue import Queue, Empty, Full
-from functools import wraps
 from datetime import datetime
 
 from .fetcher import TushareFetcher
@@ -34,39 +33,7 @@ from .utils import record_failed_task
 logger = logging.getLogger(__name__)
 
 
-def rate_limit(calls: int, period: int = 60):
-    """
-    速率限制装饰器
-    
-    Args:
-        calls: 每个周期内最大调用次数
-        period: 时间周期（秒）
-    """
-    def decorator(func: Callable) -> Callable:
-        last_calls = []
-        lock = threading.Lock()
-        
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            with lock:
-                now = time.time()
-                # 移除超过时间窗口的调用记录
-                last_calls[:] = [call_time for call_time in last_calls if now - call_time < period]
-                
-                # 检查是否达到限制
-                if len(last_calls) >= calls:
-                    sleep_time = period - (now - last_calls[0])
-                    if sleep_time > 0:
-                        logger.debug(f"Rate limit reached, sleeping for {sleep_time:.2f}s")
-                        time.sleep(sleep_time)
-                        now = time.time()
-                
-                # 记录本次调用时间
-                last_calls.append(now)
-                
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
+
 
 
 class ProducerWorker:
@@ -95,41 +62,8 @@ class ProducerWorker:
         self.retry_logger = RetryLogger(dead_letter_path)
         self.running = False
         self.logger = logging.getLogger(f"{__name__}.worker_{worker_id}")
-        
-        # 添加速率限制
-        self._rate_limited_fetch = self._add_rate_limits()
     
-    def _add_rate_limits(self) -> Dict[str, Callable]:
-        """为不同的获取方法添加速率限制"""
-        return {
-            TaskType.STOCK_LIST: rate_limit(calls=150, period=60)(self.fetcher.fetch_stock_list),
-            TaskType.DAILY: rate_limit(calls=400, period=60)(self.fetcher.fetch_daily_history),
-            TaskType.DAILY_BASIC: rate_limit(calls=150, period=60)(self.fetcher.fetch_daily_basic),
-            TaskType.FINANCIALS: self._get_financials_fetcher()
-        }
-    
-    def _get_financials_fetcher(self) -> Callable:
-        """获取财务数据的速率限制包装器"""
-        @rate_limit(calls=150, period=60)
-        def fetch_financials(task: DownloadTask):
-            """统一的财务数据获取接口"""
-            params = task.params
-            ts_code = task.symbol
-            start_date = params.get('start_date', '')
-            end_date = params.get('end_date', '')
-            
-            financial_type = params.get('financial_type', 'income')
-            
-            if financial_type == 'income':
-                return self.fetcher.fetch_income(ts_code, start_date, end_date)
-            elif financial_type == 'balancesheet':
-                return self.fetcher.fetch_balancesheet(ts_code, start_date, end_date)
-            elif financial_type == 'cashflow':
-                return self.fetcher.fetch_cashflow(ts_code, start_date, end_date)
-            else:
-                raise ValueError(f"Unknown financial_type: {financial_type}")
-        
-        return fetch_financials
+
     
     def start(self) -> None:
         """启动生产者工作线程"""
@@ -218,11 +152,11 @@ class ProducerWorker:
     def _fetch_data(self, task: DownloadTask):
         """获取数据"""
         if task.task_type == TaskType.STOCK_LIST:
-            return self._rate_limited_fetch[TaskType.STOCK_LIST]()
+            return self.fetcher.fetch_stock_list()
         
         elif task.task_type == TaskType.DAILY:
             params = task.params
-            return self._rate_limited_fetch[TaskType.DAILY](
+            return self.fetcher.fetch_daily_history(
                 ts_code=task.symbol,
                 start_date=params.get('start_date', ''),
                 end_date=params.get('end_date', ''),
@@ -231,32 +165,41 @@ class ProducerWorker:
         
         elif task.task_type == TaskType.DAILY_BASIC:
             params = task.params
-            return self._rate_limited_fetch[TaskType.DAILY_BASIC](
+            return self.fetcher.fetch_daily_basic(
                 ts_code=task.symbol,
                 start_date=params.get('start_date', ''),
                 end_date=params.get('end_date', '')
             )
         
         elif task.task_type == TaskType.FINANCIALS:
-            return self._rate_limited_fetch[TaskType.FINANCIALS](task)
+            return self._fetch_financials_data(task)
         
         else:
             raise ValueError(f"Unknown task type: {task.task_type}")
     
+    def _fetch_financials_data(self, task: DownloadTask):
+        """获取财务数据"""
+        params = task.params
+        ts_code = task.symbol
+        start_date = params.get('start_date', '')
+        end_date = params.get('end_date', '')
+        
+        financial_type = params.get('financial_type', 'income')
+        
+        if financial_type == 'income':
+            return self.fetcher.fetch_income(ts_code, start_date, end_date)
+        elif financial_type == 'balancesheet':
+            return self.fetcher.fetch_balancesheet(ts_code, start_date, end_date)
+        elif financial_type == 'cashflow':
+            return self.fetcher.fetch_cashflow(ts_code, start_date, end_date)
+        else:
+            raise ValueError(f"Unknown financial_type: {financial_type}")
+    
     def _put_data(self, data_batch: DataBatch) -> None:
         """将数据放入数据队列"""
-        try:
-            # 使用较短的超时避免阻塞
-            self.data_queue.put(data_batch, timeout=5.0)
-        except Full:
-            self.logger.warning(f"Data queue full, dropping data batch {data_batch.batch_id}")
-            # 记录丢失的数据批次
-            record_failed_task(
-                task_name=f"data_queue_full",
-                entity_id=data_batch.symbol,
-                reason="data_queue_full",
-                error_category="system"
-            )
+        # 队列满时阻塞等待，确保数据不丢失
+        self.data_queue.put(data_batch, block=True)
+        self.logger.debug(f"Data batch {data_batch.batch_id} added to queue")
     
     def _handle_task_error(self, task: DownloadTask, error: Exception) -> None:
         """处理任务错误"""
@@ -319,7 +262,7 @@ class ProducerPool:
                  data_queue: Optional[Queue] = None,
                  retry_policy_config: Optional[RetryPolicy] = None,
                  dead_letter_path: str = "logs/dead_letter.jsonl",
-                 fetcher_rate_limit: int = 150):
+                 fetcher: Optional[TushareFetcher] = None):
         """
         初始化生产者池
         
@@ -329,7 +272,7 @@ class ProducerPool:
             data_queue: 数据队列，如果为None则创建新队列
             retry_policy_config: 重试策略配置
             dead_letter_path: 死信日志路径
-            fetcher_rate_limit: TushareFetcher的默认速率限制
+            fetcher: TushareFetcher实例，如果为None则创建新实例
         """
         self.max_producers = max_producers
         self.task_queue = task_queue or Queue()
@@ -337,8 +280,8 @@ class ProducerPool:
         self.retry_policy_config = retry_policy_config or DEFAULT_RETRY_POLICY
         self.dead_letter_path = dead_letter_path
         
-        # 创建TushareFetcher实例
-        self.fetcher = TushareFetcher(default_rate_limit=fetcher_rate_limit)
+        # 创建或使用提供的TushareFetcher实例
+        self.fetcher = fetcher or TushareFetcher()
         
         # 线程池
         self.executor: Optional[ThreadPoolExecutor] = None
