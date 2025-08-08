@@ -120,7 +120,7 @@ def classify_error(error: Exception) -> ErrorCategory:
     # API限制错误
     api_limit_keywords = [
         "rate limit", "quota exceeded", "too many requests", 
-        "api limit", "频次限制"
+        "too many calls", "api limit", "频次限制"
     ]
     if any(keyword in error_str for keyword in api_limit_keywords):
         return ErrorCategory.API_LIMIT
@@ -266,7 +266,7 @@ API_LIMIT_RETRY_STRATEGY = RetryStrategy(
     base_delay=10.0,
     max_delay=120.0,
     backoff_factor=2.0,
-    retry_on=["rate limit", "quota exceeded", "too many requests"]
+    retry_on=["rate limit", "quota exceeded", "too many requests", "too many calls"]
 )
 
 CONSERVATIVE_RETRY_STRATEGY = RetryStrategy(

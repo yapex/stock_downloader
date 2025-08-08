@@ -1,13 +1,21 @@
 # 数据库配置 (用于新架构)
 database:
-  path: "data/stock.db"
+  path: "/Users/yapex/workspace/stock_data/stock.db"
 
-# 下载器配置
+# 下载器配置 - 基于业内最佳实践的默认值
 downloader:
-  max_producers: 2
-  max_consumers: 1
+  # 单线程模式避免同时调用同一API方法
+  max_producers: 1  # 单线程处理，配合Rate Limiter控制API调用频率
+  
+  # 消费者数量: 通常比生产者少，避免数据库写入瓶颈
+  max_consumers: 1  # 单消费者避免数据库锁竞争
+  
+  # 任务队列: 减小队列避免积压
   producer_queue_size: 1000
+  
+  # 数据队列: 减小数据队列
   data_queue_size: 500
+  
   retry_policy:
     max_retries: 3
     base_delay: 1.0
@@ -17,13 +25,17 @@ downloader:
 
 # 消费者配置
 consumer:
-  batch_size: 100
-  flush_interval: 30.0
+  # 批次大小: 100-500条记录平衡性能和内存
+  batch_size: 200
+  
+  # 刷新间隔: 15-60秒，避免数据积压
+  flush_interval: 20.0
+  
   max_retries: 3
 
 # 获取器配置
 fetcher:
-  rate_limit: 195
+  rate_limit: 180  # 保守设置，避免超过200次/分钟限制
 
 # 并发控制
 concurrency:
@@ -96,6 +108,6 @@ groups:
     tasks: ["update_stock_list", "financial_income", "financial_balance", "financial_cashflow"]
     
   quick:
-    description: "快速测试组 - 仅股票列表和基础日K线"
-    symbols: ["600519", "000001"]
+    description: "快速测试组 - 少量股票的财务数据测试"
+    symbols: "all"
     tasks: ["financial_income", "financial_balance", "financial_cashflow"]

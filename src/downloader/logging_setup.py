@@ -39,12 +39,16 @@ def setup_logging():
     )
     console_formatter = logging.Formatter("%(message)s")  # 终端只显示消息内容
 
-    # 文件处理器 - 记录所有级别的日志
+    # 文件处理器 - 记录所有级别的日志，每天覆盖
     import os
+    from datetime import datetime
     log_dir = "logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    log_file = os.path.join(log_dir, "downloader.log")
+    
+    # 使用日期作为日志文件名，每天覆盖
+    today = datetime.now().strftime("%Y%m%d")
+    log_file = os.path.join(log_dir, f"downloader_{today}.log")
     file_handler = logging.FileHandler(log_file, mode="w", encoding="utf-8")
     file_handler.setFormatter(file_formatter)
     file_handler.setLevel(logging.DEBUG)

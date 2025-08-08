@@ -208,6 +208,19 @@ class DuckDBStorage:
     def get_stock_list(self) -> pd.DataFrame:
         """获取股票列表数据的便捷方法。"""
         return self.query("system", "stock_list")
+    
+    def get_all_stock_codes(self) -> list[str]:
+        """获取所有股票代码列表。"""
+        try:
+            # 优化：只查询 ts_code 列，避免加载整个股票列表表
+            stock_df = self.query("system", "stock_list", columns=["ts_code"])
+            if stock_df is not None and not stock_df.empty and 'ts_code' in stock_df.columns:
+                return stock_df['ts_code'].tolist()
+            else:
+                return []
+        except Exception as e:
+            logger.error(f"获取股票代码列表失败: {e}")
+            return []
 
     def list_tables(self) -> list[str]:
         """列出数据库中的所有表。"""

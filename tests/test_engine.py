@@ -72,7 +72,7 @@ def test_engine_run_with_specific_symbols(mock_fetcher, mock_storage, mock_args)
 def test_engine_run_with_symbols_all(mock_fetcher, mock_storage, mock_args):
     """
     测试当 config.downloader.symbols 是 "all" 时，
-    引擎在新架构中会记录警告并返回空列表。
+    引擎会从数据库获取所有股票列表。
     """
     config = {
         "downloader": {"symbols": "all"},
@@ -87,12 +87,17 @@ def test_engine_run_with_symbols_all(mock_fetcher, mock_storage, mock_args):
         "defaults": {},
     }
 
+    # 模拟存储返回股票列表
+    mock_storage.get_all_stock_codes.return_value = ["000001.SZ", "600519.SH"]
+    
     engine = DownloadEngine(config, mock_fetcher, mock_storage, mock_args)
     
-    # 测试目标股票列表准备 - 在新架构中，"all"模式返回空列表
+    # 测试目标股票列表准备 - 在新架构中，"all"模式从数据库获取股票列表
     enabled_tasks = [task for task in config["tasks"] if task.get("enabled", False)]
     target_symbols = engine._prepare_target_symbols(enabled_tasks)
-    assert target_symbols == []  # 新架构中的行为
+    assert len(target_symbols) > 0  # 应该返回股票列表
+    assert "000001.SZ" in target_symbols
+    assert "600519.SH" in target_symbols
 
 
 def test_engine_processes_enabled_tasks_correctly(mock_fetcher, mock_storage, mock_args):

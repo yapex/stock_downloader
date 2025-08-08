@@ -229,6 +229,113 @@ def scan_missing(
 
 
 @app.command()
+def batch(
+    group: str = typer.Option(
+        "financial",
+        "--group",
+        "-g",
+        help="执行指定的任务组",
+    ),
+    batch_size: int = typer.Option(
+        100,
+        "--batch-size",
+        "-b",
+        help="每批处理的股票数量",
+    ),
+    delay_minutes: int = typer.Option(
+        2,
+        "--delay",
+        "-d",
+        help="批次间等待时间（分钟）",
+    ),
+    start_batch: int = typer.Option(
+        1,
+        "--start",
+        "-s",
+        help="起始批次号（用于断点续传）",
+    ),
+    config_file: str = typer.Option(
+        "config.yaml",
+        "--config",
+        "-c",
+        help="配置文件路径",
+    ),
+):
+    """分批处理大量股票，避免API限流"""
+    import time
+    from .storage import DuckDBStorage
+    
+    setup_logging()
+    
+    try:
+        # 加载配置
+        config = load_config(config_file)
+        
+        # 获取数据库路径
+        db_path = config.get("database", {}).get("path", "stock.db")
+        storage = DuckDBStorage(db_path)
+        
+        # 获取所有股票代码
+        all_codes = storage.get_all_stock_codes()
+        if not all_codes:
+            progress_manager.print_error("数据库中没有股票列表，请先运行 update_stock_list 任务")
+            raise typer.Exit(code=1)
+        
+        # 计算批次信息
+        total_stocks = len(all_codes)
+        total_batches = (total_stocks + batch_size - 1) // batch_size
+        
+        progress_manager.print_info(f"总股票数: {total_stocks}")
+        progress_manager.print_info(f"批次大小: {batch_size}")
+        progress_manager.print_info(f"总批次数: {total_batches}")
+        progress_manager.print_info(f"批次间延迟: {delay_minutes} 分钟")
+        progress_manager.print_info(f"从第 {start_batch} 批开始")
+        
+        # 分批处理
+        for batch_num in range(start_batch, total_batches + 1):
+            start_idx = (batch_num - 1) * batch_size
+            end_idx = min(start_idx + batch_size, total_stocks)
+            batch_codes = all_codes[start_idx:end_idx]
+            
+            progress_manager.print_info(f"\n=== 处理第 {batch_num}/{total_batches} 批 ===")
+            progress_manager.print_info(f"股票范围: {start_idx + 1}-{end_idx} ({len(batch_codes)} 只股票)")
+            
+            # 创建临时配置，只处理当前批次的股票
+            temp_config = config.copy()
+            if "groups" in temp_config and group in temp_config["groups"]:
+                temp_config["groups"][group]["symbols"] = batch_codes
+            
+            # 执行下载
+            try:
+                app_instance = DownloaderApp()
+                success = app_instance.run_download(
+                    config_path=config_file,
+                    group_name=group,
+                    symbols=batch_codes,
+                    force=True
+                )
+                if success:
+                    progress_manager.print_info(f"第 {batch_num} 批处理完成")
+                else:
+                    progress_manager.print_error(f"第 {batch_num} 批处理失败")
+            except Exception as e:
+                progress_manager.print_error(f"第 {batch_num} 批处理失败: {e}")
+                # 继续处理下一批
+            
+            # 如果不是最后一批，等待指定时间
+            if batch_num < total_batches:
+                progress_manager.print_info(f"等待 {delay_minutes} 分钟后处理下一批...")
+                time.sleep(delay_minutes * 60)
+        
+        progress_manager.print_info(f"\n=== 批量处理完成 ===")
+        progress_manager.print_info(f"共处理 {total_batches} 批，{total_stocks} 只股票")
+        
+    except Exception as e:
+        progress_manager.print_error(f"批量处理失败: {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def verify(
     config_file: str = typer.Option(
         "config.yaml",

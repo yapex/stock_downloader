@@ -1,4 +1,5 @@
 import logging
+import time
 from importlib.metadata import entry_points
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
@@ -53,8 +54,16 @@ class DownloadEngine:
         # 从配置中获取线程池设置
         self.max_producers = downloader_config.get("max_producers", 2)
         self.max_consumers = downloader_config.get("max_consumers", 1)
-        self.producer_queue_size = downloader_config.get("producer_queue_size", 1000)
-        self.data_queue_size = downloader_config.get("data_queue_size", 500)
+        
+        # 智能队列大小配置：基于生产者数量和API限流设置合理的队列大小
+        # 考虑到API限流是50次/分钟，设置较小的队列避免大量任务堆积
+        self.producer_queue_size = downloader_config.get("producer_queue_size", min(100, self.max_producers * 20))
+        self.data_queue_size = downloader_config.get("data_queue_size", 200)
+        
+        # 批量提交配置
+        self.batch_submit_size = downloader_config.get("batch_submit_size", 10)  # 每批提交的任务数
+        self.submit_delay = downloader_config.get("submit_delay", 1.0)  # 批次间延迟（秒）
+        self.queue_high_watermark = downloader_config.get("queue_high_watermark", 0.8)  # 队列高水位线
 
         # 重试策略
         retry_config = downloader_config.get("retry_policy", {})
@@ -112,14 +121,7 @@ class DownloadEngine:
         db_path = self.config.get("database", {}).get("path", "data/stock.db")
 
         # 创建生产者池
-        self.producer_pool = ProducerPool(
-            max_producers=self.max_producers,
-            task_queue=self.task_queue,
-            data_queue=self.data_queue,
-            retry_policy_config=self.retry_policy,
-            dead_letter_path="logs/dead_letter.jsonl",
-            fetcher=self.fetcher,
-        )
+        self.producer_pool = ProducerPool(fetcher=self.fetcher)
 
         # 创建消费者池
         consumer_config = self.config.get("consumer", {})
@@ -185,7 +187,14 @@ class DownloadEngine:
 
         # 按类型统计任务
         for task in download_tasks:
-            task_type_key = task.task_type.value
+            # 对于财务任务，使用更具体的data_type进行统计
+            if task.task_type == TaskType.FINANCIALS:
+                task_config = task.params.get("task_config", {})
+                data_type = self._get_data_type_for_task_spec(task_config)
+                task_type_key = data_type
+            else:
+                task_type_key = task.task_type.value
+                
             if task_type_key not in self.execution_stats["tasks_by_type"]:
                 self.execution_stats["tasks_by_type"][task_type_key] = 0
             self.execution_stats["tasks_by_type"][task_type_key] += 1
@@ -314,7 +323,7 @@ class DownloadEngine:
                 logger.info("所有队列为空，任务处理完成")
                 break
 
-            sleep(1.0)  # 每秒检查一次
+            sleep(0.1)  # 每0.1秒检查一次，提供更流畅的进度更新
 
         # 给消费者一些时间来处理最后的缓存数据
         logger.info("等待消费者处理完剩余数据...")
@@ -338,16 +347,16 @@ class DownloadEngine:
                 producer_stats = self.producer_pool.get_statistics()
                 consumer_stats = self.consumer_pool.get_statistics()
 
-                # 估算完成和失败的任务数
-                completed_tasks = consumer_stats.get("total_batches_processed", 0)
-                failed_tasks = consumer_stats.get("total_failed_operations", 0)
+                # 使用生产者统计获取更实时的任务进度
+                completed_tasks = producer_stats.get("tasks_processed", 0)
+                failed_tasks = producer_stats.get("tasks_failed", 0)
 
                 # 只在数量发生变化时更新进度条
                 if completed_tasks != last_completed or failed_tasks != last_failed:
                     progress_manager.update_progress(
                         completed=completed_tasks,
                         failed=failed_tasks,
-                        current_task=f"队列: {task_queue_size} | 数据: {data_queue_size}",
+                        current_task=f"任务: {task_queue_size}",
                     )
                     last_completed = completed_tasks
                     last_failed = failed_tasks
@@ -369,11 +378,11 @@ class DownloadEngine:
         sleep(2.0)
 
         # 最终更新进度
-        if self.consumer_pool:
-            consumer_stats = self.consumer_pool.get_statistics()
+        if self.producer_pool:
+            producer_stats = self.producer_pool.get_statistics()
             progress_manager.update_progress(
-                completed=consumer_stats.get("total_batches_processed", 0),
-                failed=consumer_stats.get("total_failed_operations", 0),
+                completed=producer_stats.get("tasks_processed", 0),
+                failed=producer_stats.get("tasks_failed", 0),
                 current_task="处理完成",
             )
 
@@ -410,13 +419,18 @@ class DownloadEngine:
                 return
 
             # 2. 准备目标股票列表（仅针对需要股票列表的任务）
+            logger.info("准备目标股票列表...")
             target_symbols = self._prepare_target_symbols(enabled_tasks)
+            logger.info(f"目标股票列表准备完成，共 {len(target_symbols)} 只股票")
 
             # 3. 初始化队列和线程池（不创建数据库连接）
+            logger.info("初始化队列和线程池...")
             self._setup_queues()
 
             # 4. 构建 DownloadTask 队列
+            logger.info("构建下载任务队列...")
             download_tasks = self._build_download_tasks(target_symbols, enabled_tasks)
+            logger.info(f"下载任务队列构建完成，共 {len(download_tasks)} 个任务")
 
             if not download_tasks:
                 progress_manager.print_warning("没有任务需要执行")
@@ -424,24 +438,35 @@ class DownloadEngine:
                 return
 
             # 初始化进度条
+            logger.info("初始化进度条...")
             progress_manager.initialize(
                 total_tasks=len(download_tasks),
                 description=f"处理 {self.group_name} 组任务",
             )
+            logger.info("进度条初始化完成")
 
             # 5. 启动生产者和消费者池
             logger.info("启动生产者和消费者线程池...")
             self.producer_pool.start()
             self.consumer_pool.start()
+            logger.info("生产者和消费者线程池启动完成")
 
             # 6. 按组装填任务队列
+            logger.info("提交任务到队列...")
             self._submit_tasks_to_queue(download_tasks)
+            logger.info("任务提交完成，开始处理")
 
             # 7. 监控两队列，检测全部完成后关闭线程池
             self._monitor_queues_with_progress()
 
             # 8. 统计成功/失败/跳过数量供总结
             self._collect_final_statistics()
+            
+            # 同步最终统计信息到进度管理器
+            progress_manager.update_progress(
+                completed=self.execution_stats["successful_tasks"],
+                failed=self.execution_stats["failed_tasks"]
+            )
 
             # 完成进度条
             progress_manager.finish()
@@ -503,11 +528,27 @@ class DownloadEngine:
                     continue
             logger.info(f"使用配置指定的 {len(target_symbols)} 只股票")
         elif symbols_config == "all":
-            # 这里需要数据库连接来获取股票列表
-            # 由于新架构延迟创建连接，这里先返回空列表
-            # TODO: 在实际运行时从数据库获取
-            logger.warning("配置为 'all' 模式，但新架构中延迟获取股票列表")
-            target_symbols = []
+            # 从数据库获取所有股票列表
+            try:
+                logger.info("正在从数据库获取股票列表...")
+                start_time = time.time()
+                storage = self._get_runtime_storage()
+                target_symbols = storage.get_all_stock_codes()
+                elapsed = time.time() - start_time
+                if target_symbols:
+                    logger.info(f"从数据库获取到 {len(target_symbols)} 只股票 (耗时 {elapsed:.2f}s)")
+                    if elapsed > 0.5:  # 如果查询耗时超过0.5秒，给出优化建议
+                        logger.warning(
+                            f"股票列表查询耗时较长 ({elapsed:.2f}s)，建议考虑：\n"
+                            "  1. 使用固定股票列表而非 'all' 配置\n"
+                            "  2. 为 stock_basic 表的 ts_code 列创建索引"
+                        )
+                else:
+                    logger.warning("数据库中没有股票列表，请先运行 stock_list 任务")
+                    target_symbols = []
+            except Exception as e:
+                logger.error(f"从数据库获取股票列表失败: {e}")
+                target_symbols = []
         else:
             logger.error(f"未知的 symbols 配置: {symbols_config}")
 
@@ -520,6 +561,14 @@ class DownloadEngine:
             logger.info(
                 f"生产者统计: 处理任务 {producer_stats.get('tasks_processed', 0)} 个"
             )
+            
+            # 从生产者获取正确的任务统计
+            self.execution_stats["successful_tasks"] = producer_stats.get(
+                "tasks_processed", 0
+            )
+            self.execution_stats["failed_tasks"] = producer_stats.get(
+                "tasks_failed", 0
+            )
 
         if self.consumer_pool:
             consumer_stats = self.consumer_pool.get_statistics()
@@ -529,13 +578,8 @@ class DownloadEngine:
             logger.info(
                 f"消费者统计: 刷新操作 {consumer_stats.get('total_flush_operations', 0)} 次"
             )
-
-            # 更新执行统计
-            self.execution_stats["successful_tasks"] = consumer_stats.get(
-                "total_batches_processed", 0
-            )
-            self.execution_stats["failed_tasks"] = consumer_stats.get(
-                "total_failed_operations", 0
+            logger.info(
+                f"消费者统计: 失败操作 {consumer_stats.get('total_failed_operations', 0)} 次"
             )
 
     def _print_final_summary(self) -> None:
