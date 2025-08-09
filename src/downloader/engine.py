@@ -16,7 +16,6 @@ from .producer import Producer
 from .consumer_pool import ConsumerPool
 from .models import DownloadTask, TaskType, Priority
 from .retry_policy import RetryPolicy, DEFAULT_RETRY_POLICY
-from .progress_manager import progress_manager
 from .progress_events import (
     progress_event_manager, start_phase, end_phase, task_started, 
     task_completed, update_total, ProgressPhase
@@ -633,12 +632,7 @@ class DownloadEngine:
         last_failed = 0
         update_count = 0
 
-        # 初始显示进度条
-        progress_manager.update_progress(
-            completed=0,
-            failed=0,
-            current_task="初始化中...",
-        )
+        # 进度条由 progress_event_manager 管理
 
         # 等待任务队列处理完成
         while True:
@@ -661,14 +655,11 @@ class DownloadEngine:
                 completed_tasks = total_processed
                 failed_tasks = total_failed
 
-                # 更新进度条（数量变化时或每5次循环强制更新一次）
+                # 进度条由 progress_event_manager 管理，这里只记录变化
                 if (completed_tasks != last_completed or failed_tasks != last_failed or 
                     update_count % 5 == 0):
-                    progress_manager.update_progress(
-                        completed=completed_tasks,
-                        failed=failed_tasks,
-                        current_task=f"处理中 (队列: {task_queue_size})",
-                    )
+                    # 进度更新由事件管理器处理
+                    pass
                     last_completed = completed_tasks
                     last_failed = failed_tasks
                 
@@ -700,11 +691,8 @@ class DownloadEngine:
                 total_processed += producer_stats.get("tasks_processed", 0)
                 total_failed += producer_stats.get("tasks_failed", 0)
             
-            progress_manager.update_progress(
-                completed=total_processed,
-                failed=total_failed,
-                current_task="处理完成",
-            )
+            # 进度更新由事件管理器处理
+            pass
 
     def _shutdown_pools(self) -> None:
         """关闭线程池"""
@@ -756,7 +744,7 @@ class DownloadEngine:
             # 1. 解析配置与构建队列
             tasks = self.config.get("tasks", [])
             if not tasks:
-                progress_manager.print_warning("配置文件中未找到任何任务")
+                logger.warning("配置文件中未找到任何任务")
                 logger.warning("配置文件中未找到任何任务。")
                 end_phase(ProgressPhase.COMPLETED)
                 return
@@ -764,7 +752,7 @@ class DownloadEngine:
             # 获取启用的任务
             enabled_tasks = [task for task in tasks if task.get("enabled", False)]
             if not enabled_tasks:
-                progress_manager.print_warning("没有启用的任务")
+                logger.warning("没有启用的任务")
                 logger.warning("没有启用的任务。")
                 end_phase(ProgressPhase.COMPLETED)
                 return
@@ -805,11 +793,11 @@ class DownloadEngine:
             logger.info("所有任务处理完成")
 
         except KeyboardInterrupt:
-            progress_manager.print_warning("用户中断下载")
+            logger.warning("用户中断下载")
             logger.info("用户中断下载")
             raise
         except Exception as e:
-            progress_manager.print_error(f"下载引擎异常: {str(e)}")
+            logger.error(f"下载引擎异常: {str(e)}")
             logger.error(f"下载引擎执行异常: {e}", exc_info=True)
             raise
         finally:
@@ -838,12 +826,6 @@ class DownloadEngine:
         update_total(len(download_tasks), ProgressPhase.DOWNLOADING)
         start_phase(ProgressPhase.DOWNLOADING, len(download_tasks))
         
-        # 初始化进度条（保留兼容性）
-        progress_manager.initialize(
-            total_tasks=len(download_tasks),
-            description="处理系统表任务",
-        )
-        
         # 启动消费者池（按配置数量创建所有消费者）
         if not self.consumer_pool.running:
             self.consumer_pool.start()
@@ -851,14 +833,13 @@ class DownloadEngine:
         # 提交系统表任务到队列
         self._submit_tasks_to_queue(download_tasks)
         
-        # 开始保存阶段
-        start_phase(ProgressPhase.SAVING)
-        
         # 监控队列直到完成
         self._monitor_queues_with_progress()
         
-        # 完成进度条
-        progress_manager.finish()
+        # 下载完成后，开始保存阶段
+        # 保存阶段的总数等于下载阶段的任务数
+        update_total(len(download_tasks), ProgressPhase.SAVING)
+        start_phase(ProgressPhase.SAVING, len(download_tasks))
         
         logger.info("系统表任务处理完成")
 
@@ -877,12 +858,6 @@ class DownloadEngine:
         update_total(len(download_tasks), ProgressPhase.DOWNLOADING)
         start_phase(ProgressPhase.DOWNLOADING, len(download_tasks))
         
-        # 重新初始化进度条（保留兼容性）
-        progress_manager.initialize(
-            total_tasks=len(download_tasks),
-            description="处理业务表任务",
-        )
-        
         # 如果消费者池还没有启动，先启动它
         if not self.consumer_pool.running:
             logger.info("消费者池未启动，先启动消费者池")
@@ -894,14 +869,13 @@ class DownloadEngine:
         # 提交业务表任务到队列
         self._submit_tasks_to_queue(download_tasks)
         
-        # 开始保存阶段
-        start_phase(ProgressPhase.SAVING)
-        
         # 监控队列直到完成
         self._monitor_queues_with_progress()
         
-        # 完成进度条
-        progress_manager.finish()
+        # 下载完成后，开始保存阶段
+        # 保存阶段的总数等于下载阶段的任务数
+        update_total(len(download_tasks), ProgressPhase.SAVING)
+        start_phase(ProgressPhase.SAVING, len(download_tasks))
         
         logger.info("业务表任务处理完成")
 
