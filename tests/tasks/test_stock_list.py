@@ -21,4 +21,4 @@ def test_stock_list_handler_executes_correctly(mock_fetcher, mock_storage):
 
     # 验证调用了正确的fetcher和storage方法
     mock_fetcher.fetch_stock_list.assert_called_once()
-    mock_storage.overwrite.assert_called_once()
+    mock_storage.save_stock_list.assert_called_once()

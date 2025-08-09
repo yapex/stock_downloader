@@ -34,9 +34,11 @@ def mock_storage():
     """一个可供所有测试使用的、模拟的Storage实例。"""
     storage = MagicMock()
     # 为每个方法都设置一个默认的、安全的返回值
-    storage.get_latest_date.return_value = "20230101"
-    storage.save.return_value = None
-    storage.overwrite.return_value = None
+    storage.get_latest_date_by_stock.return_value = "20230101"
+    storage.save_daily_data.return_value = None
+    storage.save_fundamental_data.return_value = None
+    storage.save_financial_data.return_value = None
+    storage.save_stock_list.return_value = None
 
     # _get_file_path 返回一个可配置的 mock_path
     mock_path = MagicMock()

@@ -16,5 +16,5 @@ def test_daily_basic_task_handler_executes_correctly(
 
     # ---> 核心修正：断言正确的方法名 <---
     assert mock_fetcher.fetch_daily_basic.call_count == len(target_symbols)
-    assert mock_storage.save.call_count == len(target_symbols)
-    assert mock_storage.get_latest_date.call_count == len(target_symbols)
+    assert mock_storage.save_fundamental_data.call_count == len(target_symbols)
+    assert mock_storage.get_latest_date_by_stock.call_count == len(target_symbols)

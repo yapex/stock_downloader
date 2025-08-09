@@ -215,7 +215,17 @@ class DownloadEngine:
                 if not self.force_run:
                     try:
                         storage = self._get_runtime_storage()
-                        latest_dates = storage.get_latest_dates_batch(data_type, target_symbols, date_col)
+                        # 将data_type映射到内部数据类型
+                        if data_type == "daily_basic" or data_type.startswith("fundamental"):
+                            internal_type = "fundamental"
+                        elif data_type.startswith("daily"):
+                            internal_type = "daily"
+                        elif data_type.startswith("financials"):
+                            internal_type = "financial"
+                        else:
+                            internal_type = "daily"  # 默认
+                        
+                        latest_dates = storage.batch_get_latest_dates(target_symbols, internal_type)
                         latest_dates_cache[(data_type, date_col)] = latest_dates
                         logger.debug(f"批量获取 {data_type} 类型最新日期: {len(latest_dates)} 个有效记录")
                     except Exception as e:
@@ -304,7 +314,17 @@ class DownloadEngine:
 
             # 尝试获取最新日期
             storage = self._get_runtime_storage()
-            latest_date = storage.get_latest_date(data_type, symbol, date_column)
+            # 将data_type映射到内部数据类型
+            if data_type == "daily_basic" or data_type.startswith("fundamental"):
+                internal_type = "fundamental"
+            elif data_type.startswith("daily"):
+                internal_type = "daily"
+            elif data_type.startswith("financials"):
+                internal_type = "financial"
+            else:
+                internal_type = "daily"  # 默认
+            
+            latest_date = storage.get_latest_date_by_stock(symbol, internal_type)
             if latest_date:
                 # 从最新日期的下一天开始
                 next_date = datetime.strptime(latest_date, "%Y%m%d") + timedelta(days=1)

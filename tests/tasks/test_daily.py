@@ -14,7 +14,7 @@ def test_daily_task_handler_executes_correctly(mock_fetcher, mock_storage):
     handler.execute(target_symbols=target_symbols)
 
     assert mock_fetcher.fetch_daily_history.call_count == len(target_symbols)
-    assert mock_storage.save.call_count == len(target_symbols)
+    assert mock_storage.save_daily_data.call_count == len(target_symbols)
 
 
 def test_daily_handler_skips_if_no_symbols_provided(
@@ -30,7 +30,7 @@ def test_daily_handler_skips_if_no_symbols_provided(
     handler.execute(target_symbols=target_symbols)
 
     mock_fetcher.fetch_daily_history.assert_not_called()
-    mock_storage.save.assert_not_called()
+    mock_storage.save_daily_data.assert_not_called()
 
 
 # --- 新增的增量逻辑专项测试 ---
@@ -45,7 +45,7 @@ def test_daily_task_handler_calculates_incremental_start_date_correctly(
     task_config = {"name": "Test Daily Inc", "type": "daily", "adjust": "qfq"}
     target_symbols = ["000001.SZ"]
 
-    mock_storage.get_latest_date.return_value = "20231110"
+    mock_storage.get_latest_date_by_stock.return_value = "20231110"
 
     handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
     handler.execute(target_symbols=target_symbols)
@@ -70,7 +70,7 @@ def test_daily_task_handler_handles_no_existing_data(
     task_config = {"name": "Test Daily Full", "type": "daily", "adjust": "qfq"}
     target_symbols = ["000001.SZ"]
 
-    mock_storage.get_latest_date.return_value = None
+    mock_storage.get_latest_date_by_stock.return_value = None
 
     handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
     handler.execute(target_symbols=target_symbols)
@@ -95,7 +95,7 @@ def test_daily_task_handler_skips_if_data_is_up_to_date(
 
     # 模拟 storage 中的最新日期就是今天
     today = datetime.now().strftime("%Y%m%d")
-    mock_storage.get_latest_date.return_value = today
+    mock_storage.get_latest_date_by_stock.return_value = today
 
     handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
     handler.execute(target_symbols=target_symbols)

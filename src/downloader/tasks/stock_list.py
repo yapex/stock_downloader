@@ -31,7 +31,10 @@ class StockListTaskHandler(BaseTaskHandler):
         df = self.fetcher.fetch_stock_list()
 
         if df is not None:
-            # 全量覆盖保存
-            self.storage.overwrite(df, "system", entity_id)
+            # 全量覆盖保存 - 使用新的直接方法
+            # 先清空系统表
+            self.storage.conn.execute("DELETE FROM sys_stock_list")
+            # 然后保存新数据
+            self.storage.save_stock_list(df)
         else:
             self._log_error(f"任务 '{task_name}' 获取股票列表失败。")

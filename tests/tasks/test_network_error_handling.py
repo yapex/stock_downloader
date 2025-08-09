@@ -22,7 +22,7 @@ def test_network_error_handling_and_retry(mock_fetcher, mock_storage):
     # 验证调用次数：每个股票只调用一次，共3次
     assert mock_fetcher.fetch_daily_history.call_count == 3
     # 只有第一个成功保存
-    assert mock_storage.save.call_count == 1
+    assert mock_storage.save_daily_data.call_count == 1
 
 
 def test_network_error_retry_success(mock_fetcher, mock_storage):
@@ -41,7 +41,7 @@ def test_network_error_retry_success(mock_fetcher, mock_storage):
     # 验证调用次数：每个股票只调用一次
     assert mock_fetcher.fetch_daily_history.call_count == 1
     # 成功应该保存
-    assert mock_storage.save.call_count == 1
+    assert mock_storage.save_daily_data.call_count == 1
 
 
 def test_network_error_retry_failure(mock_fetcher, mock_storage):
@@ -60,4 +60,4 @@ def test_network_error_retry_failure(mock_fetcher, mock_storage):
     # 验证调用次数：每个股票只调用一次
     assert mock_fetcher.fetch_daily_history.call_count == 1
     # 失败不应该保存
-    assert mock_storage.save.call_count == 0
+    assert mock_storage.save_daily_data.call_count == 0

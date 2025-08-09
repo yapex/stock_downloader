@@ -136,9 +136,17 @@ class IncrementalTaskHandler(BaseTaskHandler):
 
         try:
             # 步骤1: 获取最新日期
-            latest_date = self.storage.get_latest_date(
-                data_type, ts_code, date_col=date_col
-            )
+            # 将data_type映射到内部数据类型
+            if data_type == "daily_basic" or data_type.startswith("fundamental"):
+                internal_type = "fundamental"
+            elif data_type.startswith("daily"):
+                internal_type = "daily"
+            elif data_type.startswith("financials"):
+                internal_type = "financial"
+            else:
+                internal_type = "daily"  # 默认
+            
+            latest_date = self.storage.get_latest_date_by_stock(ts_code, internal_type)
             
             # 步骤2: 根据 latest_date 确定 start_date
             start_date = "19901219"  # 默认起始日期
@@ -170,8 +178,23 @@ class IncrementalTaskHandler(BaseTaskHandler):
 
             # 步骤4: 保存数据
             if df is not None and not df.empty:
-                # 直接写入数据库
-                self.storage.save(df, data_type, ts_code, date_col=date_col)
+                # 直接写入数据库 - 使用新的直接方法
+                # 确保ts_code列存在
+                if "ts_code" not in df.columns:
+                    df = df.copy()
+                    df["ts_code"] = ts_code
+                
+                # 根据data_type调用对应的保存方法
+                if data_type.startswith("stock_list") or data_type == "system":
+                    self.storage.save_stock_list(df)
+                elif data_type == "daily_basic" or data_type.startswith("fundamental"):
+                    self.storage.save_fundamental_data(df)
+                elif data_type.startswith("daily"):
+                    self.storage.save_daily_data(df)
+                elif data_type.startswith("financials"):
+                    self.storage.save_financial_data(df)
+                else:
+                    self.storage.save_daily_data(df)  # 默认
                 return True
             elif df is not None:  # 空 DataFrame，表示没有新数据
                 return True

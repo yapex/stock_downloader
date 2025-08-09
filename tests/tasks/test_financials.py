@@ -33,5 +33,5 @@ def test_financials_handler_executes_correctly(mock_fetcher, mock_storage):
     mock_fetcher.fetch_balancesheet.assert_not_called()
     mock_fetcher.fetch_cashflow.assert_not_called()
 
-    # 验证 storage.save 被调用了
-    assert mock_storage.save.call_count == len(target_symbols)
+    # 验证 storage.save_financial_data 被调用了
+    assert mock_storage.save_financial_data.call_count == len(target_symbols)
