@@ -110,4 +110,4 @@ groups:
   quick:
     description: "快速测试组 - 少量股票的财务数据测试"
     symbols: "all"
-    tasks: ["financial_income", "financial_balance", "financial_cashflow"]
+    tasks: ["financial_income"]

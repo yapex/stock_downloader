@@ -5,6 +5,7 @@ import logging
 import duckdb
 from datetime import datetime
 import threading
+from typing import List, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,9 @@ class DuckDBStorage:
         # 初始化元数据表，用于跟踪表的更新时间
         self._init_metadata_table(main_conn)
         main_conn.close()
+
+        # 初始化完成后优化现有表
+        self._optimize_existing_tables()
 
     @property
     def conn(self):
@@ -77,6 +81,145 @@ class DuckDBStorage:
             [table_name, data_type, entity_id],
         )
 
+    def create_index_if_not_exists(
+        self, table_name: str, column_name: str, index_name: str = None
+    ) -> bool:
+        """为指定表的列创建索引（如果不存在）"""
+        if index_name is None:
+            index_name = f"idx_{table_name}_{column_name}"
+
+        try:
+            # 检查索引是否已存在
+            existing_indexes = self.conn.execute(
+                "SELECT index_name FROM duckdb_indexes() WHERE table_name = ? AND index_name = ?",
+                [table_name, index_name],
+            ).fetchall()
+
+            if existing_indexes:
+                logger.debug(f"索引 {index_name} 已存在")
+                return True
+
+            # 创建索引
+            create_index_sql = (
+                f"CREATE INDEX {index_name} ON {table_name} ({column_name})"
+            )
+            self.conn.execute(create_index_sql)
+            logger.info(f"成功创建索引: {index_name} on {table_name}({column_name})")
+            return True
+
+        except Exception as e:
+            logger.error(f"创建索引失败 {index_name}: {e}")
+            return False
+
+    def optimize_stock_list_table(self) -> None:
+        """优化 stock_list 表的查询性能"""
+        table_name = "sys_stock_list"
+
+        if not self.table_exists("system", "stock_list"):
+            logger.warning("stock_list 表不存在，跳过索引创建")
+            return
+
+        # 为 ts_code 列创建索引
+        self.create_index_if_not_exists(table_name, "ts_code", "idx_stock_list_ts_code")
+        # 为其他常用列创建索引
+        self.create_index_if_not_exists(table_name, "symbol", "idx_stock_list_symbol")
+        self.create_index_if_not_exists(table_name, "market", "idx_stock_list_market")
+
+    def optimize_business_tables_indexes(self) -> None:
+        """为现有业务表的日期列添加索引"""
+        try:
+            # 获取所有业务表
+            business_tables = self.list_business_tables()
+
+            if not business_tables:
+                logger.debug("没有找到业务表，跳过日期列索引创建")
+                return
+
+            logger.info(f"开始为 {len(business_tables)} 个业务表创建日期列索引")
+
+            # 常见的日期列名
+            date_columns = ["trade_date", "ann_date", "end_date", "report_date"]
+
+            created_count = 0
+            for table_info in business_tables:
+                table_name = table_info["table_name"]
+
+                try:
+                    # 获取表的列信息
+                    columns_info = self.conn.execute(
+                        f"DESCRIBE {table_name}"
+                    ).fetchall()
+                    existing_columns = [col[0] for col in columns_info]
+
+                    # 为存在的日期列创建索引
+                    for date_col in date_columns:
+                        if date_col in existing_columns:
+                            success = self.create_index_if_not_exists(
+                                table_name, date_col
+                            )
+                            if success:
+                                created_count += 1
+                                logger.debug(
+                                    f"为表 {table_name} 的 {date_col} 列创建索引"
+                                )
+
+                except Exception as e:
+                    logger.warning(f"为表 {table_name} 创建索引失败: {e}")
+                    continue
+
+            logger.info(f"业务表日期列索引创建完成，共创建 {created_count} 个索引")
+
+        except Exception as e:
+            logger.error(f"优化业务表索引失败: {e}")
+
+    def _add_performance_indexes(
+        self, table_name: str, data_type: str, columns: list
+    ) -> None:
+        """为新创建的表添加性能索引"""
+        try:
+            # 为 stock_list 表添加索引
+            if data_type == "system" and table_name == "sys_stock_list":
+                # 为 ts_code 列创建索引（如果存在）
+                if "ts_code" in columns:
+                    self.create_index_if_not_exists(table_name, "ts_code")
+                # 为其他常用列创建索引
+                if "symbol" in columns:
+                    self.create_index_if_not_exists(table_name, "symbol")
+                if "market" in columns:
+                    self.create_index_if_not_exists(table_name, "market")
+
+            # 为业务表的日期列添加索引
+            else:
+                # 常见的日期列名
+                date_columns = [
+                    "trade_date",
+                    "ann_date",
+                    "end_date",
+                    "report_date",
+                ]
+
+                for date_col in date_columns:
+                    if date_col in columns:
+                        self.create_index_if_not_exists(table_name, date_col)
+                        logger.debug(
+                            f"为业务表 {table_name} 的日期列 {date_col} 创建索引"
+                        )
+
+        except Exception as e:
+            logger.warning(f"添加性能索引失败 {table_name}: {e}")
+
+    def _optimize_existing_tables(self) -> None:
+        """为现有表添加索引优化"""
+        try:
+            # 优化 stock_list 表
+            self.optimize_stock_list_table()
+
+            # 优化业务表的日期列索引
+            self.optimize_business_tables_indexes()
+
+        except Exception as e:
+            logger.warning(f"优化现有表索引失败: {e}")
+
     def table_exists(self, data_type: str, entity_id: str) -> bool:
         """检查指定的表是否存在。"""
         table_name = get_table_name(data_type, entity_id)
@@ -106,7 +249,7 @@ class DuckDBStorage:
 
             if date_col.lower() not in column_names:
                 # 如果指定的日期列不存在，尝试常见的日期列名
-                common_date_cols = ["trade_date", "ann_date", "end_date", "f_ann_date"]
+                common_date_cols = ["trade_date", "ann_date", "end_date"]
                 available_date_col = None
                 for col in common_date_cols:
                     if col.lower() in column_names:
@@ -129,6 +272,88 @@ class DuckDBStorage:
         except Exception as e:
             logger.error(f"获取表 {table_name} 最新日期失败: {e}", exc_info=True)
             return None
+
+    def get_latest_dates_batch(
+        self, data_type: str, entity_ids: List[str], date_col: str
+    ) -> Dict[str, str]:
+        """批量获取多个实体的最新日期，提升查询性能"""
+        latest_dates = {}
+
+        # 构建所有可能的表名
+        table_names = []
+        entity_table_map = {}
+
+        for entity_id in entity_ids:
+            table_name = get_table_name(data_type, entity_id)
+            if self.table_exists(data_type, entity_id):
+                table_names.append(table_name)
+                entity_table_map[table_name] = entity_id
+
+        if not table_names:
+            return latest_dates
+
+        try:
+            # 构建UNION ALL查询，一次性获取所有表的最新日期
+            union_queries = []
+            for table_name in table_names:
+                # 先检查表结构，确保日期列存在
+                try:
+                    columns_result = self.conn.execute(
+                        f"DESCRIBE {table_name}"
+                    ).fetchall()
+                    column_names = [col[0].lower() for col in columns_result]
+
+                    actual_date_col = date_col
+                    if date_col.lower() not in column_names:
+                        # 尝试常见的日期列名
+                        common_date_cols = [
+                            "trade_date",
+                            "ann_date",
+                            "end_date",
+                        ]
+                        for col in common_date_cols:
+                            if col.lower() in column_names:
+                                actual_date_col = col
+                                break
+                        else:
+                            logger.warning(
+                                f"表 {table_name} 中未找到有效的日期列，跳过"
+                            )
+                            continue
+
+                    union_queries.append(
+                        f"SELECT '{entity_table_map[table_name]}' as entity_id, MAX({actual_date_col}) as max_date FROM {table_name}"
+                    )
+                except Exception as e:
+                    logger.warning(f"检查表 {table_name} 结构失败，跳过: {e}")
+                    continue
+
+            if union_queries:
+                # 执行批量查询
+                batch_query = " UNION ALL ".join(union_queries)
+                results = self.conn.execute(batch_query).fetchall()
+
+                for entity_id, max_date in results:
+                    if max_date:
+                        latest_dates[entity_id] = max_date
+
+                logger.debug(
+                    f"批量查询 {data_type} 类型的 {len(entity_ids)} 个实体，获得 {len(latest_dates)} 个有效日期"
+                )
+
+        except Exception as e:
+            logger.error(f"批量获取最新日期失败: {e}", exc_info=True)
+            # 降级到单个查询
+            logger.info("降级到单个查询模式")
+            for entity_id in entity_ids:
+                try:
+                    date = self.get_latest_date(data_type, entity_id, date_col)
+                    if date:
+                        latest_dates[entity_id] = date
+                except Exception:
+                    continue
+
+        return latest_dates
 
     def save_incremental(
         self, df: pd.DataFrame, data_type: str, entity_id: str, date_col: str
@@ -208,14 +433,18 @@ class DuckDBStorage:
     def get_stock_list(self) -> pd.DataFrame:
         """获取股票列表数据的便捷方法。"""
         return self.query("system", "stock_list")
-    
+
     def get_all_stock_codes(self) -> list[str]:
         """获取所有股票代码列表。"""
         try:
             # 优化：只查询 ts_code 列，避免加载整个股票列表表
             stock_df = self.query("system", "stock_list", columns=["ts_code"])
-            if stock_df is not None and not stock_df.empty and 'ts_code' in stock_df.columns:
-                return stock_df['ts_code'].tolist()
+            if (
+                stock_df is not None
+                and not stock_df.empty
+                and "ts_code" in stock_df.columns
+            ):
+                return stock_df["ts_code"].tolist()
             else:
                 return []
         except Exception as e:
@@ -360,7 +589,13 @@ class DuckDBStorage:
             # DuckDB的from_df().insert_into()已经是优化的批量插入
             conn.from_df(df).insert_into(table_name)
 
-            # 4. 更新元数据
+            # 4. 为新创建的表添加性能索引
+            if not table_exists and not df.empty:
+                self._add_performance_indexes(
+                    table_name, data_type, df.columns.tolist()
+                )
+
+            # 5. 更新元数据
             self._update_metadata(table_name, data_type, entity_id)
 
             # 提交事务
@@ -608,6 +843,20 @@ class DuckDBStorage:
         result["overall_missing"] = sorted(list(overall_missing))
 
         return result
+
+    def get_existing_tables(self) -> List[str]:
+        """
+        获取数据库中存在的所有表名
+
+        Returns:
+            List[str]: 表名列表
+        """
+        try:
+            tables = self.conn.execute("SHOW TABLES").fetchall()
+            return [table[0] for table in tables]
+        except Exception as e:
+            self.logger.error(f"获取表列表失败: {e}")
+            return []
 
 
 __all__ = ["DuckDBStorage"]

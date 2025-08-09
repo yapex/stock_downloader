@@ -9,12 +9,17 @@ from threading import Event
 from time import sleep
 
 from .fetcher import TushareFetcher
+from .fetcher_factory import get_fetcher, get_fetcher_instance_info
 from .storage import DuckDBStorage
-from .producer_pool import ProducerPool
+from .producer import Producer
 from .consumer_pool import ConsumerPool
 from .models import DownloadTask, TaskType, Priority
 from .retry_policy import RetryPolicy, DEFAULT_RETRY_POLICY
 from .progress_manager import progress_manager
+from .progress_events import (
+    progress_event_manager, start_phase, end_phase, task_started, 
+    task_completed, update_total, ProgressPhase
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +45,9 @@ class DownloadEngine:
 
         # 为了支持增量下载，需要在运行时创建存储实例
         self._runtime_storage: Optional[DuckDBStorage] = None
+        
+        # 使用单例模式的fetcher，确保所有Producer共享同一个实例
+        self._singleton_fetcher: Optional[TushareFetcher] = None
 
 
         # 解析配置
@@ -48,11 +56,10 @@ class DownloadEngine:
         # 队列管理
         self.task_queue: Optional[Queue] = None
         self.data_queue: Optional[Queue] = None
-        self.producer_pool: Optional[ProducerPool] = None
         self.consumer_pool: Optional[ConsumerPool] = None
 
         # 从配置中获取线程池设置
-        self.max_producers = downloader_config.get("max_producers", 2)
+        self.max_producers = downloader_config.get("max_producers", 1)
         self.max_consumers = downloader_config.get("max_consumers", 1)
         
         # 智能队列大小配置：基于生产者数量和API限流设置合理的队列大小
@@ -111,31 +118,54 @@ class DownloadEngine:
 
     def _setup_queues(self) -> None:
         """初始化队列和线程池"""
-        logger.info("初始化队列和线程池...")
+        logger.info(
+            f"[引擎初始化] 开始初始化队列和线程池 - "
+            f"生产者队列大小: {self.producer_queue_size}, 数据队列大小: {self.data_queue_size}"
+        )
 
-        # 创建队列
+        # 创建共享队列
         self.task_queue = Queue(maxsize=self.producer_queue_size)
         self.data_queue = Queue(maxsize=self.data_queue_size)
+        
+        logger.info(
+            f"[引擎初始化] 队列创建完成 - "
+            f"任务队列: {self.task_queue.qsize()}/{self.producer_queue_size}, "
+            f"数据队列: {self.data_queue.qsize()}/{self.data_queue_size}"
+        )
 
         # 获取数据库路径
         db_path = self.config.get("database", {}).get("path", "data/stock.db")
+        logger.info(f"[引擎初始化] 数据库路径: {db_path}")
 
-        # 创建生产者池
-        self.producer_pool = ProducerPool(fetcher=self.fetcher)
+        # 初始化生产者列表（动态创建）
+        self.producers = []
+        logger.info(f"[引擎初始化] 生产者列表已初始化")
 
         # 创建消费者池
         consumer_config = self.config.get("consumer", {})
+        batch_size = consumer_config.get("batch_size", 100)
+        flush_interval = consumer_config.get("flush_interval", 30.0)
+        max_retries = consumer_config.get("max_retries", 3)
+        
+        logger.info(
+            f"[引擎初始化] 创建消费者池 - "
+            f"最大消费者: {self.max_consumers}, 批次大小: {batch_size}, "
+            f"刷新间隔: {flush_interval}s, 最大重试: {max_retries}"
+        )
+        
         self.consumer_pool = ConsumerPool(
             max_consumers=self.max_consumers,
             data_queue=self.data_queue,
-            batch_size=consumer_config.get("batch_size", 100),
-            flush_interval=consumer_config.get("flush_interval", 30.0),
+            batch_size=batch_size,
+            flush_interval=flush_interval,
             db_path=db_path,
-            max_retries=consumer_config.get("max_retries", 3),
+            max_retries=max_retries,
         )
 
         logger.info(
-            f"队列初始化完成 - 生产者: {self.max_producers}, 消费者: {self.max_consumers}"
+            f"[引擎初始化] 队列初始化完成 - "
+            f"最大生产者: {self.max_producers}, 最大消费者: {self.max_consumers}, "
+            f"Fetcher ID: {id(self.fetcher)}"
         )
 
     def _build_download_tasks(
@@ -144,6 +174,10 @@ class DownloadEngine:
         """构建 DownloadTask 队列"""
         download_tasks = []
 
+        # 分离系统任务和业务任务
+        system_tasks = []
+        business_tasks = []
+        
         for task_spec in enabled_tasks:
             task_type_str = task_spec.get("type")
             try:
@@ -151,21 +185,58 @@ class DownloadEngine:
             except ValueError:
                 logger.warning(f"未知的任务类型: {task_type_str}")
                 continue
-
-            # stock_list 类型任务不需要 symbols
+                
             if task_type == TaskType.STOCK_LIST:
-                task = DownloadTask(
-                    symbol="system",
-                    task_type=task_type,
-                    params={"task_config": task_spec, "force_run": self.force_run},
-                    priority=Priority.HIGH,  # stock_list 优先级最高
-                )
-                download_tasks.append(task)
+                system_tasks.append(task_spec)
             else:
-                # 为每个股票创建任务
+                business_tasks.append(task_spec)
+        
+        # 处理系统任务
+        for task_spec in system_tasks:
+            task = DownloadTask(
+                symbol="system",
+                task_type=TaskType.STOCK_LIST,
+                params={"task_config": task_spec, "force_run": self.force_run},
+                priority=Priority.HIGH,  # stock_list 优先级最高
+            )
+            download_tasks.append(task)
+        
+        # 批量处理业务任务
+        if business_tasks and target_symbols:
+            logger.info(f"开始批量构建 {len(business_tasks)} 种任务类型，{len(target_symbols)} 只股票的任务")
+            start_time = time.time()
+            
+            # 按任务类型批量获取最新日期
+            latest_dates_cache = {}
+            for task_spec in business_tasks:
+                data_type = self._get_data_type_for_task_spec(task_spec)
+                date_col = self._get_date_column_for_task_type(task_spec.get("type", ""))
+                
+                if not self.force_run:
+                    try:
+                        storage = self._get_runtime_storage()
+                        latest_dates = storage.get_latest_dates_batch(data_type, target_symbols, date_col)
+                        latest_dates_cache[(data_type, date_col)] = latest_dates
+                        logger.debug(f"批量获取 {data_type} 类型最新日期: {len(latest_dates)} 个有效记录")
+                    except Exception as e:
+                        logger.warning(f"批量获取 {data_type} 最新日期失败，将使用默认日期: {e}")
+                        latest_dates_cache[(data_type, date_col)] = {}
+                else:
+                    latest_dates_cache[(data_type, date_col)] = {}
+            
+            # 为每个股票和任务类型创建任务
+            for task_spec in business_tasks:
+                task_type_str = task_spec.get("type")
+                task_type = TaskType(task_type_str)
+                data_type = self._get_data_type_for_task_spec(task_spec)
+                date_col = self._get_date_column_for_task_type(task_type_str)
+                latest_dates = latest_dates_cache.get((data_type, date_col), {})
+                
                 for symbol in target_symbols:
-                    # 确定日期范围
-                    start_date, end_date = self._determine_date_range(task_spec, symbol)
+                    # 使用缓存的最新日期确定日期范围
+                    start_date, end_date = self._determine_date_range_with_cache(
+                        task_spec, symbol, latest_dates.get(symbol)
+                    )
 
                     if start_date > end_date:
                         continue  # 没有新数据需要下载
@@ -182,6 +253,9 @@ class DownloadEngine:
                         priority=Priority.NORMAL,
                     )
                     download_tasks.append(task)
+            
+            elapsed = time.time() - start_time
+            logger.info(f"批量任务构建完成，耗时 {elapsed:.2f}s")
 
         self.execution_stats["total_tasks"] = len(download_tasks)
 
@@ -247,6 +321,37 @@ class DownloadEngine:
         # 如果没有历史数据或获取失败，使用默认起始日期
         return default_start, end_date
 
+    def _determine_date_range_with_cache(
+        self, task_spec: Dict[str, Any], symbol: str, cached_latest_date: str = None
+    ) -> tuple[str, str]:
+        """使用缓存的最新日期确定任务的日期范围，提升性能"""
+        # 默认日期范围
+        default_start = "19901219"
+        end_date = datetime.now().strftime("%Y%m%d")
+
+        # 如果强制运行，使用默认起始日期
+        if self.force_run:
+            return default_start, end_date
+
+        # 使用缓存的最新日期
+        if cached_latest_date:
+            try:
+                # 从最新日期的下一天开始
+                next_date = datetime.strptime(cached_latest_date, "%Y%m%d") + timedelta(days=1)
+                start_date = next_date.strftime("%Y%m%d")
+                data_type = self._get_data_type_for_task_spec(task_spec)
+                logger.debug(
+                    f"增量下载 {symbol} {data_type}，从 {start_date} 开始（缓存最新数据: {cached_latest_date}）"
+                )
+                return start_date, end_date
+            except Exception as e:
+                logger.debug(
+                    f"解析缓存日期 {cached_latest_date} 失败，使用默认开始日期: {e}"
+                )
+
+        # 如果没有缓存数据，使用默认起始日期
+        return default_start, end_date
+
     def _get_data_type_for_task_spec(self, task_spec: Dict[str, Any]) -> str:
         """根据任务配置获取正确的data_type"""
         task_type = task_spec.get("type", "")
@@ -287,23 +392,207 @@ class DownloadEngine:
         return self._runtime_storage
 
     def _submit_tasks_to_queue(self, tasks: List[DownloadTask]) -> None:
-        """将任务提交到队列"""
-        logger.info(f"开始提交 {len(tasks)} 个任务到队列...")
-
-        submitted = 0
-        for task in tasks:
-            try:
-                success = self.producer_pool.submit_task(task, timeout=5.0)
+        """使用多个生产者并行提交任务到共享队列"""
+        logger.info(
+            f"[引擎任务提交] 开始并行提交 {len(tasks)} 个任务到队列 - "
+            f"队列当前大小: {self.task_queue.qsize()}, 最大容量: {self.producer_queue_size}"
+        )
+        
+        if not tasks:
+            logger.info("[引擎任务提交] 没有任务需要提交")
+            return
+        
+        # 清空之前的生产者列表
+        self.producers.clear()
+        
+        # 检查任务类型，决定生产者数量
+        has_system_tasks = any(task.task_type == TaskType.STOCK_LIST for task in tasks)
+        
+        if has_system_tasks:
+            # 系统表任务使用单个生产者
+            num_producers = 1
+            logger.info(
+                f"[引擎任务提交] 检测到系统表任务，使用单线程处理 - "
+                f"Fetcher ID: {id(self.fetcher)}"
+            )
+        else:
+            # 业务表任务使用多个生产者
+            num_producers = min(self.max_producers, max(1, len(tasks) // 50))
+            logger.info(
+                f"[引擎任务提交] 业务表任务，创建 {num_producers} 个生产者并行处理 - "
+                f"最大生产者数: {self.max_producers}, 任务数: {len(tasks)}, Fetcher ID: {id(self.fetcher)}"
+            )
+        
+        # 创建多个生产者实例，共享同一个队列
+        for i in range(num_producers):
+            producer = Producer(
+                task_queue=self.task_queue,
+                data_queue=self.data_queue,
+                fetcher=self.fetcher
+            )
+            self.producers.append(producer)
+            logger.info(
+                f"[引擎任务提交] 生产者 {i+1} 已创建 - "
+                f"Producer Fetcher ID: {id(producer.fetcher)}"
+            )
+        
+        try:
+            # 启动所有生产者
+            for i, producer in enumerate(self.producers):
+                producer.start()
+                logger.info(
+                    f"[引擎任务提交] 生产者 {i+1} 已启动 - "
+                    f"线程ID: {producer.ident if hasattr(producer, 'ident') else 'N/A'}"
+                )
+            
+            # 将所有任务提交到共享队列
+            submitted = 0
+            for task in tasks:
+                # 任务会被任意一个空闲的生产者处理
+                success = self._submit_task_to_shared_queue(task)
                 if success:
                     submitted += 1
                 else:
-                    logger.warning(f"任务提交失败: {task.task_id}")
+                    logger.warning(
+                        f"[引擎任务提交] 任务提交失败 - ID: {task.task_id}, "
+                        f"股票: {task.symbol}, 类型: {task.task_type.value}"
+                    )
                     self.execution_stats["failed_tasks"] += 1
+            
+            logger.info(
+                f"[引擎任务提交] 成功提交 {submitted}/{len(tasks)} 个任务到共享队列 - "
+                f"队列大小: {self.task_queue.qsize()}"
+            )
+            
+            # 等待所有任务完成
+            self._wait_for_all_tasks_completion()
+            
+        finally:
+             # 停止所有生产者
+             self._stop_all_producers()
+    
+    def _submit_task_to_shared_queue(self, task: DownloadTask, timeout: float = 5.0) -> bool:
+        """提交任务到共享队列"""
+        try:
+            queue_size_before = self.task_queue.qsize()
+            self.task_queue.put(task, timeout=timeout)
+            logger.debug(
+                f"[引擎队列操作] 任务已提交到共享队列 - "
+                f"ID: {task.task_id}, 股票: {task.symbol}, 类型: {task.task_type.value}, "
+                f"队列大小: {queue_size_before} -> {self.task_queue.qsize()}"
+            )
+            return True
+        except Exception as e:
+            logger.error(
+                f"[引擎队列操作] 提交任务到共享队列失败 - "
+                f"ID: {task.task_id}, 股票: {task.symbol}, 类型: {task.task_type.value}, "
+                f"错误: {e}, 队列大小: {self.task_queue.qsize()}"
+            )
+            return False
+    
+    def _wait_for_all_tasks_completion(self) -> None:
+        """等待所有任务完成"""
+        logger.info(
+            f"[引擎任务等待] 开始等待所有任务完成 - "
+            f"当前任务队列: {self.task_queue.qsize()}, 生产者数量: {len(self.producers)}"
+        )
+        
+        last_queue_size = -1
+        wait_cycles = 0
+        
+        # 等待任务队列为空
+        while not self.task_queue.empty():
+            current_size = self.task_queue.qsize()
+            if current_size != last_queue_size:
+                logger.info(
+                    f"[引擎任务等待] 任务队列处理中 - 剩余任务: {current_size}"
+                )
+                last_queue_size = current_size
+            time.sleep(0.1)
+            wait_cycles += 1
+            
+            # 每10秒输出一次详细状态
+            if wait_cycles % 100 == 0:
+                active_producers = sum(1 for p in self.producers if hasattr(p, 'is_running') and p.is_running)
+                logger.info(
+                    f"[引擎任务等待] 等待状态更新 - "
+                    f"剩余任务: {current_size}, 活跃生产者: {active_producers}/{len(self.producers)}"
+                )
+        
+        # 等待所有生产者完成处理
+        all_idle = False
+        idle_check_cycles = 0
+        while not all_idle:
+            all_idle = True
+            active_count = 0
+            for i, producer in enumerate(self.producers):
+                if hasattr(producer, 'is_running') and producer.is_running:
+                    if hasattr(producer, 'task_queue_size') and producer.task_queue_size > 0:
+                        all_idle = False
+                        active_count += 1
+            
+            if not all_idle:
+                if idle_check_cycles % 50 == 0:  # 每5秒输出一次
+                    logger.info(
+                        f"[引擎任务等待] 等待生产者完成处理 - "
+                        f"活跃生产者: {active_count}/{len(self.producers)}"
+                    )
+                time.sleep(0.1)
+                idle_check_cycles += 1
+        
+        logger.info(
+            f"[引擎任务等待] 所有任务已完成 - "
+            f"总等待周期: {wait_cycles}, 最终队列大小: {self.task_queue.qsize()}"
+        )
+    
+    def _stop_all_producers(self) -> None:
+        """停止所有生产者"""
+        logger.info(
+            f"[引擎生产者停止] 开始停止所有生产者 - "
+            f"当前生产者数量: {len(self.producers)}, 剩余任务: {self.task_queue.qsize()}"
+        )
+        
+        for i, producer in enumerate(self.producers):
+            try:
+                # 获取生产者状态信息
+                is_alive = producer.is_alive() if hasattr(producer, 'is_alive') else False
+                is_running = getattr(producer, 'is_running', False)
+                
+                logger.info(
+                    f"[引擎生产者停止] 正在停止生产者 {i+1} - "
+                    f"状态: alive={is_alive}, running={is_running}"
+                )
+                
+                producer.stop()
+                
+                # 等待生产者停止
+                if hasattr(producer, 'join'):
+                    producer.join(timeout=3.0)
+                    final_alive = producer.is_alive() if hasattr(producer, 'is_alive') else False
+                    if final_alive:
+                        logger.warning(
+                            f"[引擎生产者停止] 生产者 {i+1} 未能在3秒内停止"
+                        )
+                    else:
+                        logger.info(
+                            f"[引擎生产者停止] 生产者 {i+1} 已成功停止"
+                        )
+                else:
+                    logger.info(
+                        f"[引擎生产者停止] 生产者 {i+1} 停止信号已发送"
+                    )
+                    
             except Exception as e:
-                logger.error(f"提交任务异常 {task.task_id}: {e}")
-                self.execution_stats["failed_tasks"] += 1
-
-        logger.info(f"成功提交 {submitted}/{len(tasks)} 个任务")
+                logger.error(
+                    f"[引擎生产者停止] 停止生产者 {i+1} 时出错: {e}", exc_info=True
+                )
+        
+        # 清空生产者列表
+        self.producers.clear()
+        logger.info(
+            f"[引擎生产者停止] 所有生产者已停止 - "
+            f"最终任务队列: {self.task_queue.qsize()}, 数据队列: {self.data_queue.qsize()}"
+        )
 
     def _monitor_queues(self) -> None:
         """监控队列状态，检测任务完成"""
@@ -311,7 +600,7 @@ class DownloadEngine:
 
         # 等待任务队列处理完成
         while True:
-            task_queue_size = self.producer_pool.task_queue_size
+            task_queue_size = self.task_queue.qsize() if self.task_queue else 0
             data_queue_size = self.consumer_pool.data_queue_size
 
             logger.debug(
@@ -336,30 +625,48 @@ class DownloadEngine:
 
         last_completed = 0
         last_failed = 0
+        update_count = 0
+
+        # 初始显示进度条
+        progress_manager.update_progress(
+            completed=0,
+            failed=0,
+            current_task="初始化中...",
+        )
 
         # 等待任务队列处理完成
         while True:
-            task_queue_size = self.producer_pool.task_queue_size
+            task_queue_size = self.task_queue.qsize() if self.task_queue else 0
             data_queue_size = self.consumer_pool.data_queue_size
 
             # 获取统计信息并更新进度
-            if self.producer_pool and self.consumer_pool:
-                producer_stats = self.producer_pool.get_statistics()
+            if self.producers and self.consumer_pool:
+                # 汇总所有生产者的统计信息
+                total_processed = 0
+                total_failed = 0
+                for producer in self.producers:
+                    producer_stats = producer.get_statistics()
+                    total_processed += producer_stats.get("tasks_processed", 0)
+                    total_failed += producer_stats.get("tasks_failed", 0)
+                
                 consumer_stats = self.consumer_pool.get_statistics()
 
                 # 使用生产者统计获取更实时的任务进度
-                completed_tasks = producer_stats.get("tasks_processed", 0)
-                failed_tasks = producer_stats.get("tasks_failed", 0)
+                completed_tasks = total_processed
+                failed_tasks = total_failed
 
-                # 只在数量发生变化时更新进度条
-                if completed_tasks != last_completed or failed_tasks != last_failed:
+                # 更新进度条（数量变化时或每5次循环强制更新一次）
+                if (completed_tasks != last_completed or failed_tasks != last_failed or 
+                    update_count % 5 == 0):
                     progress_manager.update_progress(
                         completed=completed_tasks,
                         failed=failed_tasks,
-                        current_task=f"任务: {task_queue_size}",
+                        current_task=f"处理中 (队列: {task_queue_size})",
                     )
                     last_completed = completed_tasks
                     last_failed = failed_tasks
+                
+                update_count += 1
 
             logger.debug(
                 f"队列状态 - 任务队列: {task_queue_size}, 数据队列: {data_queue_size}"
@@ -378,37 +685,74 @@ class DownloadEngine:
         sleep(2.0)
 
         # 最终更新进度
-        if self.producer_pool:
-            producer_stats = self.producer_pool.get_statistics()
+        if self.producers:
+            # 汇总所有生产者的统计信息
+            total_processed = 0
+            total_failed = 0
+            for producer in self.producers:
+                producer_stats = producer.get_statistics()
+                total_processed += producer_stats.get("tasks_processed", 0)
+                total_failed += producer_stats.get("tasks_failed", 0)
+            
             progress_manager.update_progress(
-                completed=producer_stats.get("tasks_processed", 0),
-                failed=producer_stats.get("tasks_failed", 0),
+                completed=total_processed,
+                failed=total_failed,
                 current_task="处理完成",
             )
 
     def _shutdown_pools(self) -> None:
         """关闭线程池"""
-        logger.info("关闭线程池...")
+        logger.info(
+            f"[引擎关闭] 开始关闭线程池 - "
+            f"生产者数量: {len(self.producers)}, 消费者池状态: {self.consumer_pool.running if self.consumer_pool else 'None'}"
+        )
 
-        if self.producer_pool:
-            self.producer_pool.stop()
+        # 停止所有生产者
+        if self.producers:
+            logger.info(f"[引擎关闭] 停止 {len(self.producers)} 个生产者")
+            for i, producer in enumerate(self.producers):
+                try:
+                    producer.stop()
+                    logger.info(f"[引擎关闭] 生产者 {i+1} 停止信号已发送")
+                except Exception as e:
+                    logger.error(f"[引擎关闭] 停止生产者 {i+1} 时出错: {e}")
+        else:
+            logger.info("[引擎关闭] 没有生产者需要停止")
 
         if self.consumer_pool:
-            self.consumer_pool.stop()
+            logger.info("[引擎关闭] 停止消费者池")
+            try:
+                self.consumer_pool.stop()
+                logger.info("[引擎关闭] 消费者池已停止")
+            except Exception as e:
+                logger.error(f"[引擎关闭] 停止消费者池时出错: {e}")
+        else:
+            logger.info("[引擎关闭] 没有消费者池需要停止")
 
-        logger.info("线程池已关闭")
+        logger.info(
+            f"[引擎关闭] 线程池已关闭 - "
+            f"最终任务队列: {self.task_queue.qsize() if self.task_queue else 'N/A'}, "
+            f"最终数据队列: {self.data_queue.qsize() if self.data_queue else 'N/A'}"
+        )
 
     def run(self):
-        """执行基于队列的下载任务，使用进度管理器实时显示进度"""
+        """执行基于队列的下载任务，分阶段处理：先系统表，后业务表并行"""
         logger.info("启动基于队列的下载引擎...")
         self.execution_stats["processing_start_time"] = datetime.now()
 
         try:
+            # 启动进度事件管理器
+            progress_event_manager.start()
+            
+            # 开始初始化阶段
+            start_phase(ProgressPhase.INITIALIZATION)
+            
             # 1. 解析配置与构建队列
             tasks = self.config.get("tasks", [])
             if not tasks:
                 progress_manager.print_warning("配置文件中未找到任何任务")
                 logger.warning("配置文件中未找到任何任务。")
+                end_phase(ProgressPhase.COMPLETED)
                 return
 
             # 获取启用的任务
@@ -416,73 +760,42 @@ class DownloadEngine:
             if not enabled_tasks:
                 progress_manager.print_warning("没有启用的任务")
                 logger.warning("没有启用的任务。")
+                end_phase(ProgressPhase.COMPLETED)
                 return
 
-            # 2. 准备目标股票列表（仅针对需要股票列表的任务）
-            logger.info("准备目标股票列表...")
-            target_symbols = self._prepare_target_symbols(enabled_tasks)
-            logger.info(f"目标股票列表准备完成，共 {len(target_symbols)} 只股票")
+            # 2. 分离系统表任务和业务表任务
+            system_tasks = [task for task in enabled_tasks if task.get("type") == "stock_list"]
+            business_tasks = [task for task in enabled_tasks if task.get("type") != "stock_list"]
+            
+            logger.info(f"发现 {len(system_tasks)} 个系统表任务，{len(business_tasks)} 个业务表任务")
 
-            # 3. 初始化队列和线程池（不创建数据库连接）
+            # 3. 初始化队列和线程池
             logger.info("初始化队列和线程池...")
             self._setup_queues()
 
-            # 4. 构建 DownloadTask 队列
-            logger.info("构建下载任务队列...")
-            download_tasks = self._build_download_tasks(target_symbols, enabled_tasks)
-            logger.info(f"下载任务队列构建完成，共 {len(download_tasks)} 个任务")
+            # 阶段1：处理系统表任务（单线程，优先级高）
+            if system_tasks:
+                logger.info("=== 阶段1：处理系统表任务 ===")
+                self._process_system_tasks(system_tasks)
+                logger.info("系统表任务处理完成")
 
-            if not download_tasks:
-                progress_manager.print_warning("没有任务需要执行")
-                logger.warning("没有任务需要执行。")
-                return
+            # 阶段2：处理业务表任务（多线程并行）
+            if business_tasks:
+                logger.info("=== 阶段2：处理业务表任务 ===")
+                # 准备目标股票列表
+                target_symbols = self._prepare_target_symbols(business_tasks)
+                logger.info(f"目标股票列表准备完成，共 {len(target_symbols)} 只股票")
+                
+                self._process_business_tasks(business_tasks, target_symbols)
+                logger.info("业务表任务处理完成")
 
-            # 初始化进度条
-            logger.info("初始化进度条...")
-            progress_manager.initialize(
-                total_tasks=len(download_tasks),
-                description=f"处理 {self.group_name} 组任务",
-            )
-            logger.info("进度条初始化完成")
-
-            # 5. 启动生产者和消费者池
-            logger.info("启动生产者和消费者线程池...")
-            self.producer_pool.start()
-            self.consumer_pool.start()
-            logger.info("生产者和消费者线程池启动完成")
-
-            # 6. 按组装填任务队列
-            logger.info("提交任务到队列...")
-            self._submit_tasks_to_queue(download_tasks)
-            logger.info("任务提交完成，开始处理")
-
-            # 7. 监控两队列，检测全部完成后关闭线程池
-            self._monitor_queues_with_progress()
-
-            # 8. 统计成功/失败/跳过数量供总结
+            # 统计成功/失败/跳过数量供总结
             self._collect_final_statistics()
             
-            # 同步最终统计信息到进度管理器
-            progress_manager.update_progress(
-                completed=self.execution_stats["successful_tasks"],
-                failed=self.execution_stats["failed_tasks"]
-            )
-
-            # 完成进度条
-            progress_manager.finish()
-
+            # 完成所有阶段
+            end_phase(ProgressPhase.COMPLETED)
+            
             # 显示最终统计
-            final_stats = progress_manager.get_stats()
-            if final_stats["failed_tasks"] > 0:
-                progress_manager.print_warning(
-                    f"完成处理，成功 {final_stats['completed_tasks']} 个，失败 {final_stats['failed_tasks']} 个任务 "
-                    f"(详见 logs/downloader.log)"
-                )
-            else:
-                progress_manager.print_info(
-                    f"所有 {final_stats['completed_tasks']} 个任务处理完成"
-                )
-
             logger.info("所有任务处理完成")
 
         except KeyboardInterrupt:
@@ -498,8 +811,93 @@ class DownloadEngine:
             self._shutdown_pools()
             self.execution_stats["processing_end_time"] = datetime.now()
 
+            # 停止进度事件管理器
+            progress_event_manager.stop()
+
             # 输出最终统计到日志
             self._print_final_summary()
+
+    def _process_system_tasks(self, system_tasks: List[Dict[str, Any]]) -> None:
+        """处理系统表任务（优先级高）"""
+        # 构建系统表任务
+        download_tasks = self._build_download_tasks([], system_tasks)
+        
+        if not download_tasks:
+            logger.info("没有系统表任务需要执行")
+            return
+            
+        logger.info(f"开始处理 {len(download_tasks)} 个系统表任务")
+        
+        # 更新总任务数并开始下载阶段
+        update_total(len(download_tasks), ProgressPhase.DOWNLOADING)
+        start_phase(ProgressPhase.DOWNLOADING, len(download_tasks))
+        
+        # 初始化进度条（保留兼容性）
+        progress_manager.initialize(
+            total_tasks=len(download_tasks),
+            description="处理系统表任务",
+        )
+        
+        # 启动消费者池（按配置数量创建所有消费者）
+        if not self.consumer_pool.running:
+            self.consumer_pool.start()
+        
+        # 提交系统表任务到队列
+        self._submit_tasks_to_queue(download_tasks)
+        
+        # 开始保存阶段
+        start_phase(ProgressPhase.SAVING)
+        
+        # 监控队列直到完成
+        self._monitor_queues_with_progress()
+        
+        # 完成进度条
+        progress_manager.finish()
+        
+        logger.info("系统表任务处理完成")
+
+    def _process_business_tasks(self, business_tasks: List[Dict[str, Any]], target_symbols: List[str]) -> None:
+        """处理业务表任务（并行处理）"""
+        # 构建业务表任务
+        download_tasks = self._build_download_tasks(target_symbols, business_tasks)
+        
+        if not download_tasks:
+            logger.info("没有业务表任务需要执行")
+            return
+            
+        logger.info(f"开始处理 {len(download_tasks)} 个业务表任务")
+        
+        # 更新总任务数并开始下载阶段
+        update_total(len(download_tasks), ProgressPhase.DOWNLOADING)
+        start_phase(ProgressPhase.DOWNLOADING, len(download_tasks))
+        
+        # 重新初始化进度条（保留兼容性）
+        progress_manager.initialize(
+            total_tasks=len(download_tasks),
+            description="处理业务表任务",
+        )
+        
+        # 如果消费者池还没有启动，先启动它
+        if not self.consumer_pool.running:
+            logger.info("消费者池未启动，先启动消费者池")
+            self.consumer_pool.start()
+        
+        logger.info(f"使用配置的 {self.consumer_pool.max_consumers} 个消费者处理业务表任务")
+        logger.info(f"使用配置的 {self.max_producers} 个生产者处理 {len(target_symbols)} 只股票")
+        
+        # 提交业务表任务到队列
+        self._submit_tasks_to_queue(download_tasks)
+        
+        # 开始保存阶段
+        start_phase(ProgressPhase.SAVING)
+        
+        # 监控队列直到完成
+        self._monitor_queues_with_progress()
+        
+        # 完成进度条
+        progress_manager.finish()
+        
+        logger.info("业务表任务处理完成")
 
     def _prepare_target_symbols(self, enabled_tasks: List[Dict[str, Any]]) -> List[str]:
         """准备目标股票列表"""
@@ -537,12 +935,8 @@ class DownloadEngine:
                 elapsed = time.time() - start_time
                 if target_symbols:
                     logger.info(f"从数据库获取到 {len(target_symbols)} 只股票 (耗时 {elapsed:.2f}s)")
-                    if elapsed > 0.5:  # 如果查询耗时超过0.5秒，给出优化建议
-                        logger.warning(
-                            f"股票列表查询耗时较长 ({elapsed:.2f}s)，建议考虑：\n"
-                            "  1. 使用固定股票列表而非 'all' 配置\n"
-                            "  2. 为 stock_basic 表的 ts_code 列创建索引"
-                        )
+                    if elapsed > 3.0:  # 如果查询耗时超过3秒，记录warning
+                        logger.warning(f"股票列表查询耗时较长: {elapsed:.2f}s")
                 else:
                     logger.warning("数据库中没有股票列表，请先运行 stock_list 任务")
                     target_symbols = []
@@ -556,19 +950,23 @@ class DownloadEngine:
 
     def _collect_final_statistics(self) -> None:
         """收集最终统计信息"""
-        if self.producer_pool:
-            producer_stats = self.producer_pool.get_statistics()
+        if self.producers:
+            total_processed = 0
+            total_failed = 0
+            
+            # 汇总所有生产者的统计信息
+            for producer in self.producers:
+                producer_stats = producer.get_statistics()
+                total_processed += producer_stats.get('tasks_processed', 0)
+                total_failed += producer_stats.get('tasks_failed', 0)
+            
             logger.info(
-                f"生产者统计: 处理任务 {producer_stats.get('tasks_processed', 0)} 个"
+                f"生产者统计: 处理任务 {total_processed} 个"
             )
             
-            # 从生产者获取正确的任务统计
-            self.execution_stats["successful_tasks"] = producer_stats.get(
-                "tasks_processed", 0
-            )
-            self.execution_stats["failed_tasks"] = producer_stats.get(
-                "tasks_failed", 0
-            )
+            # 更新执行统计
+            self.execution_stats["successful_tasks"] = total_processed
+            self.execution_stats["failed_tasks"] = total_failed
 
         if self.consumer_pool:
             consumer_stats = self.consumer_pool.get_statistics()
@@ -731,9 +1129,17 @@ class DownloadEngine:
 
     # 属性访问器，保持向后兼容性
     @property
-    def fetcher(self) -> Optional[TushareFetcher]:
-        """获取 TushareFetcher 实例（向后兼容）"""
-        return self._fetcher
+    def fetcher(self) -> TushareFetcher:
+        """获取fetcher单例实例"""
+        if self._singleton_fetcher is None:
+            logger.info("初始化TushareFetcher单例实例")
+            self._singleton_fetcher = get_fetcher(use_singleton=True)
+            
+            # 记录fetcher实例信息
+            instance_info = get_fetcher_instance_info()
+            logger.info(f"TushareFetcher实例信息: {instance_info}")
+            
+        return self._singleton_fetcher
 
     @property
     def storage(self) -> Optional[DuckDBStorage]:

@@ -4,6 +4,7 @@ import pytest
 import time
 from unittest.mock import patch, MagicMock
 from src.downloader.fetcher import TushareFetcher
+from src.downloader.fetcher_factory import get_fetcher
 
 
 class TestRateLimitFix:
@@ -20,9 +21,6 @@ class TestRateLimitFix:
         mock_pro.trade_cal.return_value = MagicMock()
         
         fetcher = TushareFetcher()
-        
-        # 验证默认限流设置
-        assert fetcher.default_rate_limit == 50
         
         # 验证tushare API初始化
         mock_ts.set_token.assert_called_once()

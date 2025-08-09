@@ -9,6 +9,7 @@ from typing import List, Optional, Dict, Any
 from .config import load_config
 from .engine import DownloadEngine
 from .fetcher import TushareFetcher
+from .fetcher_factory import get_fetcher
 from .storage import DuckDBStorage
 from .progress_manager import progress_manager
 
@@ -63,7 +64,7 @@ class DownloaderApp:
         Returns:
             (fetcher, storage) 元组
         """
-        fetcher = TushareFetcher()
+        fetcher = get_fetcher(use_singleton=True)
         storage = DuckDBStorage(
             db_path=config.get("storage", {}).get("db_path", "data/stock.db")
         )
@@ -93,12 +94,13 @@ class DownloaderApp:
             ValueError: 配置参数错误
             Exception: 其他异常
         """
-        # 快速加载配置，不做过多日志输出
-        self.logger.debug(f"加载任务组: {group_name}")
+        # 应用级别的启动日志
+        self.logger.info(f"[应用启动] 开始启动股票下载应用 - 配置文件: {config_path}, 任务组: {group_name}")
         start_time = time.time()
         
         try:
             # 加载配置
+            self.logger.info(f"[应用启动] 加载配置文件: {config_path}")
             raw_config = load_config(config_path)
             
             # 提取指定的组配置
@@ -152,27 +154,39 @@ class DownloaderApp:
             config, symbols_overridden = self.process_symbols_config(config, symbols)
 
             # 创建组件
+            self.logger.info("[应用启动] 创建下载组件")
             fetcher, storage = self.create_components(config)
+            
+            # 记录配置信息
+            max_concurrent = config.get('downloader', {}).get('max_concurrent_tasks', 1)
+            self.logger.info(f"[应用启动] 配置信息 - 最大并发任务: {max_concurrent}, 强制执行: {force}")
+            
+            self.logger.info("[应用启动] 创建下载引擎")
             engine = DownloadEngine(config, fetcher, storage, force_run=force, symbols_overridden=symbols_overridden, group_name=group_name)
 
             # 执行下载
+            self.logger.info("[应用运行] 开始运行下载引擎")
             engine.run()
             
             # 获取执行统计
             stats = engine.get_execution_stats()
             self._log_execution_summary(stats)
 
+            self.logger.info("[应用完成] 股票下载应用成功完成")
             return True
 
+        except KeyboardInterrupt:
+            self.logger.info("[应用中断] 应用被用户中断")
+            raise
         except (FileNotFoundError, ValueError) as e:
-            self.logger.critical(f"程序启动失败: {e}")
+            self.logger.critical(f"[应用失败] 程序启动失败: {e}")
             raise
         except Exception as e:
-            self.logger.critical(f"程序主流程发生严重错误: {e}", exc_info=True)
+            self.logger.critical(f"[应用失败] 程序主流程发生严重错误: {e}", exc_info=True)
             raise
         finally:
             elapsed_time = time.time() - start_time
-            self.logger.info("全部任务已完成，耗时 %.2f 秒", elapsed_time)
+            self.logger.info(f"[应用完成] 全部任务已完成，耗时 {elapsed_time:.2f} 秒")
 
     def _log_execution_summary(self, stats: Dict[str, Any]):
         """

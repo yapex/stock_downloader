@@ -12,10 +12,12 @@ from queue import Queue, Empty, Full
 from datetime import datetime
 
 from .fetcher import TushareFetcher
+from .fetcher_factory import get_fetcher
 from .models import DownloadTask, DataBatch, TaskType
 from .error_handler import classify_error, ErrorCategory
 from .retry_policy import RetryPolicy, DEFAULT_RETRY_POLICY, RetryLogger
 from .utils import record_failed_task
+from .progress_events import task_started, task_completed, task_failed
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,7 @@ class TaskProcessor:
     def __init__(self, fetcher: TushareFetcher):
         self.fetcher = fetcher
         self.logger = logging.getLogger(f"{__name__}.processor")
+        self.logger.debug(f"TaskProcessor初始化，使用fetcher实例ID: {id(fetcher)}")
     
     def process(self, task: DownloadTask) -> Optional[DataBatch]:
         """处理单个任务并返回数据批次"""
@@ -122,9 +125,19 @@ class RetryManager:
         """处理任务失败，返回是否成功重新入队"""
         should_retry = self.retry_policy.should_retry(error, task.retry_count + 1)
         
+        self.logger.info(
+            f"[重试管理] 评估任务重试 - ID: {task.task_id}, "
+            f"股票: {task.symbol}, 当前重试: {task.retry_count}, "
+            f"最大重试: {task.max_retries}, 是否可重试: {should_retry and task.can_retry()}"
+        )
+        
         if should_retry and task.can_retry():
             return self._retry_task(task, task_queue)
         else:
+            self.logger.warning(
+                f"[重试管理] 任务不可重试 - ID: {task.task_id}, "
+                f"股票: {task.symbol}, 原因: {'超过最大重试次数' if not task.can_retry() else '重试策略拒绝'}"
+            )
             self._send_to_dead_letter(task, error)
             return False
     
@@ -133,18 +146,27 @@ class RetryManager:
         delay = self.retry_policy.get_delay(task.retry_count + 1)
         retry_task = task.increment_retry()
         
+        self.logger.info(
+            f"[重试管理] 准备重试任务 - ID: {task.task_id}, "
+            f"股票: {task.symbol}, 新重试次数: {retry_task.retry_count}/{task.max_retries}, "
+            f"延迟: {delay:.2f}s"
+        )
+        
         if delay > 0:
-            self.logger.info(f"Task {task.task_id} will retry after {delay:.2f}s delay "
-                           f"({retry_task.retry_count}/{task.max_retries})")
             time.sleep(delay)
         
         try:
             task_queue.put(retry_task, timeout=1.0)
-            self.logger.info(f"Task {task.task_id} requeued for retry "
-                           f"({retry_task.retry_count}/{task.max_retries})")
+            self.logger.info(
+                f"[重试管理] 任务重新入队成功 - ID: {task.task_id}, "
+                f"股票: {task.symbol}, 当前队列大小: {task_queue.qsize()}"
+            )
             return True
         except Full:
-            self.logger.error(f"Failed to requeue task {task.task_id}, task queue full")
+            self.logger.error(
+                f"[重试管理] 任务重新入队失败 - ID: {task.task_id}, "
+                f"股票: {task.symbol}, 原因: 队列已满"
+            )
             self._send_to_dead_letter(task, Exception("Queue full during retry"))
             return False
     
@@ -162,7 +184,11 @@ class RetryManager:
             error_category=error_category.value
         )
         
-        self.logger.error(f"Task {task.task_id} sent to dead letter: {reason}")
+        self.logger.error(
+            f"[重试管理] 任务发送到死信队列 - ID: {task.task_id}, "
+            f"股票: {task.symbol}, 最终重试次数: {task.retry_count}, "
+            f"失败原因: {reason}, 错误类型: {error_category.value}"
+        )
 
 
 class ProducerStats:
@@ -200,8 +226,8 @@ class ProducerStats:
             }
 
 
-class ProducerPool:
-    """生产者池 - 简化的单线程实现"""
+class Producer:
+    """生产者 - 简化的单线程实现"""
     
     def __init__(self, 
                  task_queue: Optional[Queue] = None,
@@ -209,10 +235,17 @@ class ProducerPool:
                  retry_policy: Optional[RetryPolicy] = None,
                  dead_letter_path: str = "logs/dead_letter.jsonl",
                  fetcher: Optional[TushareFetcher] = None):
-        """初始化生产者池"""
+        """初始化生产者"""
         self.task_queue = task_queue or Queue()
         self.data_queue = data_queue or Queue()
-        self.fetcher = fetcher or TushareFetcher()
+        
+        # 使用单例模式的fetcher，确保所有Producer共享同一个实例
+        if fetcher is not None:
+            self.fetcher = fetcher
+            logger.info(f"Producer使用传入的fetcher实例，ID: {id(fetcher)}")
+        else:
+            self.fetcher = get_fetcher(use_singleton=True)
+            logger.info(f"Producer使用单例fetcher实例，ID: {id(self.fetcher)}")
         
         # 组件初始化
         self.processor = TaskProcessor(self.fetcher)
@@ -229,9 +262,9 @@ class ProducerPool:
         self.logger = logging.getLogger(__name__)
     
     def start(self) -> None:
-        """启动生产者池"""
+        """启动生产者"""
         if self.running:
-            self.logger.warning("Producer pool is already running")
+            self.logger.warning("Producer is already running")
             return
         
         self.running = True
@@ -245,14 +278,14 @@ class ProducerPool:
         )
         self.worker_thread.start()
         
-        self.logger.info("Producer pool started")
+        self.logger.info("Producer started")
     
     def stop(self, timeout: float = 30.0) -> None:
-        """停止生产者池"""
+        """停止生产者"""
         if not self.running:
             return
         
-        self.logger.info("Stopping producer pool...")
+        self.logger.info("Stopping producer...")
         self.running = False
         
         # 等待工作线程结束
@@ -262,12 +295,12 @@ class ProducerPool:
                 self.logger.warning("Worker thread did not stop within timeout")
         
         self.worker_thread = None
-        self.logger.info("Producer pool stopped")
+        self.logger.info("Producer stopped")
     
     def submit_task(self, task: DownloadTask, timeout: float = 1.0) -> bool:
         """提交任务"""
         if not self.running:
-            raise RuntimeError("Producer pool is not running")
+            raise RuntimeError("Producer is not running")
         
         try:
             self.task_queue.put(task, timeout=timeout)
@@ -324,9 +357,29 @@ class ProducerPool:
     
     def _process_single_task(self, task: DownloadTask) -> None:
         """处理单个任务"""
+        # 任务开始日志
+        self.logger.info(
+            f"[任务处理] 开始处理任务 - ID: {task.task_id}, "
+            f"类型: {task.task_type.value}, 股票: {task.symbol}, "
+            f"重试次数: {task.retry_count}/{task.max_retries}, "
+            f"Producer实例: {id(self)}, Fetcher实例: {id(self.fetcher)}"
+        )
+        
+        # 发送任务开始事件
+        task_started(
+            task_id=task.task_id,
+            symbol=task.symbol,
+            message=f"{task.task_type.value}"
+        )
+        
+        start_time = time.time()
+        
         try:
             # 使用处理器处理任务
             data_batch = self.processor.process(task)
+            
+            # 计算处理时间
+            processing_time = time.time() - start_time
             
             # 将结果放入数据队列
             self.data_queue.put(data_batch, block=True)
@@ -334,14 +387,47 @@ class ProducerPool:
             # 更新统计
             self.stats.increment_processed()
             
-            self.logger.debug(f"Task {task.task_id} completed successfully")
+            # 任务成功日志
+            data_count = len(data_batch.df) if data_batch and data_batch.df is not None else 0
+            self.logger.info(
+                f"[任务处理] 任务完成 - ID: {task.task_id}, "
+                f"股票: {task.symbol}, 数据量: {data_count}条, "
+                f"处理时间: {processing_time:.2f}s"
+            )
+            
+            # 发送任务完成事件
+            task_completed(
+                task_id=task.task_id,
+                symbol=task.symbol
+            )
             
         except Exception as e:
+            # 计算处理时间
+            processing_time = time.time() - start_time
+            
+            # 任务失败日志
+            self.logger.warning(
+                f"[任务处理] 任务失败 - ID: {task.task_id}, "
+                f"股票: {task.symbol}, 错误: {e}, "
+                f"处理时间: {processing_time:.2f}s, 重试次数: {task.retry_count}"
+            )
+            
             # 使用重试管理器处理失败
             retry_success = self.retry_manager.handle_task_failure(task, e, self.task_queue)
             
             if not retry_success:
                 self.stats.increment_failed()
+                self.logger.error(
+                    f"[任务处理] 任务最终失败 - ID: {task.task_id}, "
+                    f"股票: {task.symbol}, 已达最大重试次数"
+                )
+                
+                # 发送任务失败事件
+                task_failed(
+                    task_id=task.task_id,
+                    symbol=task.symbol,
+                    message=str(e)
+                )
     
     @property
     def is_running(self) -> bool:

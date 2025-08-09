@@ -22,14 +22,10 @@ class TushareFetcher:
     封装 Tushare Pro API 的数据获取器。
     """
 
-    def __init__(self, default_rate_limit: int = 50):
+    def __init__(self):
         """
         初始化 TushareFetcher
-
-        Args:
-            default_rate_limit: 默认的API调用速率限制（每分钟调用次数）
         """
-        self.default_rate_limit = default_rate_limit
         
         token = os.getenv("TUSHARE_TOKEN")
         if not token:
@@ -50,14 +46,18 @@ class TushareFetcher:
     @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
     def fetch_stock_list(self) -> pd.DataFrame | None:
         """获取所有A股的列表。"""
-        logger.debug("开始从 Tushare 获取A股列表...")
-        df = self.pro.stock_basic(
-            exchange="",
-            list_status="L",
-            fields="ts_code,symbol,name,area,industry,market,list_date",
-        )
-        logger.debug(f"成功获取到 {len(df)} 只A股的信息。")
-        return df
+        logger.info(f"[API调用] 开始获取A股列表 - Fetcher实例ID: {id(self)}")
+        try:
+            df = self.pro.stock_basic(
+                exchange="",
+                list_status="L",
+                fields="ts_code,symbol,name,area,industry,market,list_date",
+            )
+            logger.info(f"[API调用成功] 获取A股列表完成，共 {len(df)} 只股票")
+            return df
+        except Exception as e:
+            logger.warning(f"[API调用失败] 获取A股列表失败: {e}")
+            raise
 
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="日K线数据")
     @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
@@ -66,15 +66,24 @@ class TushareFetcher:
     ) -> pd.DataFrame | None:
         
         ts_code = normalize_stock_code(ts_code)
-        adj_param = adjust if adjust != "none" else None
-        df = ts.pro_bar(
-            ts_code=ts_code,
-            adj=adj_param,
-            start_date=start_date,
-            end_date=end_date,
-            asset="E",
-            freq="D",
-        )
+        logger.info(f"[API调用] 获取日K线数据 - 股票: {ts_code}, 时间: {start_date}~{end_date}, 复权: {adjust}")
+        
+        try:
+            adj_param = adjust if adjust != "none" else None
+            df = ts.pro_bar(
+                ts_code=ts_code,
+                adj=adj_param,
+                start_date=start_date,
+                end_date=end_date,
+                asset="E",
+                freq="D",
+            )
+            
+            data_count = len(df) if df is not None and not df.empty else 0
+            logger.info(f"[API调用成功] 日K线数据获取完成 - 股票: {ts_code}, 数据量: {data_count}条")
+        except Exception as e:
+            logger.warning(f"[API调用失败] 日K线数据获取失败 - 股票: {ts_code}, 错误: {e}")
+            raise
 
         # ---> 如果间隔时间大于 7 天，才需要警告 <---
         if (
@@ -100,18 +109,29 @@ class TushareFetcher:
         """获取【单只股票】在【一个时间段内】的所有每日指标。"""
         
         ts_code = normalize_stock_code(ts_code)
-        df = self.pro.daily_basic(
-            ts_code=ts_code,
-            start_date=start_date,
-            end_date=end_date,
-            fields="ts_code,trade_date,close,turnover_rate,volume_ratio,pe,pe_ttm,pb,ps,ps_ttm,total_mv,circ_mv",
-        )
-        if df is not None:
-            if not df.empty:
-                df.sort_values(by="trade_date", inplace=True, ignore_index=True)
-        else:
-            df = pd.DataFrame()
-        return df
+        logger.info(f"[API调用] 获取每日指标 - 股票: {ts_code}, 时间: {start_date}~{end_date}")
+        
+        try:
+            df = self.pro.daily_basic(
+                ts_code=ts_code,
+                start_date=start_date,
+                end_date=end_date,
+                fields="ts_code,trade_date,close,turnover_rate,volume_ratio,pe,pe_ttm,pb,ps,ps_ttm,total_mv,circ_mv",
+            )
+            
+            if df is not None:
+                if not df.empty:
+                    df.sort_values(by="trade_date", inplace=True, ignore_index=True)
+                data_count = len(df)
+            else:
+                df = pd.DataFrame()
+                data_count = 0
+            
+            logger.info(f"[API调用成功] 每日指标获取完成 - 股票: {ts_code}, 数据量: {data_count}条")
+            return df
+        except Exception as e:
+            logger.warning(f"[API调用失败] 每日指标获取失败 - 股票: {ts_code}, 错误: {e}")
+            raise
 
     # ---> 新增的财务报表获取方法 <---
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="财务报表-利润表")
@@ -120,12 +140,24 @@ class TushareFetcher:
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
         normalized_code = normalize_stock_code(ts_code)
-        df = self.pro.income(
-            ts_code=normalized_code, start_date=start_date, end_date=end_date
-        )
-        if df is not None and not df.empty:
-            df.sort_values(by="ann_date", inplace=True, ignore_index=True)
-        return df
+        logger.info(f"[API调用] 获取利润表 - 股票: {normalized_code}, 时间: {start_date}~{end_date}")
+        
+        try:
+            df = self.pro.income(
+                ts_code=normalized_code, start_date=start_date, end_date=end_date
+            )
+            
+            if df is not None and not df.empty:
+                df.sort_values(by="ann_date", inplace=True, ignore_index=True)
+                data_count = len(df)
+            else:
+                data_count = 0
+            
+            logger.info(f"[API调用成功] 利润表获取完成 - 股票: {normalized_code}, 数据量: {data_count}条")
+            return df
+        except Exception as e:
+            logger.warning(f"[API调用失败] 利润表获取失败 - 股票: {normalized_code}, 错误: {e}")
+            raise
 
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="财务报表-资产负债表")
     @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
@@ -133,12 +165,24 @@ class TushareFetcher:
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
         normalized_code = normalize_stock_code(ts_code)
-        df = self.pro.balancesheet(
-            ts_code=normalized_code, start_date=start_date, end_date=end_date
-        )
-        if df is not None and not df.empty:
-            df.sort_values(by="ann_date", inplace=True, ignore_index=True)
-        return df
+        logger.info(f"[API调用] 获取资产负债表 - 股票: {normalized_code}, 时间: {start_date}~{end_date}")
+        
+        try:
+            df = self.pro.balancesheet(
+                ts_code=normalized_code, start_date=start_date, end_date=end_date
+            )
+            
+            if df is not None and not df.empty:
+                df.sort_values(by="ann_date", inplace=True, ignore_index=True)
+                data_count = len(df)
+            else:
+                data_count = 0
+            
+            logger.info(f"[API调用成功] 资产负债表获取完成 - 股票: {normalized_code}, 数据量: {data_count}条")
+            return df
+        except Exception as e:
+            logger.warning(f"[API调用失败] 资产负债表获取失败 - 股票: {normalized_code}, 错误: {e}")
+            raise
 
     @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="财务报表-现金流量表")
     @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
@@ -146,9 +190,21 @@ class TushareFetcher:
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
         normalized_code = normalize_stock_code(ts_code)
-        df = self.pro.cashflow(
-            ts_code=normalized_code, start_date=start_date, end_date=end_date
-        )
-        if df is not None and not df.empty:
-            df.sort_values(by="ann_date", inplace=True, ignore_index=True)
-        return df
+        logger.info(f"[API调用] 获取现金流量表 - 股票: {normalized_code}, 时间: {start_date}~{end_date}")
+        
+        try:
+            df = self.pro.cashflow(
+                ts_code=normalized_code, start_date=start_date, end_date=end_date
+            )
+            
+            if df is not None and not df.empty:
+                df.sort_values(by="ann_date", inplace=True, ignore_index=True)
+                data_count = len(df)
+            else:
+                data_count = 0
+            
+            logger.info(f"[API调用成功] 现金流量表获取完成 - 股票: {normalized_code}, 数据量: {data_count}条")
+            return df
+        except Exception as e:
+            logger.warning(f"[API调用失败] 现金流量表获取失败 - 股票: {normalized_code}, 错误: {e}")
+            raise

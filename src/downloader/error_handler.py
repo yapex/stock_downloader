@@ -11,6 +11,13 @@ from typing import Callable, Optional, Any, Dict
 from functools import wraps
 from .utils import record_failed_task
 
+try:
+    from ratelimit import RateLimitException
+except ImportError:
+    # 如果ratelimit库未安装，定义一个占位符异常
+    class RateLimitException(Exception):
+        pass
+
 logger = logging.getLogger(__name__)
 
 
@@ -60,7 +67,10 @@ class RetryStrategy:
             "ProxyError",
             "RemoteDisconnected",
             "ConnectionError",
-            "HTTPConnectionPool"
+            "HTTPConnectionPool",
+            "RateLimitException",
+            "rate limit",
+            "too many calls"
         ]
         
         # 默认跳过重试的错误
@@ -76,6 +86,10 @@ class RetryStrategy:
         """判断是否应该重试"""
         if attempt >= self.max_retries:
             return False
+        
+        # 特殊处理RateLimitException
+        if isinstance(error, RateLimitException):
+            return True
         
         error_str = str(error)
         
@@ -99,6 +113,10 @@ class RetryStrategy:
 
 def classify_error(error: Exception) -> ErrorCategory:
     """智能错误分类"""
+    # 首先检查异常类型
+    if isinstance(error, RateLimitException):
+        return ErrorCategory.API_LIMIT
+    
     error_str = str(error).lower()
     
     # 网络相关错误
@@ -117,10 +135,10 @@ def classify_error(error: Exception) -> ErrorCategory:
     if any(keyword in error_str for keyword in parameter_keywords):
         return ErrorCategory.PARAMETER
     
-    # API限制错误
+    # API限制错误（字符串匹配）
     api_limit_keywords = [
         "rate limit", "quota exceeded", "too many requests", 
-        "too many calls", "api limit", "频次限制"
+        "too many calls", "api limit", "频次限制", "ratelimitexception"
     ]
     if any(keyword in error_str for keyword in api_limit_keywords):
         return ErrorCategory.API_LIMIT
@@ -160,6 +178,40 @@ def enhanced_retry(
                 try:
                     return func(*args, **kwargs)
                 
+                except RateLimitException as rate_error:
+                    # 特殊处理RateLimitException，使用其period_remaining属性
+                    last_error = rate_error
+                    entity_id = kwargs.get('ts_code', args[0] if args else 'unknown')
+                    
+                    if attempt < strategy.max_retries:
+                        # 使用ratelimit提供的period_remaining时间
+                        if hasattr(rate_error, 'period_remaining'):
+                            delay = rate_error.period_remaining
+                            logger.warning(f"[限流重试] {task_name} 触发限流，等待 {delay:.2f}s")
+                        else:
+                            # 如果没有period_remaining属性，使用策略延迟
+                            delay = strategy.get_delay(attempt)
+                            logger.warning(f"[限流重试] {task_name} 触发限流，使用策略延迟 {delay:.2f}s")
+                        
+                        time.sleep(delay)
+                        logger.info(
+                            f"[限流重试] {task_name} 限流等待结束，开始第{attempt + 2}次尝试 - 实体: {entity_id}"
+                        )
+                        continue
+                    else:
+                        # 超过最大重试次数
+                        record_failed_task(
+                            task_name,
+                            str(entity_id),
+                            f"rate_limit_max_retries_exceeded_{rate_error}",
+                            ErrorCategory.API_LIMIT.value
+                        )
+                        logger.error(
+                            f"[限流重试] {task_name} 限流重试失败 - "
+                            f"总尝试次数: {attempt + 1}, 实体: {entity_id}, 错误: {rate_error}"
+                        )
+                        break
+                        
                 except Exception as error:
                     last_error = error
                     error_category = classify_error(error)
@@ -167,13 +219,23 @@ def enhanced_retry(
                     # 记录错误（但不重复记录最后一次失败）
                     entity_id = kwargs.get('ts_code', args[0] if args else 'unknown')
                     
+                    # 详细的重试日志
+                    logger.warning(
+                        f"[重试机制] {task_name} 第{attempt + 1}次尝试失败 - "
+                        f"实体: {entity_id}, 错误类型: {error_category.value}, 错误: {error}"
+                    )
+                    
                     if attempt < strategy.max_retries and strategy.should_retry(error, attempt):
                         delay = strategy.get_delay(attempt)
                         logger.warning(
-                            f"[{task_name}] 尝试 {attempt + 1} 失败: {error}. "
-                            f"将在 {delay:.2f}s 后重试..."
+                            f"[重试机制] {task_name} 准备重试 - "
+                            f"当前尝试: {attempt + 1}/{strategy.max_retries + 1}, "
+                            f"延迟: {delay:.2f}s, 实体: {entity_id}"
                         )
                         time.sleep(delay)
+                        logger.info(
+                            f"[重试机制] {task_name} 开始第{attempt + 2}次尝试 - 实体: {entity_id}"
+                        )
                         continue
                     else:
                         # 最终失败，记录到失败日志
@@ -186,7 +248,9 @@ def enhanced_retry(
                         )
                         
                         logger.error(
-                            f"[{task_name}] 最终失败 (尝试了 {attempt + 1} 次): {error}"
+                            f"[重试机制] {task_name} 最终失败 - "
+                            f"总尝试次数: {attempt + 1}, 实体: {entity_id}, "
+                            f"最后错误: {error}, 错误类型: {error_category.value}"
                         )
                         break
             

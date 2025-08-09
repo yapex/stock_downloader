@@ -30,6 +30,7 @@ from .retry_policy import (
     RetryLogger
 )
 from .utils import record_failed_task
+from .progress_events import batch_completed
 
 logger = logging.getLogger(__name__)
 
@@ -244,6 +245,12 @@ class ConsumerWorker:
         # 调用DuckDBStorage的批量插入方法
         self.storage.bulk_insert(combined_df, data_type, entity_id, existing_date_col)
         
+        # 发送批次完成事件
+        batch_completed(
+            count=len(batches),
+            message=f"Worker {self.worker_id}: 成功插入 {len(combined_df)} 条记录到 {cache_key}"
+        )
+        
         self.logger.info(f"Worker {self.worker_id}: 成功插入 {len(combined_df)} 条记录到 {cache_key}")
     
     def _handle_batch_error(self, batch: DataBatch, error: Exception) -> None:
@@ -339,6 +346,7 @@ class ConsumerPool:
         self.executor: Optional[ThreadPoolExecutor] = None
         self.workers: Dict[int, ConsumerWorker] = {}
         self.running = False
+        self.current_consumers = 0  # 当前活跃的消费者数量
         
         # 统计信息
         self.start_time: Optional[datetime] = None
@@ -347,7 +355,9 @@ class ConsumerPool:
         self.logger = logging.getLogger(__name__)
     
     def start(self) -> None:
-        """启动消费者池"""
+        """
+        启动消费者池，按配置的最大消费者数量创建所有消费者
+        """
         if self.running:
             self.logger.warning("Consumer pool is already running")
             return
@@ -358,8 +368,17 @@ class ConsumerPool:
         # 创建线程池
         self.executor = ThreadPoolExecutor(max_workers=self.max_consumers)
         
-        # 创建并启动工作线程
-        for i in range(self.max_consumers):
+        # 启动所有配置的消费者
+        self._start_consumers(self.max_consumers)
+        
+        self.logger.info(f"Consumer pool started with {self.max_consumers} workers, "
+                        f"batch_size={self.batch_size}, flush_interval={self.flush_interval}s")
+    
+    def _start_consumers(self, num_consumers: int) -> None:
+        """启动指定数量的消费者"""
+        num_consumers = min(num_consumers, self.max_consumers - self.current_consumers)
+        
+        for i in range(self.current_consumers, self.current_consumers + num_consumers):
             worker = ConsumerWorker(
                 worker_id=i,
                 data_queue=self.data_queue,
@@ -372,9 +391,22 @@ class ConsumerPool:
             self.workers[i] = worker
             # 提交工作线程到线程池
             self.executor.submit(worker.start)
+            
+        self.current_consumers += num_consumers
+        self.logger.info(f"Started {num_consumers} new consumers, total active: {self.current_consumers}")
+    
+    def scale_consumers(self, target_consumers: int) -> None:
+        """
+        简化的消费者调整方法（实际上不做任何调整，保持配置的消费者数量）
         
-        self.logger.info(f"Consumer pool started with {self.max_consumers} workers, "
-                        f"batch_size={self.batch_size}, flush_interval={self.flush_interval}s")
+        Args:
+            target_consumers: 目标消费者数量（忽略此参数）
+        """
+        if not self.running:
+            self.logger.warning("Consumer pool is not running")
+            return
+            
+        self.logger.info(f"Consumer pool running with {self.current_consumers} consumers (fixed configuration)")
     
     def stop(self, timeout: float = 60.0) -> None:
         """停止消费者池"""

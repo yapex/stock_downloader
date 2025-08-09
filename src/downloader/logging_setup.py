@@ -1,11 +1,12 @@
-
 # -*- coding: utf-8 -*-
 """
 配置应用程序的日志系统。
 """
+
 import logging
 import sys
 from tqdm import tqdm
+
 
 class TqdmLoggingHandler(logging.StreamHandler):
     """与tqdm兼容的日志处理器"""
@@ -21,13 +22,18 @@ class TqdmLoggingHandler(logging.StreamHandler):
         except Exception:
             self.handleError(record)
 
+
 def setup_logging():
     """配置日志系统，错误信息只记录到文件，终端保持简洁"""
     root_logger = logging.getLogger()
-    
+
     # 在清理之前，检查是否在测试环境中。如果是，保留pytest的日志处理器
-    pytest_handlers = [h for h in root_logger.handlers if 'pytest' in str(type(h)).lower() or 'caplog' in str(type(h)).lower()]
-    
+    pytest_handlers = [
+        h
+        for h in root_logger.handlers
+        if "pytest" in str(type(h)).lower() or "caplog" in str(type(h)).lower()
+    ]
+
     # 清理现有的 handlers（但保留pytest的处理器）
     for handler in root_logger.handlers[:]:
         if handler not in pytest_handlers:
@@ -42,14 +48,25 @@ def setup_logging():
     # 文件处理器 - 记录所有级别的日志，每天覆盖
     import os
     from datetime import datetime
+
     log_dir = "logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    
-    # 使用日期作为日志文件名，每天覆盖
-    today = datetime.now().strftime("%Y%m%d")
-    log_file = os.path.join(log_dir, f"downloader_{today}.log")
-    file_handler = logging.FileHandler(log_file, mode="w", encoding="utf-8")
+
+    # 基础日志文件名
+    base_log_file = os.path.join(log_dir, "downloader.log")
+
+    # 如果基础日志文件存在，将其重命名为带时间戳的文件
+    if os.path.exists(base_log_file):
+        timestamp = datetime.fromtimestamp(os.path.getmtime(base_log_file)).strftime(
+            "%Y%m%d_%H%M%S"
+        )
+        archive_file = os.path.join(log_dir, f"downloader_{timestamp}.log")
+        os.rename(base_log_file, archive_file)
+
+    # 使用基础文件名作为新的日志文件
+    log_file = base_log_file
+    file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
     file_handler.setFormatter(file_formatter)
     file_handler.setLevel(logging.DEBUG)
 
@@ -57,7 +74,7 @@ def setup_logging():
     console_handler = TqdmLoggingHandler()
     console_handler.setFormatter(console_formatter)
     console_handler.setLevel(logging.INFO)
-    
+
     # 添加过滤器，控制台只显示关键警告和错误，进度由 tqdm 管理
     class TerminalFilter(logging.Filter):
         def filter(self, record):
@@ -65,20 +82,19 @@ def setup_logging():
             # 同时排除一些特定的调试/信息消息，让进度条独占终端
             if record.levelno >= logging.WARNING:
                 return True
-            
+
             # 允许一些关键的启动信息
             critical_messages = [
                 "正在启动...",
                 "程序启动失败",
                 "程序主流程发生严重错误",
-                "用户中断下载"
+                "用户中断下载",
             ]
             return any(msg in record.getMessage() for msg in critical_messages)
-    
+
     console_handler.addFilter(TerminalFilter())
 
     # 配置根日志记录器
     root_logger.setLevel(logging.DEBUG)
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
-

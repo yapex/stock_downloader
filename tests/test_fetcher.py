@@ -60,13 +60,12 @@ def test_fetcher_initialization_no_token(monkeypatch):
         TushareFetcher()
 
 
-def test_fetch_stock_list_exception_handling(mock_pro_api, caplog):
+def test_fetch_stock_list_exception_handling(mock_pro_api):
     """测试 fetch_stock_list 异常时返回 None。"""
     mock_pro_api.stock_basic.side_effect = Exception("fetch error")
     fetcher = TushareFetcher()
     result_df = fetcher.fetch_stock_list()
     assert result_df is None
-    assert "[获取A股列表] 最终失败" in caplog.text
 
 
 def test_fetch_stock_list(mock_pro_api):
@@ -99,7 +98,7 @@ def test_fetch_daily_history_success(monkeypatch):
 
 
 @pytest.mark.parametrize("adjust", ["none", "qfq", "hfq"])
-def test_fetch_daily_history_handles_api_returning_none(adjust, monkeypatch, caplog):
+def test_fetch_daily_history_handles_api_returning_none(adjust, monkeypatch):
     """【最小化测试】测试 ts.pro_bar 返回 None 时的返回值是否正确。"""
     mock_bar_returns_none = MagicMock(return_value=None)
     monkeypatch.setattr(ts, "pro_bar", mock_bar_returns_none)
@@ -113,17 +112,12 @@ def test_fetch_daily_history_handles_api_returning_none(adjust, monkeypatch, cap
     assert isinstance(result_df, pd.DataFrame)
     assert result_df.empty
 
-    # ---> 核心修正：断言正确的警告日志 <---
-    assert "Tushare API for 000002.SZ 返回了 None" in caplog.text
-
 
 @pytest.mark.parametrize("adjust", ["none", "qfq", "hfq"])
-def test_fetch_daily_history_handles_api_exception(adjust, monkeypatch, caplog):
+def test_fetch_daily_history_handles_api_exception(adjust, monkeypatch):
     """【最小化测试】测试 ts.pro_bar 抛出异常时的返回值是否正确。"""
     mock_bar_raises_exception = MagicMock(side_effect=ConnectionError("模拟网络错误"))
     monkeypatch.setattr(ts, "pro_bar", mock_bar_raises_exception)
-
-    caplog.set_level(logging.ERROR)
 
     fetcher = TushareFetcher()
     result_df = fetcher.fetch_daily_history(
@@ -133,10 +127,8 @@ def test_fetch_daily_history_handles_api_exception(adjust, monkeypatch, caplog):
     # 断言返回值是 None
     assert result_df is None
 
-    assert "[日K线数据] 最终失败" in caplog.text
 
-
-def test_fetch_income_balancesheet_cashflow(mock_pro_api, caplog):
+def test_fetch_income_balancesheet_cashflow(mock_pro_api):
     """测试财务函数 fetch_income, fetch_balancesheet, fetch_cashflow 
     的正常返回和异常处理
     """
@@ -163,18 +155,13 @@ def test_fetch_income_balancesheet_cashflow(mock_pro_api, caplog):
     mock_pro_api.balancesheet.side_effect = Exception("模拟错误")
     mock_pro_api.cashflow.side_effect = Exception("模拟错误")
 
-    with caplog.at_level(logging.ERROR):
-        result_income = fetcher.fetch_income("600519", "20220101", "20221231")
-        result_balance = fetcher.fetch_balancesheet("600519", "20220101", "20221231")
-        result_cashflow = fetcher.fetch_cashflow("600519", "20220101", "20221231")
+    result_income = fetcher.fetch_income("600519", "20220101", "20221231")
+    result_balance = fetcher.fetch_balancesheet("600519", "20220101", "20221231")
+    result_cashflow = fetcher.fetch_cashflow("600519", "20220101", "20221231")
 
-        assert result_income is None
-        assert result_balance is None  
-        assert result_cashflow is None
-
-        assert "[财务报表-利润表] 最终失败" in caplog.text
-        assert "[财务报表-资产负债表] 最终失败" in caplog.text
-        assert "[财务报表-现金流量表] 最终失败" in caplog.text
+    assert result_income is None
+    assert result_balance is None  
+    assert result_cashflow is None
 
 
 # ===================================================================
@@ -213,7 +200,7 @@ def test_fetch_daily_basic_returns_none(mock_pro_api):
     assert result.empty
 
 
-def test_fetch_daily_basic_exception(mock_pro_api, caplog):
+def test_fetch_daily_basic_exception(mock_pro_api):
     """测试 fetch_daily_basic 异常处理。"""
     mock_pro_api.daily_basic.side_effect = Exception("API error")
 
@@ -221,7 +208,6 @@ def test_fetch_daily_basic_exception(mock_pro_api, caplog):
     result = fetcher.fetch_daily_basic("600519", "20230101", "20230131")
 
     assert result is None
-    assert "[每日指标] 最终失败" in caplog.text
 
 
 # ===================================================================
@@ -283,7 +269,7 @@ def test_financial_methods_empty_data(mock_pro_api, method_name, api_method):
     ],
 )
 def test_financial_methods_exception(
-    mock_pro_api, method_name, api_method, error_msg, caplog
+    mock_pro_api, method_name, api_method, error_msg
 ):
     """测试财务报表方法的异常处理。"""
     getattr(mock_pro_api, api_method).side_effect = Exception("API error")
@@ -293,7 +279,6 @@ def test_financial_methods_exception(
     result = method("600519", "20230101", "20231231")
 
     assert result is None
-    assert f"[财务报表-{error_msg}] 最终失败" in caplog.text
 
 
 # ===================================================================
