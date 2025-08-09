@@ -610,6 +610,10 @@ class PartitionedStorage:
                 result = self.conn.execute(
                     "SELECT MAX(updated_at) FROM fundamental_data WHERE ts_code = ?", [entity_id]
                 ).fetchone()
+            elif data_type == 'system':
+                result = self.conn.execute(
+                    "SELECT MAX(updated_at) FROM sys_stock_list"
+                ).fetchone()
             else:
                 return None
                 
@@ -633,7 +637,13 @@ class PartitionedStorage:
     def get_all_stock_codes(self) -> List[str]:
         """获取所有股票代码"""
         try:
-            # 从各个数据表中获取所有股票代码
+            # 优先从股票列表系统表中获取所有股票代码
+            result = self.conn.execute("SELECT ts_code FROM sys_stock_list ORDER BY ts_code").fetchall()
+            if result:
+                return [code[0] for code in result]
+            
+            # 如果系统表为空，则从各个数据表中获取股票代码作为备选
+            logger.warning("sys_stock_list表为空，从数据表中获取股票代码")
             daily_codes = self.conn.execute("SELECT DISTINCT ts_code FROM daily_data").fetchall()
             financial_codes = self.conn.execute("SELECT DISTINCT ts_code FROM financial_data").fetchall()
             fundamental_codes = self.conn.execute("SELECT DISTINCT ts_code FROM fundamental_data").fetchall()

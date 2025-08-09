@@ -102,8 +102,9 @@ class TaskProcessor:
         start_date = params.get('start_date', '')
         end_date = params.get('end_date', '')
         
-        # 从任务参数中获取财务报表类型
-        statement_type = params.get('statement_type', 'income')
+        # 从任务配置中获取财务报表类型
+        task_config = params.get('task_config', {})
+        statement_type = task_config.get('statement_type', 'income')
         
         if statement_type == 'income':
             return self.fetcher.fetch_income(ts_code, start_date, end_date)

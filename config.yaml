@@ -46,6 +46,7 @@ tasks:
   update_stock_list:
     name: "更新A股列表"
     type: "stock_list"
+    update_interval_hours: 24*7
     
   daily_qfq:
     name: "日K线-前复权"
@@ -110,4 +111,4 @@ groups:
   quick:
     description: "快速测试组 - 少量股票的财务数据测试"
     symbols: "all"
-    tasks: ["financial_income"]
+    tasks: ["financial_income", "financial_balance",]

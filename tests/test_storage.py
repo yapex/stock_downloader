@@ -174,3 +174,33 @@ def test_engine_run_end_to_end(tmp_path: Path, monkeypatch):
     except Exception as e:
         pytest.fail(f"engine.run() 应该能正常执行，但抛出异常: {e}")
 
+
+def test_get_table_last_updated_system_type(storage: DuckDBStorage):
+    """测试 get_table_last_updated 方法对 system 数据类型的支持"""
+    # 创建测试用的股票列表数据
+    stock_list_df = pd.DataFrame({
+        'ts_code': ['000001.SZ', '000002.SZ'],
+        'symbol': ['000001', '000002'],
+        'name': ['平安银行', '万科A'],
+        'area': ['深圳', '深圳'],
+        'industry': ['银行', '房地产'],
+        'market': ['主板', '主板'],
+        'list_date': ['19910403', '19910129']
+    })
+    
+    # 保存股票列表数据
+    storage.overwrite(stock_list_df, "system", "stock_list")
+    
+    # 测试获取 system 类型的最后更新时间
+    last_updated = storage.get_table_last_updated("system", "stock_list")
+    
+    # 验证返回的是 datetime 对象且不为 None
+    assert last_updated is not None
+    from datetime import datetime
+    assert isinstance(last_updated, datetime)
+    
+    # 验证时间是最近的（在过去1分钟内）
+    from datetime import timedelta
+    now = datetime.now()
+    assert now - last_updated < timedelta(minutes=1)
+

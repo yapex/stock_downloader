@@ -12,11 +12,15 @@ from functools import wraps
 from .utils import record_failed_task
 
 try:
-    from ratelimit import RateLimitException
+    from ratelimit import RateLimitException as _RateLimitException
+    # 使用类型别名来避免类型冲突
+    RateLimitException = _RateLimitException
 except ImportError:
-    # 如果ratelimit库未安装，定义一个占位符异常
+    # 如果ratelimit库不可用，定义一个占位符异常
     class RateLimitException(Exception):
-        pass
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.period_remaining = kwargs.get('period_remaining', 60.0)
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +142,8 @@ def classify_error(error: Exception) -> ErrorCategory:
     # API限制错误（字符串匹配）
     api_limit_keywords = [
         "rate limit", "quota exceeded", "too many requests", 
-        "too many calls", "api limit", "频次限制", "ratelimitexception"
+        "too many calls", "api limit", "频次限制", "ratelimitexception",
+        "每分钟最多访问", "抱歉，您每分钟最多访问"
     ]
     if any(keyword in error_str for keyword in api_limit_keywords):
         return ErrorCategory.API_LIMIT
@@ -330,7 +335,7 @@ API_LIMIT_RETRY_STRATEGY = RetryStrategy(
     base_delay=10.0,
     max_delay=120.0,
     backoff_factor=2.0,
-    retry_on=["rate limit", "quota exceeded", "too many requests", "too many calls"]
+    retry_on=["rate limit", "quota exceeded", "too many requests", "too many calls", "每分钟最多访问", "抱歉，您每分钟最多访问"]
 )
 
 CONSERVATIVE_RETRY_STRATEGY = RetryStrategy(
