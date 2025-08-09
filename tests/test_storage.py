@@ -7,7 +7,6 @@ from unittest.mock import Mock
 from downloader.storage import DuckDBStorage
 from downloader.engine import DownloadEngine
 from downloader.fetcher import TushareFetcher
-from downloader.utils import get_table_name
 
 
 @pytest.fixture
@@ -28,7 +27,7 @@ def sample_df() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "trade_date": ["2023-01-01", "2023-01-02"],
-            "value": [100, 101],
+            "close": [100.0, 101.0],
         }
     )
 
@@ -39,7 +38,7 @@ def updated_df() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "trade_date": ["2023-01-02", "2023-01-03"],
-            "value": [102, 103],  # 2023-01-02 的值已更新
+            "close": [102.0, 103.0],  # 2023-01-02 的值已更新
         }
     )
 
@@ -51,10 +50,7 @@ def test_initialization(db_path: Path):
     assert db_path.exists()
 
 
-def test_get_table_name(db_path: Path):
-    """测试表名生成逻辑。"""
-    assert get_table_name("daily", "000001.SZ") == "daily_000001_SZ"
-    assert get_table_name("system", "stock_list") == "sys_stock_list"
+# test_get_table_name 已移除，因为新的分区表架构不再需要动态表名生成
 
 
 def test_save_and_get_latest_date(storage: DuckDBStorage, sample_df: pd.DataFrame):
@@ -74,14 +70,13 @@ def test_save_upsert_logic(
     # 2. 使用新数据进行增量保存
     storage.save(updated_df, "daily", "000001.SZ", date_col="trade_date")
 
-    # 3. 验证结果
-    table_name = get_table_name("daily", "000001.SZ")
-    result_df = storage.conn.table(table_name).to_df()
+    # 3. 验证结果 - 使用新的分区表查询方法
+    result_df = storage.query_daily_data_by_stock("000001.SZ")
 
     # 检查总行数是否正确（应该是 3 行）
     assert len(result_df) == 3
     # 检查 2023-01-02 的数据是否已更新
-    assert result_df[result_df["trade_date"] == "2023-01-02"]["value"].iloc[0] == 102
+    assert result_df[result_df["trade_date"] == "2023-01-02"]["close"].iloc[0] == 102.0
     # 检查最新日期是否正确
     assert result_df["trade_date"].max() == "2023-01-03"
 
@@ -95,16 +90,15 @@ def test_overwrite(storage: DuckDBStorage, sample_df: pd.DataFrame):
     overwrite_df = pd.DataFrame(
         {
             "trade_date": ["2024-01-01"],
-            "value": [200],
+            "close": [200.0],
         }
     )
     storage.overwrite(overwrite_df, "daily", "000001.SZ")
 
-    # 验证
-    table_name = get_table_name("daily", "000001.SZ")
-    result_df = storage.conn.table(table_name).to_df()
+    # 验证 - 使用新的分区表查询方法
+    result_df = storage.query_daily_data_by_stock("000001.SZ")
     assert len(result_df) == 1
-    assert result_df["value"].iloc[0] == 200
+    assert result_df["close"].iloc[0] == 200.0
 
 
 def test_get_latest_date_on_empty_table(storage: DuckDBStorage):
@@ -117,25 +111,21 @@ def test_save_empty_dataframe(storage: DuckDBStorage):
     empty_df = pd.DataFrame()
     storage.save(empty_df, "daily", "000001.SZ", date_col="trade_date")
     
-    # 验证数据库中没有创建对应的表
-    table_name = get_table_name("daily", "000001.SZ")
-    res = storage.conn.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';").fetchall()
-    # duckdb should use duckdb_tables()
-    res = storage.conn.execute(f"SELECT table_name FROM duckdb_tables() WHERE table_name='{table_name}';").fetchall()
-    assert len(res) == 0
+    # 验证数据库中没有数据（分区表已预创建）
+    result_df = storage.query_daily_data_by_stock("000001.SZ")
+    assert len(result_df) == 0
 
 
 def test_save_dataframe_without_date_col(storage: DuckDBStorage, caplog):
     """测试当 DataFrame 缺少日期列时应记录错误并跳过。"""
-    df = pd.DataFrame({"value": [1, 2]})
+    df = pd.DataFrame({"close": [1.0, 2.0]})
     with caplog.at_level(logging.ERROR, logger='downloader.storage'):
         storage.save(df, "daily", "000001.SZ", date_col="trade_date")
         # 验证异常被正确处理
     
-    # 验证数据库中没有创建对应的表
-    table_name = get_table_name("daily", "000001.SZ")
-    res = storage.conn.execute(f"SELECT table_name FROM duckdb_tables() WHERE table_name='{table_name}';").fetchall()
-    assert len(res) == 0
+    # 验证数据库中没有数据（分区表已预创建）
+    result_df = storage.query_daily_data_by_stock("000001.SZ")
+    assert len(result_df) == 0
 
 
 def test_engine_run_end_to_end(tmp_path: Path, monkeypatch):

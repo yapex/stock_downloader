@@ -176,8 +176,8 @@ class TestMissingSymbolsLogger:
 
 class TestScanAndLog:
     def test_scan_and_log_integration(self, tmp_path: Path, monkeypatch):
-        # 假的 DuckDBStorage 替换
-        class DummyDuck:
+        # 假的 Storage 替换
+        class DummyStorage:
             def __init__(self, *_args, **_kwargs):
                 pass
 
@@ -188,8 +188,12 @@ class TestScanAndLog:
                 # 一个业务已有一只，触发部分缺
                 return [{"business_type": "daily", "stock_code": "000001.SZ"}]
 
+        # 替换 get_storage 函数
+        def mock_get_storage(*args, **kwargs):
+            return DummyStorage()
+
         from src.downloader import missing_symbols as ms
-        monkeypatch.setattr(ms, "DuckDBStorage", DummyDuck)
+        monkeypatch.setattr(ms, "get_storage", mock_get_storage)
 
         log_file = tmp_path / "missing.jsonl"
         summary = scan_and_log_missing_symbols(db_path=str(tmp_path / "db.duckdb"), log_path=str(log_file))

@@ -11,6 +11,7 @@ from time import sleep
 from .fetcher import TushareFetcher
 from .fetcher_factory import get_fetcher, get_fetcher_instance_info
 from .storage import DuckDBStorage
+from .storage_factory import get_storage
 from .producer import Producer
 from .consumer_pool import ConsumerPool
 from .models import DownloadTask, TaskType, Priority
@@ -353,18 +354,22 @@ class DownloadEngine:
         return default_start, end_date
 
     def _get_data_type_for_task_spec(self, task_spec: Dict[str, Any]) -> str:
-        """根据任务配置获取正确的data_type"""
+        """根据任务配置获取正确的data_type，适应新的分区表结构"""
         task_type = task_spec.get("type", "")
         
         if task_type == "daily":
-            # 对于daily任务，data_type需要包含adjust参数
-            adjust = task_spec.get("adjust", "none")
-            return f"daily_{adjust or 'none'}"
+            # 日线数据统一存储在 daily_data 表中
+            return "daily"
         elif task_type == "daily_basic":
+            # 每日指标数据存储在 daily_data 表中
             return "daily_basic"
         elif task_type == "financials":
+            # 财务数据根据报表类型存储在不同表中
             statement_type = task_spec.get("statement_type", "")
-            return f"financials_{statement_type}" if statement_type else "financials"
+            if statement_type in ["income", "balancesheet", "cashflow"]:
+                return statement_type
+            else:
+                return "financials"
         elif task_type == "stock_list":
             return "stock_list"
         else:
@@ -373,13 +378,14 @@ class DownloadEngine:
 
     def _get_date_column_for_task_type(self, task_type: str) -> str:
         """根据任务类型返回对应的日期列名"""
-        # 如果是financials开头的任务类型，统一使用ann_date
-        if task_type.startswith("financials"):
+        # 财务报表数据使用 ann_date
+        if task_type in ["income", "balancesheet", "cashflow", "financials"]:
             return "ann_date"
 
         date_columns = {
             "daily": "trade_date",
             "daily_basic": "trade_date",
+            "stock_list": "list_date",
         }
 
         return date_columns.get(task_type, "trade_date")
@@ -388,7 +394,7 @@ class DownloadEngine:
         """获取运行时存储实例"""
         if not self._runtime_storage:
             db_path = self.config.get("database", {}).get("path", "data/stock.db")
-            self._runtime_storage = DuckDBStorage(db_path)
+            self._runtime_storage = get_storage(db_path)
         return self._runtime_storage
 
     def _submit_tasks_to_queue(self, tasks: List[DownloadTask]) -> None:

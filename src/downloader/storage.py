@@ -1,25 +1,24 @@
 import pandas as pd
 from pathlib import Path
-from .utils import normalize_stock_code, get_table_name
 import logging
 import duckdb
 from datetime import datetime
 import threading
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
+import time
 
 logger = logging.getLogger(__name__)
 
 
-class DuckDBStorage:
+class PartitionedStorage:
     """
-    基于 DuckDB 的统一数据存储层。
-
+    分区表架构的数据存储层
+    
     设计原则：
-    - 所有数据存储在单个 DuckDB 数据库中
-    - 使用表来组织不同类型的数据
-    - 支持高效的增量更新和查询
-    - 提供统一的接口处理系统数据和股票数据
-    - 支持多线程操作，每个线程使用独立的数据库连接
+    - 按数据类型分区，每种数据类型一张大表
+    - 统一的数据模型和索引策略
+    - 支持高效的多维度查询和分析
+    - 向后兼容现有API
     """
 
     def __init__(self, db_path: str | Path):
@@ -31,832 +30,749 @@ class DuckDBStorage:
 
         # 主线程连接用于初始化
         main_conn = duckdb.connect(database=str(self.db_path), read_only=False)
-        logger.debug(f"DuckDB 数据库已连接: {self.db_path.resolve()}")
+        logger.debug(f"分区表DuckDB数据库已连接: {self.db_path.resolve()}")
 
-        # 初始化元数据表，用于跟踪表的更新时间
-        self._init_metadata_table(main_conn)
+        # 初始化分区表
+        self._init_partitioned_tables(main_conn)
         main_conn.close()
-
-        # 初始化完成后优化现有表
-        self._optimize_existing_tables()
 
     @property
     def conn(self):
-        """获取当前线程的数据库连接。"""
+        """获取当前线程的数据库连接"""
         if not hasattr(self._local, "connection"):
             self._local.connection = duckdb.connect(
                 database=str(self.db_path), read_only=False
             )
-            logger.debug(f"为线程 {threading.current_thread().name} 创建新的DuckDB连接")
+            # 确保每个连接都初始化表结构
+            self._init_partitioned_tables(self._local.connection)
+            logger.debug(f"为线程 {threading.current_thread().name} 创建新的分区表DuckDB连接")
         return self._local.connection
 
-    def _init_metadata_table(self, conn=None):
-        """初始化元数据表，用于跟踪各个数据表的最后更新时间。"""
+    def _init_partitioned_tables(self, conn=None):
+        """初始化分区表结构"""
         if conn is None:
             conn = self.conn
+
+        # 创建日线数据表
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS _metadata (
-                table_name VARCHAR PRIMARY KEY,
-                last_updated TIMESTAMP,
-                data_type VARCHAR,
-                entity_id VARCHAR
+            CREATE TABLE IF NOT EXISTS daily_data (
+                ts_code VARCHAR NOT NULL,
+                trade_date VARCHAR NOT NULL,
+                open DOUBLE,
+                high DOUBLE,
+                low DOUBLE,
+                close DOUBLE,
+                pre_close DOUBLE,
+                change DOUBLE,
+                pct_chg DOUBLE,
+                vol DOUBLE,
+                amount DOUBLE,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                PRIMARY KEY (ts_code, trade_date)
             )
         """)
 
-        # 初始化组运行时间跟踪表
+        # 创建财务数据表（简化版，包含核心字段）
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS _group_last_run (
-                group_name VARCHAR PRIMARY KEY,
-                last_run_ts TIMESTAMP
+            CREATE TABLE IF NOT EXISTS financial_data (
+                ts_code VARCHAR NOT NULL,
+                ann_date VARCHAR NOT NULL,
+                end_date VARCHAR NOT NULL,
+                report_type VARCHAR,
+                total_revenue DOUBLE,
+                revenue DOUBLE,
+                n_income DOUBLE,
+                n_income_attr_p DOUBLE,
+                total_profit DOUBLE,
+                operate_profit DOUBLE,
+                ebit DOUBLE,
+                ebitda DOUBLE,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                PRIMARY KEY (ts_code, ann_date, end_date)
             )
         """)
 
-    def _update_metadata(self, table_name: str, data_type: str, entity_id: str):
-        """更新表的元数据信息。"""
-        self.conn.execute(
-            """
-            INSERT OR REPLACE INTO _metadata (table_name, last_updated, data_type, entity_id)
-            VALUES (?, NOW(), ?, ?)
-        """,
-            [table_name, data_type, entity_id],
-        )
+        # 创建基本面数据表
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS fundamental_data (
+                ts_code VARCHAR NOT NULL,
+                trade_date VARCHAR NOT NULL,
+                close DOUBLE,
+                turnover_rate DOUBLE,
+                turnover_rate_f DOUBLE,
+                volume_ratio DOUBLE,
+                pe DOUBLE,
+                pe_ttm DOUBLE,
+                pb DOUBLE,
+                ps DOUBLE,
+                ps_ttm DOUBLE,
+                dv_ratio DOUBLE,
+                dv_ttm DOUBLE,
+                total_share DOUBLE,
+                float_share DOUBLE,
+                free_share DOUBLE,
+                total_mv DOUBLE,
+                circ_mv DOUBLE,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                PRIMARY KEY (ts_code, trade_date)
+            )
+        """)
 
-    def create_index_if_not_exists(
-        self, table_name: str, column_name: str, index_name: str = None
-    ) -> bool:
-        """为指定表的列创建索引（如果不存在）"""
-        if index_name is None:
-            index_name = f"idx_{table_name}_{column_name}"
+        # 创建股票列表系统表
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS sys_stock_list (
+                ts_code VARCHAR PRIMARY KEY,
+                symbol VARCHAR,
+                name VARCHAR,
+                area VARCHAR,
+                industry VARCHAR,
+                market VARCHAR,
+                list_date VARCHAR,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # 创建分区元数据表
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS _partition_metadata (
+                table_name VARCHAR NOT NULL,
+                partition_key VARCHAR NOT NULL,
+                min_date VARCHAR,
+                max_date VARCHAR,
+                record_count BIGINT,
+                last_updated TIMESTAMP DEFAULT NOW(),
+                PRIMARY KEY (table_name, partition_key)
+            )
+        """)
+
+        # 创建索引
+        self._create_indexes(conn)
+
+    def _create_indexes(self, conn=None):
+        """创建性能优化索引"""
+        if conn is None:
+            conn = self.conn
 
         try:
-            # 检查索引是否已存在
-            existing_indexes = self.conn.execute(
-                "SELECT index_name FROM duckdb_indexes() WHERE table_name = ? AND index_name = ?",
-                [table_name, index_name],
-            ).fetchall()
+            # 日线数据表索引
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_daily_ts_code ON daily_data(ts_code)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_daily_trade_date ON daily_data(trade_date)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_daily_ts_date ON daily_data(ts_code, trade_date)")
 
-            if existing_indexes:
-                logger.debug(f"索引 {index_name} 已存在")
-                return True
+            # 财务数据表索引
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_financial_ts_code ON financial_data(ts_code)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_financial_ann_date ON financial_data(ann_date)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_financial_end_date ON financial_data(end_date)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_financial_ts_ann ON financial_data(ts_code, ann_date)")
 
-            # 创建索引
-            create_index_sql = (
-                f"CREATE INDEX {index_name} ON {table_name} ({column_name})"
-            )
-            self.conn.execute(create_index_sql)
-            logger.info(f"成功创建索引: {index_name} on {table_name}({column_name})")
-            return True
+            # 基本面数据表索引
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_fundamental_ts_code ON fundamental_data(ts_code)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_fundamental_trade_date ON fundamental_data(trade_date)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_fundamental_ts_date ON fundamental_data(ts_code, trade_date)")
 
+            logger.debug("分区表索引创建完成")
         except Exception as e:
-            logger.error(f"创建索引失败 {index_name}: {e}")
+            logger.warning(f"创建分区表索引失败: {e}")
+
+    def save_daily_data(self, df: pd.DataFrame) -> bool:
+        """保存日线数据"""
+        if not isinstance(df, pd.DataFrame) or df.empty:
+            logger.debug("日线数据为空，跳过保存")
             return False
 
-    def optimize_stock_list_table(self) -> None:
-        """优化 stock_list 表的查询性能"""
-        table_name = "sys_stock_list"
-
-        if not self.table_exists("system", "stock_list"):
-            logger.warning("stock_list 表不存在，跳过索引创建")
-            return
-
-        # 为 ts_code 列创建索引
-        self.create_index_if_not_exists(table_name, "ts_code", "idx_stock_list_ts_code")
-        # 为其他常用列创建索引
-        self.create_index_if_not_exists(table_name, "symbol", "idx_stock_list_symbol")
-        self.create_index_if_not_exists(table_name, "market", "idx_stock_list_market")
-
-    def optimize_business_tables_indexes(self) -> None:
-        """为现有业务表的日期列添加索引"""
         try:
-            # 获取所有业务表
-            business_tables = self.list_business_tables()
+            # 验证必需字段
+            required_fields = ['ts_code', 'trade_date']
+            if not all(field in df.columns for field in required_fields):
+                logger.error(f"日线数据缺少必需字段: {required_fields}")
+                return False
 
-            if not business_tables:
-                logger.debug("没有找到业务表，跳过日期列索引创建")
-                return
+            # 添加时间戳
+            df_copy = df.copy()
+            df_copy['updated_at'] = datetime.now()
+            if 'created_at' not in df_copy.columns:
+                df_copy['created_at'] = datetime.now()
 
-            logger.info(f"开始为 {len(business_tables)} 个业务表创建日期列索引")
-
-            # 常见的日期列名
-            date_columns = ["trade_date", "ann_date", "end_date", "report_date"]
-
-            created_count = 0
-            for table_info in business_tables:
-                table_name = table_info["table_name"]
-
-                try:
-                    # 获取表的列信息
-                    columns_info = self.conn.execute(
-                        f"DESCRIBE {table_name}"
-                    ).fetchall()
-                    existing_columns = [col[0] for col in columns_info]
-
-                    # 为存在的日期列创建索引
-                    for date_col in date_columns:
-                        if date_col in existing_columns:
-                            success = self.create_index_if_not_exists(
-                                table_name, date_col
-                            )
-                            if success:
-                                created_count += 1
-                                logger.debug(
-                                    f"为表 {table_name} 的 {date_col} 列创建索引"
-                                )
-
-                except Exception as e:
-                    logger.warning(f"为表 {table_name} 创建索引失败: {e}")
-                    continue
-
-            logger.info(f"业务表日期列索引创建完成，共创建 {created_count} 个索引")
-
+            # 获取表的列信息
+            table_columns = self.conn.execute("DESCRIBE daily_data").fetchall()
+            table_col_names = [col[0] for col in table_columns]
+            
+            # 只选择表中存在的列
+            available_cols = [col for col in table_col_names if col in df_copy.columns]
+            
+            # 使用明确的列名插入数据
+            cols_str = ', '.join(available_cols)
+            self.conn.execute(f"INSERT OR REPLACE INTO daily_data ({cols_str}) SELECT {cols_str} FROM df_copy")
+            
+            # 更新元数据
+            self._update_partition_metadata('daily_data', df_copy)
+            
+            logger.debug(f"日线数据保存完成，共 {len(df)} 条记录")
+            return True
         except Exception as e:
-            logger.error(f"优化业务表索引失败: {e}")
+            logger.error(f"保存日线数据失败: {e}", exc_info=True)
+            return False
 
-    def _add_performance_indexes(
-        self, table_name: str, data_type: str, columns: list
-    ) -> None:
-        """为新创建的表添加性能索引"""
+    def save_daily_data_incremental(self, df: pd.DataFrame) -> bool:
+        """增量保存日线数据"""
+        return self.save_daily_data(df)
+
+    def save_financial_data(self, df: pd.DataFrame) -> bool:
+        """保存财务数据"""
+        if not isinstance(df, pd.DataFrame) or df.empty:
+            logger.debug("财务数据为空，跳过保存")
+            return False
+
         try:
-            # 为 stock_list 表添加索引
-            if data_type == "system" and table_name == "sys_stock_list":
-                # 为 ts_code 列创建索引（如果存在）
-                if "ts_code" in columns:
-                    self.create_index_if_not_exists(table_name, "ts_code")
-                # 为其他常用列创建索引
-                if "symbol" in columns:
-                    self.create_index_if_not_exists(table_name, "symbol")
-                if "market" in columns:
-                    self.create_index_if_not_exists(table_name, "market")
+            # 验证必需字段
+            required_fields = ['ts_code', 'ann_date', 'end_date']
+            if not all(field in df.columns for field in required_fields):
+                logger.error(f"财务数据缺少必需字段: {required_fields}")
+                return False
 
-            # 为业务表的日期列添加索引
+            # 添加时间戳
+            df_copy = df.copy()
+            df_copy['updated_at'] = datetime.now()
+            if 'created_at' not in df_copy.columns:
+                df_copy['created_at'] = datetime.now()
+
+            # 只插入表中存在的列
+            table_columns = [desc[0] for desc in self.conn.execute("DESCRIBE financial_data").fetchall()]
+            df_columns = [col for col in df_copy.columns if col in table_columns]
+            
+            if df_columns:
+                df_filtered = df_copy[df_columns]
+                # 使用明确的列名插入数据
+                cols_str = ', '.join(df_columns)
+                self.conn.execute(f"INSERT OR REPLACE INTO financial_data ({cols_str}) SELECT {cols_str} FROM df_filtered")
             else:
-                # 常见的日期列名
-                date_columns = [
-                    "trade_date",
-                    "ann_date",
-                    "end_date",
-                    "report_date",
-                ]
-
-                for date_col in date_columns:
-                    if date_col in columns:
-                        self.create_index_if_not_exists(table_name, date_col)
-                        logger.debug(
-                            f"为业务表 {table_name} 的日期列 {date_col} 创建索引"
-                        )
-
+                logger.error("没有匹配的列可以插入财务数据表")
+                return False
+            
+            # 更新元数据
+            self._update_partition_metadata('financial_data', df_copy)
+            
+            logger.debug(f"财务数据保存完成，共 {len(df)} 条记录")
+            return True
         except Exception as e:
-            logger.warning(f"添加性能索引失败 {table_name}: {e}")
+            logger.error(f"保存财务数据失败: {e}", exc_info=True)
+            return False
 
-    def _optimize_existing_tables(self) -> None:
-        """为现有表添加索引优化"""
+    def save_stock_list(self, df: pd.DataFrame) -> bool:
+        """保存股票列表数据"""
+        if not isinstance(df, pd.DataFrame) or df.empty:
+            logger.debug("股票列表数据为空，跳过保存")
+            return False
+
         try:
-            # 优化 stock_list 表
-            self.optimize_stock_list_table()
+            # 验证必需字段
+            required_fields = ['ts_code']
+            if not all(field in df.columns for field in required_fields):
+                logger.error(f"股票列表数据缺少必需字段: {required_fields}")
+                return False
 
-            # 优化业务表的日期列索引
-            self.optimize_business_tables_indexes()
+            # 添加时间戳
+            df_copy = df.copy()
+            df_copy['updated_at'] = datetime.now()
+            if 'created_at' not in df_copy.columns:
+                df_copy['created_at'] = datetime.now()
 
+            # 获取表的列信息
+            table_columns = self.conn.execute("DESCRIBE sys_stock_list").fetchall()
+            table_col_names = [col[0] for col in table_columns]
+            
+            # 只选择表中存在的列
+            available_cols = [col for col in table_col_names if col in df_copy.columns]
+            
+            # 使用明确的列名插入数据
+            cols_str = ', '.join(available_cols)
+            self.conn.execute(f"INSERT OR REPLACE INTO sys_stock_list ({cols_str}) SELECT {cols_str} FROM df_copy")
+            
+            logger.debug(f"股票列表数据保存完成，共 {len(df)} 条记录")
+            return True
         except Exception as e:
-            logger.warning(f"优化现有表索引失败: {e}")
+            logger.error(f"保存股票列表数据失败: {e}", exc_info=True)
+            return False
 
-    def table_exists(self, data_type: str, entity_id: str) -> bool:
-        """检查指定的表是否存在。"""
-        table_name = get_table_name(data_type, entity_id)
-        tables = self.conn.execute("SHOW TABLES").fetchall()
-        return (table_name,) in tables
-
-    def get_table_last_updated(self, data_type: str, entity_id: str) -> datetime | None:
-        """获取表的最后更新时间。"""
-        table_name = get_table_name(data_type, entity_id)
-        result = self.conn.execute(
-            "SELECT last_updated FROM _metadata WHERE table_name = ?", [table_name]
-        ).fetchone()
-        return result[0] if result else None
-
-    def get_latest_date(
-        self, data_type: str, entity_id: str, date_col: str
-    ) -> str | None:
-        """获取指定表中指定日期列的最新值。"""
-        if not self.table_exists(data_type, entity_id):
-            return None
-
-        table_name = get_table_name(data_type, entity_id)
+    def query_daily_data_by_stock(self, ts_code: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
+        """按股票查询日线数据"""
         try:
-            # 首先检查表中是否存在指定的日期列
-            columns_result = self.conn.execute(f"DESCRIBE {table_name}").fetchall()
-            column_names = [col[0].lower() for col in columns_result]
+            where_clause = "WHERE ts_code = ?"
+            params = [ts_code]
+            
+            if start_date:
+                where_clause += " AND trade_date >= ?"
+                params.append(start_date)
+            if end_date:
+                where_clause += " AND trade_date <= ?"
+                params.append(end_date)
+                
+            query = f"SELECT * FROM daily_data {where_clause} ORDER BY trade_date"
+            return self.conn.execute(query, params).df()
+        except Exception as e:
+            logger.error(f"查询股票 {ts_code} 日线数据失败: {e}")
+            return pd.DataFrame()
 
-            if date_col.lower() not in column_names:
-                # 如果指定的日期列不存在，尝试常见的日期列名
-                common_date_cols = ["trade_date", "ann_date", "end_date"]
-                available_date_col = None
-                for col in common_date_cols:
-                    if col.lower() in column_names:
-                        available_date_col = col
-                        break
+    def query_daily_data_by_date_range(self, start_date: str, end_date: str, ts_codes: Optional[List[str]] = None) -> pd.DataFrame:
+        """按日期范围查询日线数据"""
+        try:
+            where_clause = "WHERE trade_date >= ? AND trade_date <= ?"
+            params = [start_date, end_date]
+            
+            if ts_codes:
+                placeholders = ','.join(['?' for _ in ts_codes])
+                where_clause += f" AND ts_code IN ({placeholders})"
+                params.extend(ts_codes)
+                
+            query = f"SELECT * FROM daily_data {where_clause} ORDER BY ts_code, trade_date"
+            return self.conn.execute(query, params).df()
+        except Exception as e:
+            logger.error(f"查询日期范围 {start_date}-{end_date} 日线数据失败: {e}")
+            return pd.DataFrame()
 
-                if available_date_col:
-                    logger.warning(
-                        f"表 {table_name} 中未找到列 '{date_col}'，使用 '{available_date_col}' 替代"
-                    )
-                    date_col = available_date_col
-                else:
-                    logger.error(f"表 {table_name} 中未找到任何有效的日期列")
-                    return None
+    def query_financial_data_by_stock(self, ts_code: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
+        """按股票查询财务数据"""
+        try:
+            where_clause = "WHERE ts_code = ?"
+            params = [ts_code]
+            
+            if start_date:
+                where_clause += " AND end_date >= ?"
+                params.append(start_date)
+            if end_date:
+                where_clause += " AND end_date <= ?"
+                params.append(end_date)
+                
+            query = f"SELECT * FROM financial_data {where_clause} ORDER BY end_date"
+            return self.conn.execute(query, params).df()
+        except Exception as e:
+            logger.error(f"查询股票 {ts_code} 财务数据失败: {e}")
+            return pd.DataFrame()
 
-            result = self.conn.execute(
-                f"SELECT MAX({date_col}) FROM {table_name}"
-            ).fetchone()
+    def query_daily_data_by_stocks(self, ts_codes: List[str], start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
+        """按股票列表查询日线数据"""
+        try:
+            placeholders = ','.join(['?' for _ in ts_codes])
+            where_clause = f"WHERE ts_code IN ({placeholders})"
+            params = ts_codes.copy()
+            
+            if start_date:
+                where_clause += " AND trade_date >= ?"
+                params.append(start_date)
+            if end_date:
+                where_clause += " AND trade_date <= ?"
+                params.append(end_date)
+                
+            query = f"SELECT * FROM daily_data {where_clause} ORDER BY ts_code, trade_date"
+            return self.conn.execute(query, params).df()
+        except Exception as e:
+            logger.error(f"查询股票列表日线数据失败: {e}")
+            return pd.DataFrame()
+
+    def get_latest_date_by_stock(self, ts_code: str, data_type: str) -> Optional[str]:
+        """获取指定股票的最新日期"""
+        try:
+            if data_type == 'daily':
+                query = "SELECT MAX(trade_date) FROM daily_data WHERE ts_code = ?"
+            elif data_type == 'financial':
+                query = "SELECT MAX(ann_date) FROM financial_data WHERE ts_code = ?"
+            elif data_type == 'fundamental':
+                query = "SELECT MAX(trade_date) FROM fundamental_data WHERE ts_code = ?"
+            else:
+                logger.error(f"不支持的数据类型: {data_type}")
+                return None
+                
+            result = self.conn.execute(query, [ts_code]).fetchone()
             return result[0] if result and result[0] else None
         except Exception as e:
-            logger.error(f"获取表 {table_name} 最新日期失败: {e}", exc_info=True)
+            logger.error(f"获取股票 {ts_code} 最新日期失败: {e}")
             return None
 
-    def get_latest_dates_batch(
-        self, data_type: str, entity_ids: List[str], date_col: str
-    ) -> Dict[str, str]:
-        """批量获取多个实体的最新日期，提升查询性能"""
+    def batch_get_latest_dates(self, ts_codes: List[str], data_type: str) -> Dict[str, str]:
+        """批量获取股票最新日期"""
         latest_dates = {}
-
-        # 构建所有可能的表名
-        table_names = []
-        entity_table_map = {}
-
-        for entity_id in entity_ids:
-            table_name = get_table_name(data_type, entity_id)
-            if self.table_exists(data_type, entity_id):
-                table_names.append(table_name)
-                entity_table_map[table_name] = entity_id
-
-        if not table_names:
-            return latest_dates
-
         try:
-            # 构建UNION ALL查询，一次性获取所有表的最新日期
-            union_queries = []
-            for table_name in table_names:
-                # 先检查表结构，确保日期列存在
-                try:
-                    columns_result = self.conn.execute(
-                        f"DESCRIBE {table_name}"
-                    ).fetchall()
-                    column_names = [col[0].lower() for col in columns_result]
-
-                    actual_date_col = date_col
-                    if date_col.lower() not in column_names:
-                        # 尝试常见的日期列名
-                        common_date_cols = [
-                            "trade_date",
-                            "ann_date",
-                            "end_date",
-                        ]
-                        for col in common_date_cols:
-                            if col.lower() in column_names:
-                                actual_date_col = col
-                                break
-                        else:
-                            logger.warning(
-                                f"表 {table_name} 中未找到有效的日期列，跳过"
-                            )
-                            continue
-
-                    union_queries.append(
-                        f"SELECT '{entity_table_map[table_name]}' as entity_id, MAX({actual_date_col}) as max_date FROM {table_name}"
-                    )
-                except Exception as e:
-                    logger.warning(f"检查表 {table_name} 结构失败，跳过: {e}")
-                    continue
-
-            if union_queries:
-                # 执行批量查询
-                batch_query = " UNION ALL ".join(union_queries)
-                results = self.conn.execute(batch_query).fetchall()
-
-                for entity_id, max_date in results:
-                    if max_date:
-                        latest_dates[entity_id] = max_date
-
-                logger.debug(
-                    f"批量查询 {data_type} 类型的 {len(entity_ids)} 个实体，获得 {len(latest_dates)} 个有效日期"
-                )
-
+            if data_type == 'daily':
+                query = "SELECT ts_code, MAX(trade_date) FROM daily_data WHERE ts_code IN ({}) GROUP BY ts_code"
+            elif data_type == 'financial':
+                query = "SELECT ts_code, MAX(ann_date) FROM financial_data WHERE ts_code IN ({}) GROUP BY ts_code"
+            elif data_type == 'fundamental':
+                query = "SELECT ts_code, MAX(trade_date) FROM fundamental_data WHERE ts_code IN ({}) GROUP BY ts_code"
+            else:
+                logger.error(f"不支持的数据类型: {data_type}")
+                return latest_dates
+                
+            placeholders = ','.join(['?' for _ in ts_codes])
+            query = query.format(placeholders)
+            
+            results = self.conn.execute(query, ts_codes).fetchall()
+            for ts_code, max_date in results:
+                if max_date:
+                    latest_dates[ts_code] = max_date
+                    
         except Exception as e:
-            logger.error(f"批量获取最新日期失败: {e}", exc_info=True)
-            # 降级到单个查询
-            logger.info("降级到单个查询模式")
-            for entity_id in entity_ids:
-                try:
-                    date = self.get_latest_date(data_type, entity_id, date_col)
-                    if date:
-                        latest_dates[entity_id] = date
-                except Exception:
-                    continue
-
+            logger.error(f"批量获取最新日期失败: {e}")
+            
         return latest_dates
 
-    def save_incremental(
-        self, df: pd.DataFrame, data_type: str, entity_id: str, date_col: str
-    ):
-        """增量保存数据到表中。"""
-        if not isinstance(df, pd.DataFrame) or df.empty:
-            logger.debug(f"[{data_type}/{entity_id}] 数据为空，跳过保存")
-            return
-
-        if date_col not in df.columns:
-            logger.error(f"[{data_type}/{entity_id}] 缺少日期列 '{date_col}'")
-            return
-
-        table_name = get_table_name(data_type, entity_id)
-
+    def _update_partition_metadata(self, table_name: str, df: pd.DataFrame):
+        """更新分区元数据"""
         try:
-            # 创建表（如果不存在）
-            self.conn.execute(
-                f"CREATE TABLE IF NOT EXISTS {table_name} AS SELECT * FROM df LIMIT 0"
-            )
-
-            # 删除重叠的日期数据，然后插入新数据
-            min_date = df[date_col].min()
-            self.conn.execute(
-                f"DELETE FROM {table_name} WHERE {date_col} >= ?", [min_date]
-            )
-            self.conn.from_df(df).insert_into(table_name)
-
-            # 更新元数据
-            self._update_metadata(table_name, data_type, entity_id)
-
-            logger.debug(f"[{data_type}/{entity_id}] 增量保存完成，共 {len(df)} 条记录")
-
+            # 根据表类型确定日期列
+            if table_name == 'daily_data' and 'trade_date' in df.columns:
+                date_col = 'trade_date'
+            elif table_name == 'financial_data' and 'ann_date' in df.columns:
+                date_col = 'ann_date'
+            elif table_name == 'fundamental_data' and 'trade_date' in df.columns:
+                date_col = 'trade_date'
+            else:
+                return
+                
+            # 获取股票代码列表
+            if 'ts_code' in df.columns:
+                ts_codes = df['ts_code'].unique()
+                
+                for ts_code in ts_codes:
+                    stock_data = df[df['ts_code'] == ts_code]
+                    min_date = stock_data[date_col].min()
+                    max_date = stock_data[date_col].max()
+                    record_count = len(stock_data)
+                    
+                    self.conn.execute("""
+                        INSERT OR REPLACE INTO _partition_metadata 
+                        (table_name, partition_key, min_date, max_date, record_count, last_updated)
+                        VALUES (?, ?, ?, ?, ?, NOW())
+                    """, [table_name, ts_code, min_date, max_date, record_count])
+                    
         except Exception as e:
-            logger.error(f"[{data_type}/{entity_id}] 增量保存失败: {e}", exc_info=True)
+            logger.warning(f"更新分区元数据失败: {e}")
 
+    # ========== 兼容性接口方法 ==========
+    
+    def save(self, df: pd.DataFrame, data_type: str, entity_id: str, date_col: Optional[str] = None):
+        """兼容原有的save接口，根据data_type路由到对应的保存方法"""
+        if df is None or df.empty:
+            logger.debug(f"数据为空，跳过保存: {data_type}_{entity_id}")
+            return
+            
+        # 确保ts_code列存在（只在不存在时添加）
+        if 'ts_code' not in df.columns:
+            df = df.copy()
+            df['ts_code'] = entity_id
+            
+        # 根据data_type路由到对应的保存方法（注意判断顺序，避免daily_basic被误判为daily）
+        if data_type.startswith('stock_list') or data_type == 'system':
+            return self.save_stock_list(df)
+        elif data_type == 'daily_basic' or data_type.startswith('fundamental'):
+            return self.save_fundamental_data(df)
+        elif data_type.startswith('daily'):
+            return self.save_daily_data(df)
+        elif data_type.startswith('financials'):
+            return self.save_financial_data(df)
+        else:
+            logger.warning(f"未知的数据类型: {data_type}，使用默认保存方法")
+            return self.save_daily_data(df)
+    
+    def save_incremental(self, df: pd.DataFrame, data_type: str, entity_id: str, date_col: Optional[str] = None):
+        """兼容原有的增量保存接口"""
+        return self.save(df, data_type, entity_id, date_col)
+    
     def save_full(self, df: pd.DataFrame, data_type: str, entity_id: str):
-        """全量保存数据，替换整个表。"""
-        if not isinstance(df, pd.DataFrame):
-            logger.warning(f"[{data_type}/{entity_id}] 数据类型错误，跳过保存")
-            return
-
-        table_name = get_table_name(data_type, entity_id)
-
-        try:
-            self.conn.execute(
-                f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM df"
-            )
-            self._update_metadata(table_name, data_type, entity_id)
-
-            logger.debug(f"[{data_type}/{entity_id}] 全量保存完成，共 {len(df)} 条记录")
-
-        except Exception as e:
-            logger.error(f"[{data_type}/{entity_id}] 全量保存失败: {e}", exc_info=True)
-
-    def query(
-        self, data_type: str, entity_id: str, columns: list[str] = None
-    ) -> pd.DataFrame:
-        """查询指定表的数据。"""
-        if not self.table_exists(data_type, entity_id):
-            return pd.DataFrame()
-
-        table_name = get_table_name(data_type, entity_id)
-
-        try:
-            if columns:
-                cols_str = ", ".join(columns)
-                query = f"SELECT {cols_str} FROM {table_name}"
-            else:
-                query = f"SELECT * FROM {table_name}"
-
-            return self.conn.execute(query).df()
-        except Exception as e:
-            logger.error(f"查询表 {table_name} 失败: {e}", exc_info=True)
-            return pd.DataFrame()
-
-    def get_stock_list(self) -> pd.DataFrame:
-        """获取股票列表数据的便捷方法。"""
-        return self.query("system", "stock_list")
-
-    def get_all_stock_codes(self) -> list[str]:
-        """获取所有股票代码列表。"""
-        try:
-            # 优化：只查询 ts_code 列，避免加载整个股票列表表
-            stock_df = self.query("system", "stock_list", columns=["ts_code"])
-            if (
-                stock_df is not None
-                and not stock_df.empty
-                and "ts_code" in stock_df.columns
-            ):
-                return stock_df["ts_code"].tolist()
-            else:
-                return []
-        except Exception as e:
-            logger.error(f"获取股票代码列表失败: {e}")
-            return []
-
-    def list_tables(self) -> list[str]:
-        """列出数据库中的所有表。"""
-        tables = self.conn.execute("SHOW TABLES").fetchall()
-        return [table[0] for table in tables if not table[0].startswith("_")]
-
-    # 为了向后兼容，保留旧接口
-    def save(self, df: pd.DataFrame, data_type: str, entity_id: str, date_col: str):
-        """向后兼容的增量保存接口。"""
-        self.save_incremental(df, data_type, entity_id, date_col)
-
+        """兼容原有的全量保存接口"""
+        return self.save(df, data_type, entity_id)
+    
     def overwrite(self, df: pd.DataFrame, data_type: str, entity_id: str):
-        """向后兼容的全量保存接口。"""
-        self.save_full(df, data_type, entity_id)
-
-    def get_last_run(self, group_name: str) -> datetime | None:
-        """获取指定组的最后运行时间。"""
+        """兼容原有的覆盖保存接口 - 先删除该股票的所有数据，然后插入新数据"""
+        if df is None or df.empty:
+            logger.debug(f"数据为空，跳过覆盖: {data_type}_{entity_id}")
+            return
+            
         try:
-            result = self.conn.execute(
-                "SELECT last_run_ts FROM _group_last_run WHERE group_name = ?",
-                [group_name],
-            ).fetchone()
-            return result[0] if result else None
+            # 确保ts_code列存在
+            if 'ts_code' not in df.columns:
+                df = df.copy()
+                df['ts_code'] = entity_id
+                
+            # 根据data_type确定要删除的表
+            if data_type.startswith('stock_list') or data_type == 'system':
+                table_name = 'sys_stock_list'
+            elif data_type == 'daily_basic' or data_type.startswith('fundamental'):
+                table_name = 'fundamental_data'
+            elif data_type.startswith('daily'):
+                table_name = 'daily_data'
+            elif data_type.startswith('financials'):
+                table_name = 'financial_data'
+            else:
+                table_name = 'daily_data'  # 默认
+                
+            # 先删除数据
+            if data_type.startswith('stock_list') or data_type == 'system':
+                # 股票列表数据：清空整个表
+                self.conn.execute(f"DELETE FROM {table_name}")
+                logger.debug(f"已清空表 {table_name} 的所有数据")
+            else:
+                # 其他数据：删除该股票的所有数据
+                self.conn.execute(f"DELETE FROM {table_name} WHERE ts_code = ?", [entity_id])
+                logger.debug(f"已删除股票 {entity_id} 在表 {table_name} 中的所有数据")
+            
+            # 然后插入新数据
+            return self.save(df, data_type, entity_id)
+            
         except Exception as e:
-            logger.error(f"获取组 {group_name} 的 last_run 失败: {e}", exc_info=True)
+            logger.error(f"覆盖数据失败: {data_type}_{entity_id}, {e}")
+            return False
+    
+    def get_latest_date(self, data_type: str, entity_id: str, date_col: Optional[str] = None) -> Optional[str]:
+        """兼容原有的获取最新日期接口"""
+        # 将data_type映射到内部数据类型（注意判断顺序）
+        if data_type == 'daily_basic' or data_type.startswith('fundamental'):
+            internal_type = 'fundamental'
+        elif data_type.startswith('daily'):
+            internal_type = 'daily'
+        elif data_type.startswith('financials'):
+            internal_type = 'financial'
+        else:
+            internal_type = 'daily'  # 默认
+            
+        return self.get_latest_date_by_stock(entity_id, internal_type)
+    
+    def get_latest_dates_batch(self, data_type: str, entity_ids: List[str], date_col: Optional[str] = None) -> Dict[str, str]:
+        """兼容原有的批量获取最新日期接口"""
+        # 将data_type映射到内部数据类型（注意判断顺序）
+        if data_type == 'daily_basic' or data_type.startswith('fundamental'):
+            internal_type = 'fundamental'
+        elif data_type.startswith('daily'):
+            internal_type = 'daily'
+        elif data_type.startswith('financials'):
+            internal_type = 'financial'
+        else:
+            internal_type = 'daily'  # 默认
+            
+        return self.batch_get_latest_dates(entity_ids, internal_type)
+    
+    def query(self, data_type: str, entity_id: str, columns: Optional[List[str]] = None) -> pd.DataFrame:
+        """兼容原有的查询接口"""
+        try:
+            if data_type == 'daily_basic' or data_type.startswith('fundamental'):
+                result = self.query_fundamental_data_by_stock(entity_id)
+            elif data_type.startswith('daily'):
+                result = self.query_daily_data_by_stock(entity_id)
+            elif data_type.startswith('financials'):
+                result = self.query_financial_data_by_stock(entity_id)
+            else:
+                logger.warning(f"未知的数据类型: {data_type}")
+                return pd.DataFrame()
+                
+            # 如果指定了列，则只返回这些列
+            if columns and not result.empty:
+                available_columns = [col for col in columns if col in result.columns]
+                if available_columns:
+                    result = result[available_columns]
+                    
+            return result
+        except Exception as e:
+            logger.error(f"查询数据失败: {data_type}_{entity_id}, {e}")
+            return pd.DataFrame()
+    
+    def table_exists(self, data_type: str, entity_id: str) -> bool:
+        """检查表是否存在（分区表架构下总是返回True，因为表是预创建的）"""
+        # 在分区表架构下，表是预创建的，所以检查是否有数据
+        try:
+            if data_type.startswith('daily'):
+                result = self.conn.execute("SELECT COUNT(*) FROM daily_data WHERE ts_code = ? LIMIT 1", [entity_id]).fetchone()
+            elif data_type.startswith('financials'):
+                result = self.conn.execute("SELECT COUNT(*) FROM financial_data WHERE ts_code = ? LIMIT 1", [entity_id]).fetchone()
+            elif data_type.startswith('fundamental') or data_type == 'daily_basic':
+                result = self.conn.execute("SELECT COUNT(*) FROM fundamental_data WHERE ts_code = ? LIMIT 1", [entity_id]).fetchone()
+            else:
+                return False
+                
+            return result[0] > 0 if result else False
+        except Exception:
+            return False
+    
+    def get_table_last_updated(self, data_type: str, entity_id: str) -> Optional[datetime]:
+        """获取表的最后更新时间"""
+        try:
+            if data_type.startswith('daily'):
+                result = self.conn.execute(
+                    "SELECT MAX(updated_at) FROM daily_data WHERE ts_code = ?", [entity_id]
+                ).fetchone()
+            elif data_type.startswith('financials'):
+                result = self.conn.execute(
+                    "SELECT MAX(updated_at) FROM financial_data WHERE ts_code = ?", [entity_id]
+                ).fetchone()
+            elif data_type.startswith('fundamental') or data_type == 'daily_basic':
+                result = self.conn.execute(
+                    "SELECT MAX(updated_at) FROM fundamental_data WHERE ts_code = ?", [entity_id]
+                ).fetchone()
+            else:
+                return None
+                
+            return result[0] if result and result[0] else None
+        except Exception as e:
+            logger.error(f"获取表最后更新时间失败: {e}")
             return None
-
-    def set_last_run(self, group_name: str, timestamp: datetime):
-        """设置指定组的最后运行时间。"""
+    
+    def list_tables(self) -> List[str]:
+        """列出所有表（返回分区表名称）"""
+        return ['daily_data', 'financial_data', 'fundamental_data']
+    
+    def get_stock_list(self) -> pd.DataFrame:
+        """获取股票列表（从系统表）"""
         try:
-            self.conn.execute(
-                "INSERT OR REPLACE INTO _group_last_run (group_name, last_run_ts) VALUES (?, ?)",
-                [group_name, timestamp],
-            )
-            logger.debug(f"已更新组 {group_name} 的 last_run_ts: {timestamp}")
+            return self.conn.execute("SELECT * FROM sys_stock_list ORDER BY ts_code").df()
         except Exception as e:
-            logger.error(f"设置组 {group_name} 的 last_run 失败: {e}", exc_info=True)
-
-    def bulk_insert(
-        self, df: pd.DataFrame, data_type: str, entity_id: str, date_col: str = None
-    ):
-        """批量插入数据，使用优化的executemany策略。
-
-        Args:
-            df: 要插入的DataFrame
-            data_type: 数据类型
-            entity_id: 实体ID
-            date_col: 日期列名，如果指定则使用增量插入，否则使用全量插入
-        """
-        if not isinstance(df, pd.DataFrame) or df.empty:
-            logger.debug(f"[{data_type}/{entity_id}] 批量插入数据为空，跳过")
-            return
-
+            logger.error(f"获取股票列表失败: {e}")
+            return pd.DataFrame()
+    
+    def get_all_stock_codes(self) -> List[str]:
+        """获取所有股票代码"""
         try:
-            if date_col and date_col in df.columns:
-                # 使用增量插入
-                self._bulk_incremental_insert(df, data_type, entity_id, date_col)
-                logger.debug(
-                    f"[{data_type}/{entity_id}] 批量增量插入完成，共 {len(df)} 条记录"
-                )
-            else:
-                # 使用全量插入
-                self.save_full(df, data_type, entity_id)
-                logger.debug(
-                    f"[{data_type}/{entity_id}] 批量全量插入完成，共 {len(df)} 条记录"
-                )
-
+            # 从各个数据表中获取所有股票代码
+            daily_codes = self.conn.execute("SELECT DISTINCT ts_code FROM daily_data").fetchall()
+            financial_codes = self.conn.execute("SELECT DISTINCT ts_code FROM financial_data").fetchall()
+            fundamental_codes = self.conn.execute("SELECT DISTINCT ts_code FROM fundamental_data").fetchall()
+            
+            all_codes = set()
+            for codes in [daily_codes, financial_codes, fundamental_codes]:
+                all_codes.update([code[0] for code in codes])
+                
+            return sorted(list(all_codes))
         except Exception as e:
-            logger.error(f"[{data_type}/{entity_id}] 批量插入失败: {e}", exc_info=True)
-            raise
-
-    def _bulk_incremental_insert(
-        self, df: pd.DataFrame, data_type: str, entity_id: str, date_col: str
-    ):
-        """执行优化的批量增量插入。
-
-        使用executemany优化策略：
-        1. 检查表是否存在，不存在则创建
-        2. 处理列结构兼容性问题
-        3. 批量删除重叠日期的数据
-        4. 使用executemany批量插入新数据
-        5. 更新元数据
-        """
-        table_name = get_table_name(data_type, entity_id)
-        conn = self.conn
-
-        try:
-            # 开始事务以确保操作原子性
-            conn.begin()
-
-            # 1. 检查表是否存在
-            table_exists = self.table_exists(data_type, entity_id)
-
-            if not table_exists:
-                # 表不存在，直接创建
-                conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df LIMIT 0")
-                logger.debug(f"[{data_type}/{entity_id}] 创建新表 {table_name}")
-            else:
-                # 表已存在，检查列结构兼容性
-                existing_columns = conn.execute(f"DESCRIBE {table_name}").fetchall()
-                existing_col_names = [col[0] for col in existing_columns]
-                new_col_names = list(df.columns)
-
-                if existing_col_names != new_col_names:
-                    logger.debug(
-                        f"[{data_type}/{entity_id}] 检测到列结构不匹配:\n"
-                        f"  现有表列数: {len(existing_col_names)}\n"
-                        f"  新数据列数: {len(new_col_names)}\n"
-                        f"  现有列: {existing_col_names}\n"
-                        f"  新数据列: {new_col_names}"
-                    )
-
-                    # 处理列结构不匹配的情况
-                    df = self._align_dataframe_with_table(
-                        df, existing_col_names, new_col_names, data_type, entity_id
-                    )
-
-            # 2. 批量删除重叠的日期数据
-            if not df.empty and date_col in df.columns:
-                # 获取需要删除的日期范围
-                min_date = df[date_col].min()
-                max_date = df[date_col].max()
-
-                # 使用参数化查询避免SQL注入
-                delete_sql = (
-                    f"DELETE FROM {table_name} WHERE {date_col} BETWEEN ? AND ?"
-                )
-                conn.execute(delete_sql, [min_date, max_date])
-
-                # 记录删除的行数
-                deleted_count = conn.rowcount if hasattr(conn, "rowcount") else 0
-                logger.debug(
-                    f"[{data_type}/{entity_id}] 删除了 {deleted_count} 条重叠数据"
-                )
-
-            # 3. 使用DuckDB的高效批量插入
-            # DuckDB的from_df().insert_into()已经是优化的批量插入
-            conn.from_df(df).insert_into(table_name)
-
-            # 4. 为新创建的表添加性能索引
-            if not table_exists and not df.empty:
-                self._add_performance_indexes(
-                    table_name, data_type, df.columns.tolist()
-                )
-
-            # 5. 更新元数据
-            self._update_metadata(table_name, data_type, entity_id)
-
-            # 提交事务
-            conn.commit()
-
-            logger.debug(
-                f"[{data_type}/{entity_id}] 批量增量插入事务完成，插入 {len(df)} 条记录"
-            )
-
-        except Exception as e:
-            # 回滚事务
-            try:
-                conn.rollback()
-            except:
-                pass
-            logger.error(
-                f"[{data_type}/{entity_id}] 批量增量插入事务失败: {e}", exc_info=True
-            )
-            raise
-
-    def _align_dataframe_with_table(
-        self,
-        df: pd.DataFrame,
-        existing_cols: list,
-        new_cols: list,
-        data_type: str,
-        entity_id: str,
-    ) -> pd.DataFrame:
-        """对齐DataFrame与现有表的列结构。
-
-        Args:
-            df: 要插入的DataFrame
-            existing_cols: 现有表的列名列表
-            new_cols: 新数据的列名列表
-            data_type: 数据类型
-            entity_id: 实体ID
-
-        Returns:
-            对齐后的DataFrame
-        """
-        # 如果新数据列数更多，删除多余的列
-        if len(new_cols) > len(existing_cols):
-            extra_cols = [col for col in new_cols if col not in existing_cols]
-            logger.info(f"[{data_type}/{entity_id}] 删除新数据中的额外列: {extra_cols}")
-            df = df.drop(columns=extra_cols)
-
-        # 如果新数据列数更少，添加缺失的列（填充默认值）
-        elif len(new_cols) < len(existing_cols):
-            missing_cols = [col for col in existing_cols if col not in new_cols]
-            logger.info(f"[{data_type}/{entity_id}] 为新数据添加缺失列: {missing_cols}")
-            for col in missing_cols:
-                df[col] = None  # 使用None作为默认值
-
-        # 确保列的顺序与现有表一致
-        df = df.reindex(columns=existing_cols)
-
-        return df
-
-    def bulk_insert_multiple(
-        self, data_batches: list[tuple[pd.DataFrame, str, str, str]]
-    ):
-        """批量插入多个数据批次，进一步优化性能。
-
-        Args:
-            data_batches: 数据批次列表，每个元素为(df, data_type, entity_id, date_col)
-        """
-        if not data_batches:
-            logger.debug("批量插入数据批次为空，跳过")
-            return
-
-        conn = self.conn
-
-        try:
-            # 开始大事务
-            conn.begin()
-
-            for df, data_type, entity_id, date_col in data_batches:
-                if df.empty:
-                    continue
-
-                table_name = get_table_name(data_type, entity_id)
-
-                # 创建表（如果不存在）
-                conn.execute(
-                    f"CREATE TABLE IF NOT EXISTS {table_name} AS SELECT * FROM df LIMIT 0"
-                )
-
-                # 处理增量插入
-                if date_col and date_col in df.columns:
-                    min_date = df[date_col].min()
-                    max_date = df[date_col].max()
-                    delete_sql = (
-                        f"DELETE FROM {table_name} WHERE {date_col} BETWEEN ? AND ?"
-                    )
-                    conn.execute(delete_sql, [min_date, max_date])
-                else:
-                    # 全量替换
-                    conn.execute(f"DELETE FROM {table_name}")
-
-                # 批量插入
-                conn.from_df(df).insert_into(table_name)
-
-                # 更新元数据
-                self._update_metadata(table_name, data_type, entity_id)
-
-                logger.debug(
-                    f"[{data_type}/{entity_id}] 多批次插入完成，共 {len(df)} 条记录"
-                )
-
-            # 提交整个大事务
-            conn.commit()
-            logger.info(f"批量插入多个数据批次完成，共处理 {len(data_batches)} 个批次")
-
-        except Exception as e:
-            try:
-                conn.rollback()
-            except:
-                pass
-            logger.error(f"批量插入多个数据批次失败: {e}", exc_info=True)
-            raise
-
-    def get_summary(self) -> list[dict]:
-        """获取数据库中所有表的记录数摘要。"""
-        summary_data = []
-        tables = self.list_tables()
-        for table_name in tables:
-            try:
-                count = self.conn.execute(
-                    f'SELECT COUNT(*) FROM "{table_name}"'
-                ).fetchone()[0]
-                summary_data.append({"table_name": table_name, "record_count": count})
-            except Exception as e:
-                logger.error(f"无法获取表 '{table_name}' 的摘要: {e}", exc_info=True)
-                summary_data.append({"table_name": table_name, "record_count": "错误"})
-        return summary_data
-
-    def list_business_tables(self) -> list[dict]:
-        """返回所有业务表及其业务类型、股票代码。
-
-        Returns:
-            list[dict]: 包含 {'table_name', 'business_type', 'stock_code'} 的字典列表
-        """
-        import re
-
-        business_tables = []
-        tables = self.list_tables()
-
-        # 正则模式：匹配业务类型_股票代码格式
-        # 股票代码格式：6位数字.2位字母（如000001.SZ）转换后为6位数字_2位字母
-        pattern = r"^([a-zA-Z][a-zA-Z0-9_]*?)_([0-9]{6}_[A-Z]{2})$"
-
-        for table_name in tables:
-            # 跳过系统表
-            if table_name.startswith("sys_"):
-                continue
-
-            match = re.match(pattern, table_name)
-            if match:
-                business_type = match.group(1)
-                stock_code_part = match.group(2)
-                # 将下划线转换回点号，还原为标准股票代码格式
-                stock_code = stock_code_part.replace("_", ".")
-
-                business_tables.append(
-                    {
-                        "table_name": table_name,
-                        "business_type": business_type,
-                        "stock_code": stock_code,
-                    }
-                )
-
-        return business_tables
-
-    def get_business_stats(self) -> dict:
-        """返回业务统计信息。
-
-        Returns:
-            dict: {业务类型: {'stock_count': int, 'table_count': int}}
-        """
-        business_tables = self.list_business_tables()
-        stats = {}
-
-        for table_info in business_tables:
-            business_type = table_info["business_type"]
-
-            if business_type not in stats:
-                stats[business_type] = {"stock_count": 0, "table_count": 0}
-
-            stats[business_type]["table_count"] += 1
-            # 每个表对应一个股票，所以stock_count等于table_count
-            stats[business_type]["stock_count"] += 1
-
-        return stats
-
-    def get_missing_symbols(self, stock_list_df: pd.DataFrame) -> dict:
-        """返回缺失的股票代码。
-
-        Args:
-            stock_list_df: 包含股票列表的DataFrame，需要有'ts_code'列
-
-        Returns:
-            dict: {
-                '业务类型1': ['缺失股票代码1', '缺失股票代码2'],
-                '业务类型2': ['缺失股票代码3'],
-                'overall_missing': ['总体缺失的股票代码']
-            }
-        """
-        if (
-            not isinstance(stock_list_df, pd.DataFrame)
-            or "ts_code" not in stock_list_df.columns
-        ):
-            logger.error("stock_list_df必须是包含'ts_code'列的DataFrame")
-            return {"overall_missing": []}
-
-        # 获取所有应该存在的股票代码
-        expected_stocks = set(stock_list_df["ts_code"].tolist())
-
-        # 获取业务表信息
-        business_tables = self.list_business_tables()
-
-        # 按业务类型分组现有股票
-        existing_stocks_by_type = {}
-        for table_info in business_tables:
-            business_type = table_info["business_type"]
-            stock_code = table_info["stock_code"]
-
-            if business_type not in existing_stocks_by_type:
-                existing_stocks_by_type[business_type] = set()
-            existing_stocks_by_type[business_type].add(stock_code)
-
-        # 计算缺失的股票代码
-        missing_by_type = {}
-        all_existing_stocks = set()
-
-        for business_type, existing_stocks in existing_stocks_by_type.items():
-            missing_stocks = expected_stocks - existing_stocks
-            if missing_stocks:
-                missing_by_type[business_type] = sorted(list(missing_stocks))
-            all_existing_stocks.update(existing_stocks)
-
-        # 计算总体缺失（任何业务类型都没有的股票）
-        overall_missing = expected_stocks - all_existing_stocks
-
-        result = missing_by_type.copy()
-        result["overall_missing"] = sorted(list(overall_missing))
-
-        return result
-
-    def get_existing_tables(self) -> List[str]:
-        """
-        获取数据库中存在的所有表名
-
-        Returns:
-            List[str]: 表名列表
-        """
-        try:
-            tables = self.conn.execute("SHOW TABLES").fetchall()
-            return [table[0] for table in tables]
-        except Exception as e:
-            self.logger.error(f"获取表列表失败: {e}")
+            logger.error(f"获取所有股票代码失败: {e}")
             return []
+    
+    def get_summary(self) -> List[Dict[str, Any]]:
+        """获取数据库摘要信息（兼容旧接口）"""
+        try:
+            summary = []
+            
+            # 获取每个股票在各个表中的记录数
+            tables_info = [
+                ('daily_data', 'daily'),
+                ('financial_data', 'financials'), 
+                ('fundamental_data', 'daily_basic')
+            ]
+            
+            for table_name, data_type in tables_info:
+                try:
+                    # 获取每个股票的记录数
+                    query = f"SELECT ts_code, COUNT(*) as record_count FROM {table_name} GROUP BY ts_code"
+                    results = self.conn.execute(query).fetchall()
+                    
+                    for ts_code, record_count in results:
+                        # 生成兼容的表名格式
+                        table_name_compat = f"{data_type}_{ts_code.replace('.', '_')}"
+                        summary.append({
+                            "table_name": table_name_compat,
+                            "record_count": record_count
+                        })
+                except Exception as e:
+                    logger.warning(f"获取表 {table_name} 摘要失败: {e}")
+                    continue
+                    
+            return summary
+        except Exception as e:
+            logger.error(f"获取数据库摘要失败: {e}")
+            return []
+    
+    def list_business_tables(self) -> List[Dict[str, str]]:
+        """列出业务表信息，返回业务类型和股票代码的映射"""
+        try:
+            business_tables = []
+            
+            # 从 daily_data 表获取股票代码
+            daily_codes = self.conn.execute("SELECT DISTINCT ts_code FROM daily_data").fetchall()
+            for code_tuple in daily_codes:
+                business_tables.append({
+                    'business_type': 'daily',
+                    'stock_code': code_tuple[0]
+                })
+            
+            # 从 financial_data 表获取股票代码
+            financial_codes = self.conn.execute("SELECT DISTINCT ts_code FROM financial_data").fetchall()
+            for code_tuple in financial_codes:
+                business_tables.append({
+                    'business_type': 'financials',
+                    'stock_code': code_tuple[0]
+                })
+            
+            # 从 fundamental_data 表获取股票代码
+            fundamental_codes = self.conn.execute("SELECT DISTINCT ts_code FROM fundamental_data").fetchall()
+            for code_tuple in fundamental_codes:
+                business_tables.append({
+                    'business_type': 'daily_basic',
+                    'stock_code': code_tuple[0]
+                })
+            
+            return business_tables
+        except Exception as e:
+            logger.error(f"获取业务表信息失败: {e}")
+            return []
+    
+    def save_fundamental_data(self, df: pd.DataFrame) -> bool:
+        """保存基本面数据"""
+        if not isinstance(df, pd.DataFrame) or df.empty:
+            logger.debug("基本面数据为空，跳过保存")
+            return False
+
+        try:
+            # 验证必需字段
+            required_fields = ['ts_code', 'trade_date']
+            if not all(field in df.columns for field in required_fields):
+                logger.error(f"基本面数据缺少必需字段: {required_fields}")
+                return False
+
+            # 添加时间戳
+            df_copy = df.copy()
+            df_copy['updated_at'] = datetime.now()
+            if 'created_at' not in df_copy.columns:
+                df_copy['created_at'] = datetime.now()
+
+            # 获取表的列信息
+            table_columns = self.conn.execute("DESCRIBE fundamental_data").fetchall()
+            table_col_names = [col[0] for col in table_columns]
+            
+            # 只选择表中存在的列
+            available_cols = [col for col in table_col_names if col in df_copy.columns]
+            
+            # 使用明确的列名插入数据
+            cols_str = ', '.join(available_cols)
+            self.conn.execute(f"INSERT OR REPLACE INTO fundamental_data ({cols_str}) SELECT {cols_str} FROM df_copy")
+            
+            # 更新元数据
+            self._update_partition_metadata('fundamental_data', df_copy)
+            
+            logger.debug(f"基本面数据保存完成，共 {len(df)} 条记录")
+            return True
+        except Exception as e:
+            logger.error(f"保存基本面数据失败: {e}", exc_info=True)
+            return False
+    
+    def query_fundamental_data_by_stock(self, ts_code: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
+        """按股票查询基本面数据"""
+        try:
+            where_clause = "WHERE ts_code = ?"
+            params = [ts_code]
+            
+            if start_date:
+                where_clause += " AND trade_date >= ?"
+                params.append(start_date)
+            if end_date:
+                where_clause += " AND trade_date <= ?"
+                params.append(end_date)
+                
+            query = f"SELECT * FROM fundamental_data {where_clause} ORDER BY trade_date"
+            return self.conn.execute(query, params).df()
+        except Exception as e:
+            logger.error(f"查询股票 {ts_code} 基本面数据失败: {e}")
+            return pd.DataFrame()
 
 
-__all__ = ["DuckDBStorage"]
+# 为了向后兼容，创建一个别名
+DuckDBStorage = PartitionedStorage

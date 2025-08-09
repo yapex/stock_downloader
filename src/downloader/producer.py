@@ -101,16 +101,18 @@ class TaskProcessor:
         ts_code = task.symbol
         start_date = params.get('start_date', '')
         end_date = params.get('end_date', '')
-        financial_type = params.get('financial_type', 'income')
         
-        if financial_type == 'income':
+        # 从任务参数中获取财务报表类型
+        statement_type = params.get('statement_type', 'income')
+        
+        if statement_type == 'income':
             return self.fetcher.fetch_income(ts_code, start_date, end_date)
-        elif financial_type == 'balancesheet':
+        elif statement_type == 'balancesheet':
             return self.fetcher.fetch_balancesheet(ts_code, start_date, end_date)
-        elif financial_type == 'cashflow':
+        elif statement_type == 'cashflow':
             return self.fetcher.fetch_cashflow(ts_code, start_date, end_date)
         else:
-            raise ValueError(f"Unknown financial_type: {financial_type}")
+            raise ValueError(f"Unknown statement_type: {statement_type}")
 
 
 class RetryManager:

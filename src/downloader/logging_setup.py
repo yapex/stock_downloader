@@ -5,6 +5,7 @@
 
 import logging
 import sys
+from logging.handlers import TimedRotatingFileHandler
 from tqdm import tqdm
 
 
@@ -53,20 +54,15 @@ def setup_logging():
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    # 基础日志文件名
-    base_log_file = os.path.join(log_dir, "downloader.log")
-
-    # 如果基础日志文件存在，将其重命名为带时间戳的文件
-    if os.path.exists(base_log_file):
-        timestamp = datetime.fromtimestamp(os.path.getmtime(base_log_file)).strftime(
-            "%Y%m%d_%H%M%S"
-        )
-        archive_file = os.path.join(log_dir, f"downloader_{timestamp}.log")
-        os.rename(base_log_file, archive_file)
-
-    # 使用基础文件名作为新的日志文件
-    log_file = base_log_file
-    file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+    # 简单日志模式：使用固定文件名
+    log_file = os.path.join(log_dir, "downloader.log")
+    file_handler = TimedRotatingFileHandler(
+        log_file, 
+        when="midnight", 
+        interval=1, 
+        backupCount=0,  # 不保留旧文件
+        encoding="utf-8"
+    )
     file_handler.setFormatter(file_formatter)
     file_handler.setLevel(logging.DEBUG)
 

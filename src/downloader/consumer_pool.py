@@ -17,6 +17,7 @@ import pandas as pd
 
 from .models import DataBatch
 from .storage import DuckDBStorage
+from .storage_factory import get_storage
 from .error_handler import (
     enhanced_retry,
     classify_error,
@@ -85,7 +86,7 @@ class ConsumerWorker:
         """延迟初始化DuckDB连接"""
         if self._storage is None:
             self.logger.info(f"Worker {self.worker_id}: 初始化DuckDB连接 -> {self.db_path}")
-            self._storage = DuckDBStorage(self.db_path)
+            self._storage = get_storage(self.db_path)
         return self._storage
     
     def start(self) -> None:
@@ -242,8 +243,21 @@ class ConsumerWorker:
             data_type = parts[0]
             entity_id = parts[1] if len(parts) > 1 else 'system'
         
-        # 调用DuckDBStorage的批量插入方法
-        self.storage.bulk_insert(combined_df, data_type, entity_id, existing_date_col)
+        # 根据数据类型调用相应的存储方法
+        success = False
+        if data_type in ['daily', 'daily_basic']:
+            success = self.storage.save_daily_data(combined_df)
+        elif data_type in ['income', 'balancesheet', 'cashflow', 'financials']:
+            success = self.storage.save_financial_data(combined_df)
+        elif data_type == 'stock_list':
+            success = self.storage.save_stock_list(combined_df)
+        else:
+            # 对于其他类型，尝试使用通用方法
+            self.logger.warning(f"未知数据类型 {data_type}，使用通用保存方法")
+            success = self.storage.save_daily_data(combined_df)
+        
+        if not success:
+            raise Exception(f"保存数据失败: {data_type}")
         
         # 发送批次完成事件
         batch_completed(

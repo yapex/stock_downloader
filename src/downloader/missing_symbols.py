@@ -16,6 +16,7 @@ from typing import Dict, List, Set, Optional, Any
 from datetime import datetime
 
 from .storage import DuckDBStorage
+from .storage_factory import get_storage
 from .models import TaskType, DownloadTask, Priority
 
 logger = logging.getLogger(__name__)
@@ -237,7 +238,7 @@ def scan_and_log_missing_symbols(db_path: str = "data/stock.db",
         扫描结果摘要
     """
     try:
-        storage = DuckDBStorage(db_path)
+        storage = get_storage(db_path)
         detector = MissingSymbolsDetector(storage)
         logger_obj = MissingSymbolsLogger(log_path)
         

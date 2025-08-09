@@ -24,6 +24,7 @@ from .config import load_config
 from .logging_setup import setup_logging
 from .progress_manager import progress_manager
 from .missing_symbols import scan_and_log_missing_symbols
+from .storage_factory import get_storage
 
 # --- 忽略来自 tushare 的 FutureWarning ---
 warnings.filterwarnings("ignore", category=FutureWarning, module="tushare")
@@ -273,7 +274,7 @@ def batch(
         
         # 获取数据库路径
         db_path = config.get("database", {}).get("path", "stock.db")
-        storage = DuckDBStorage(db_path)
+        storage = get_storage(db_path)
         
         # 获取所有股票代码
         all_codes = storage.get_all_stock_codes()
@@ -374,12 +375,12 @@ def verify(
             progress_manager.print_error(f"数据库文件不存在: {db_path}")
             raise typer.Exit(code=1)
 
-        storage = DuckDBStorage(db_path)
+        storage = get_storage(db_path)
 
         # 获取股票列表
         all_stock_codes = set()
         try:
-            stock_list_df = storage.query("system", "stock_list")
+            stock_list_df = storage.get_stock_list()
             if stock_list_df is not None and not stock_list_df.empty:
                 all_stock_codes = set(stock_list_df["ts_code"].astype(str).tolist())
         except Exception:

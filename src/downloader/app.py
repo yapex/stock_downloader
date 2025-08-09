@@ -10,7 +10,8 @@ from .config import load_config
 from .engine import DownloadEngine
 from .fetcher import TushareFetcher
 from .fetcher_factory import get_fetcher
-from .storage import DuckDBStorage
+from .storage import PartitionedStorage
+from .storage_factory import get_storage
 from .progress_manager import progress_manager
 
 
@@ -54,7 +55,7 @@ class DownloaderApp:
 
     def create_components(
         self, config: Dict[str, Any]
-    ) -> tuple[TushareFetcher, DuckDBStorage]:
+    ) -> tuple[TushareFetcher, PartitionedStorage]:
         """
         创建下载系统的核心组件。
 
@@ -65,7 +66,7 @@ class DownloaderApp:
             (fetcher, storage) 元组
         """
         fetcher = get_fetcher(use_singleton=True)
-        storage = DuckDBStorage(
+        storage = get_storage(
             db_path=config.get("storage", {}).get("db_path", "data/stock.db")
         )
         return fetcher, storage
