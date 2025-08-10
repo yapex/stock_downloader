@@ -5,7 +5,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from queue import Queue
 from typing import Dict, List, Any, Optional
-from threading import Event
 from time import sleep
 
 from .fetcher import TushareFetcher
@@ -17,8 +16,7 @@ from .consumer_pool import ConsumerPool
 from .models import DownloadTask, TaskType, Priority
 from .retry_policy import RetryPolicy, DEFAULT_RETRY_POLICY
 from .progress_events import (
-    progress_event_manager, start_phase, end_phase, task_started, 
-    task_completed, update_total, ProgressPhase
+    progress_event_manager, start_phase, end_phase, update_total, ProgressPhase
 )
 
 logger = logging.getLogger(__name__)
@@ -139,7 +137,7 @@ class DownloadEngine:
 
         # 初始化生产者列表（动态创建）
         self.producers = []
-        logger.info(f"[引擎初始化] 生产者列表已初始化")
+        logger.info("[引擎初始化] 生产者列表已初始化")
 
         # 创建消费者池
         consumer_config = self.config.get("consumer", {})
@@ -307,7 +305,7 @@ class DownloadEngine:
         # 尝试从存储获取最新日期以实现增量下载
         try:
             # 根据任务类型确定日期列
-            date_column = self._get_date_column_for_task_type(task_type)
+            self._get_date_column_for_task_type(task_type)
             
             # 获取正确的data_type（而不是task_type）
             data_type = self._get_data_type_for_task_spec(task_spec)
@@ -669,7 +667,7 @@ class DownloadEngine:
                     total_processed += producer_stats.get("tasks_processed", 0)
                     total_failed += producer_stats.get("tasks_failed", 0)
                 
-                consumer_stats = self.consumer_pool.get_statistics()
+                self.consumer_pool.get_statistics()
 
                 # 使用生产者统计获取更实时的任务进度
                 completed_tasks = total_processed

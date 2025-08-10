@@ -14,7 +14,7 @@ from datetime import datetime
 from .fetcher import TushareFetcher
 from .fetcher_factory import get_fetcher
 from .models import DownloadTask, DataBatch, TaskType
-from .error_handler import classify_error, ErrorCategory
+from .error_handler import classify_error
 from .retry_policy import RetryPolicy, DEFAULT_RETRY_POLICY, RetryLogger
 from .utils import record_failed_task
 from .progress_events import task_started, task_completed, task_failed
@@ -178,7 +178,7 @@ class RetryManager:
         self.retry_logger.log_failed_symbol(task.symbol)
         
         error_category = classify_error(error)
-        reason = f"max_retries_exceeded" if task.retry_count >= task.max_retries else str(error)
+        reason = "max_retries_exceeded" if task.retry_count >= task.max_retries else str(error)
         
         record_failed_task(
             task_name=f"{task.task_type.value}_task",

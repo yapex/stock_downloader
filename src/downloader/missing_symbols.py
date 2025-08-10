@@ -12,7 +12,7 @@
 import logging
 import json
 from pathlib import Path
-from typing import Dict, List, Set, Optional, Any
+from typing import Dict, List, Set, Any
 from datetime import datetime
 
 from .storage import DuckDBStorage
@@ -155,7 +155,7 @@ class MissingSymbolsLogger:
                             missing_by_type[business_type] = []
                         missing_by_type[business_type].append(symbol)
                         
-                    except (json.JSONDecodeError, KeyError) as e:
+                    except (json.JSONDecodeError, KeyError):
                         self.logger.warning(f"无效记录: {line}")
                         continue
             

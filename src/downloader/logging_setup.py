@@ -48,7 +48,6 @@ def setup_logging():
 
     # 文件处理器 - 记录所有级别的日志，每天覆盖
     import os
-    from datetime import datetime
 
     log_dir = "logs"
     if not os.path.exists(log_dir):

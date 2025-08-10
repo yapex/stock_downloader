@@ -5,7 +5,6 @@
 
 import logging
 import threading
-import time
 from typing import Optional, Dict, Any
 from tqdm import tqdm
 

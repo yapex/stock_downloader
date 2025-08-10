@@ -1,6 +1,6 @@
 """日志接口抽象"""
 
-from typing import Protocol, Any
+from typing import Protocol
 import logging
 
 

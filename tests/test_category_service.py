@@ -1,4 +1,3 @@
-import pytest
 
 from src.downloader.domain.category_service import group_by_category, UNKNOWN_CATEGORY
 

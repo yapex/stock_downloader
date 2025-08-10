@@ -5,7 +5,6 @@
 """
 
 from typing import Any, Optional, Protocol, Callable, TypeVar, ContextManager
-import threading
 import pandas as pd
 from functools import wraps
 from contextlib import contextmanager
@@ -246,9 +245,6 @@ def with_write_connection(
         factory: 连接工厂实例，默认使用DuckDBConnectionFactory
     """
     return with_db_connection(database_path, read_only=False, factory=factory)
-
-
-from contextlib import contextmanager
 
 
 @contextmanager

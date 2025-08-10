@@ -4,16 +4,12 @@
 实现可配置的重试策略，支持指数退避，以及友好的死信日志格式。
 """
 
-import json
-import time
 import logging
 from dataclasses import dataclass, asdict
-from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from enum import Enum
 
-from .models import DownloadTask, TaskType, Priority
 
 logger = logging.getLogger(__name__)
 
@@ -234,7 +230,7 @@ class RetryLogger:
             symbols: 股票代码列表
         """
         with open(self.log_path, 'w', encoding='utf-8') as f:
-            f.write(f"# 需要重试的股票代码列表\n")
+            f.write("# 需要重试的股票代码列表\n")
             f.write(f"symbols = {symbols!r}\n")
     
     def clear_symbols(self) -> None:

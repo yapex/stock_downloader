@@ -1,4 +1,3 @@
-import pytest
 
 from src.downloader.domain.category_service import find_missing, find_missing_by_category
 

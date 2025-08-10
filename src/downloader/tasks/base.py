@@ -123,7 +123,7 @@ class IncrementalTaskHandler(BaseTaskHandler):
         """
         task_name = self.task_config["name"]
         data_type = self.get_data_type()
-        date_col = self.get_date_col()
+        self.get_date_col()
         
         desc_prefix = f"处理: {data_type}_{ts_code}"
         if self._current_progress_bar:
@@ -171,7 +171,7 @@ class IncrementalTaskHandler(BaseTaskHandler):
                 return True  # 没有新数据需要下载
 
             # 步骤3: 获取数据（包含重试逻辑）
-            rate_limit_config = self.task_config.get("rate_limit", {})
+            self.task_config.get("rate_limit", {})
             # 限流现在由fetcher方法中的ratelimit库处理
             # fetch_data 方法已经包含重试机制
             df = self.fetch_data(ts_code, start_date, end_date)

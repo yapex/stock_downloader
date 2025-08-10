@@ -12,7 +12,7 @@ from datetime import datetime
 
 from .interfaces import (
     IQueueManager, TaskMessage, DataMessage, 
-    PerformanceMetrics, Priority
+    PerformanceMetrics
 )
 
 

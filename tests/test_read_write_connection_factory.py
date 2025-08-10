@@ -7,11 +7,9 @@
 
 import pytest
 import threading
-import time
 from pathlib import Path
 
 from downloader.database import DuckDBConnectionFactory
-from downloader.logger_interface import LoggerFactory
 
 
 class TestReadWriteConnectionFactory:

@@ -1,8 +1,6 @@
 """测试数据库连接装饰器"""
 
 import pytest
-import tempfile
-import os
 from pathlib import Path
 
 from downloader.database import (

@@ -2,22 +2,16 @@
 测试智能重试策略和死信处理机制
 """
 
-import json
 import pytest
 import tempfile
-from pathlib import Path
-from datetime import datetime
-from unittest.mock import Mock
 
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from src.downloader.retry_policy import (
-    RetryPolicy, BackoffStrategy, RetryLogger, retry_logger,
-    DEFAULT_RETRY_POLICY, NETWORK_RETRY_POLICY, API_LIMIT_RETRY_POLICY
+    RetryPolicy, BackoffStrategy, RetryLogger, DEFAULT_RETRY_POLICY, NETWORK_RETRY_POLICY, API_LIMIT_RETRY_POLICY
 )
-from src.downloader.models import DownloadTask, TaskType, Priority
 
 
 class TestRetryPolicy:
@@ -37,9 +31,9 @@ class TestRetryPolicy:
         
         # 网络错误应该重试
         network_error = Exception("Connection timeout")
-        assert policy.should_retry(network_error, 1) == True
-        assert policy.should_retry(network_error, 3) == True
-        assert policy.should_retry(network_error, 6) == False  # 超过max_attempts
+        assert policy.should_retry(network_error, 1)
+        assert policy.should_retry(network_error, 3)
+        assert not policy.should_retry(network_error, 6)  # 超过max_attempts
     
     def test_should_retry_non_retryable_error(self):
         """测试不可重试错误"""
@@ -47,11 +41,11 @@ class TestRetryPolicy:
         
         # 400错误不应该重试
         client_error = Exception("400 Bad Request")
-        assert policy.should_retry(client_error, 1) == False
+        assert not policy.should_retry(client_error, 1)
         
         # 参数错误不应该重试
         param_error = Exception("Invalid parameter: symbol")
-        assert policy.should_retry(param_error, 1) == False
+        assert not policy.should_retry(param_error, 1)
     
     def test_delay_calculation(self):
         """测试延迟计算"""
@@ -201,11 +195,11 @@ class TestPredefinedPolicies:
         
         # 应该重试网络错误
         network_error = Exception("Connection failed")
-        assert policy.should_retry(network_error, 1) == True
+        assert policy.should_retry(network_error, 1)
         
         # 不应该重试参数错误
         param_error = Exception("Invalid parameter")
-        assert policy.should_retry(param_error, 1) == False
+        assert not policy.should_retry(param_error, 1)
     
     def test_network_policy(self):
         """测试网络重试策略"""
@@ -222,7 +216,7 @@ class TestPredefinedPolicies:
         ]
         
         for error in network_errors:
-            assert policy.should_retry(error, 1) == True
+            assert policy.should_retry(error, 1)
     
     def test_api_limit_policy(self):
         """测试API限制重试策略"""
@@ -239,7 +233,7 @@ class TestPredefinedPolicies:
         ]
         
         for error in api_errors:
-            assert policy.should_retry(error, 1) == True
+            assert policy.should_retry(error, 1)
 
 
 if __name__ == "__main__":

@@ -1,10 +1,7 @@
 """测试ratelimit库的有效性"""
 
-import pytest
-import time
 from unittest.mock import patch, MagicMock
 from src.downloader.fetcher import TushareFetcher
-from src.downloader.fetcher_factory import get_fetcher
 
 
 class TestRateLimitFix:
@@ -20,7 +17,7 @@ class TestRateLimitFix:
         mock_ts.set_token.return_value = None
         mock_pro.trade_cal.return_value = MagicMock()
         
-        fetcher = TushareFetcher()
+        TushareFetcher()
         
         # 验证tushare API初始化
         mock_ts.set_token.assert_called_once()

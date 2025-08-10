@@ -1,7 +1,5 @@
-import pytest
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 from downloader.storage_factory import (
     StorageFactory,
@@ -28,8 +26,12 @@ class TestStorageFactory:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = str(Path(temp_dir) / "test.db")
             
-            storage1 = StorageFactory.create_storage(use_singleton=True, db_path=db_path)
-            storage2 = StorageFactory.create_storage(use_singleton=True, db_path=db_path)
+            storage1 = StorageFactory.create_storage(
+                use_singleton=True, db_path=db_path
+            )
+            storage2 = StorageFactory.create_storage(
+                use_singleton=True, db_path=db_path
+            )
             
             assert isinstance(storage1, PartitionedStorage)
             assert isinstance(storage2, PartitionedStorage)
@@ -40,8 +42,12 @@ class TestStorageFactory:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = str(Path(temp_dir) / "test.db")
             
-            storage1 = StorageFactory.create_storage(use_singleton=False, db_path=db_path)
-            storage2 = StorageFactory.create_storage(use_singleton=False, db_path=db_path)
+            storage1 = StorageFactory.create_storage(
+                use_singleton=False, db_path=db_path
+            )
+            storage2 = StorageFactory.create_storage(
+                use_singleton=False, db_path=db_path
+            )
             
             assert isinstance(storage1, PartitionedStorage)
             assert isinstance(storage2, PartitionedStorage)

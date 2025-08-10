@@ -12,7 +12,6 @@ from .fetcher import TushareFetcher
 from .fetcher_factory import get_fetcher
 from .storage import PartitionedStorage
 from .storage_factory import get_storage
-from .progress_manager import progress_manager
 
 
 class DownloaderApp:

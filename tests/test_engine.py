@@ -1,5 +1,4 @@
 from unittest.mock import MagicMock, patch
-import pandas as pd
 
 from downloader.engine import DownloadEngine
 
@@ -74,7 +73,6 @@ def test_engine_run_with_symbols_all(mock_fetcher, mock_storage, mock_args):
     测试当 config.downloader.symbols 是 "all" 时，
     引擎会从数据库获取所有股票列表。
     """
-    from unittest.mock import patch
     
     config = {
         "downloader": {"symbols": "all"},
@@ -126,7 +124,7 @@ def test_engine_processes_enabled_tasks_correctly(mock_fetcher, mock_storage, mo
         "defaults": {},
     }
 
-    engine = DownloadEngine(config, mock_fetcher, mock_storage, False, False, "test_group")
+    DownloadEngine(config, mock_fetcher, mock_storage, False, False, "test_group")
     
     # 测试已启用任务的识别
     tasks = config.get("tasks", [])

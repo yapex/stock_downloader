@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from queue import Queue, Empty
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)

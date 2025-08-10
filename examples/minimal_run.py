@@ -20,11 +20,10 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from downloader.fetcher import TushareFetcher
 from downloader.fetcher_factory import get_fetcher
 from downloader.storage import DuckDBStorage
-from downloader.tasks.stock_list import StockListTaskHandler
 from downloader.tasks.daily import DailyTaskHandler
+from downloader.tasks.stock_list import StockListTaskHandler
 
 
 def check_environment():
@@ -130,9 +129,9 @@ def main():
             except Exception as e:
                 print(f"  📄 {table}: 查询失败 ({e})")
         
-        print(f"\n✅ 演示完成!")
+        print("\n✅ 演示完成!")
         print(f"💾 数据已保存到: {db_path.resolve()}")
-        print(f"📈 现在您可以使用数据分析工具连接该数据库进行分析")
+        print("📈 现在您可以使用数据分析工具连接该数据库进行分析")
         
         # 提供后续使用建议
         print("\n💡 后续使用建议:")

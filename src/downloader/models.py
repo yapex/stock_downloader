@@ -7,7 +7,7 @@ import uuid
 import pandas as pd
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 from enum import Enum
 
 

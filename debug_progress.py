@@ -9,18 +9,18 @@ from dotenv import load_dotenv
 # 加载环境变量
 load_dotenv()
 
-# 添加src目录到路径
+# 添加src目录到Python路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+
+from downloader.app import DownloaderApp
+from downloader.progress_manager import progress_manager
+from downloader.logging_setup import setup_logging
 
 # 设置详细日志
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-
-from downloader.app import DownloaderApp
-from downloader.progress_manager import progress_manager
-from downloader.logging_setup import setup_logging
 
 def debug_download():
     """调试下载过程"""

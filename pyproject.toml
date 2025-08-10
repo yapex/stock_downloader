@@ -65,13 +65,12 @@ financials = "downloader.tasks.financials:FinancialsTaskHandler"
 # Ruff configuration
 # ==========================================================
 [tool.ruff]
-ignore = ["E501"]
 target-version = "py313"
 
 [tool.ruff.lint]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
 select = ["E", "F"]
-ignore = []
+ignore = ["E501"]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
@@ -108,8 +107,11 @@ exclude = [
 
 # Allow E402 (module level import not at top of file) for notebooks
 # since initialization code may need to run before imports
+# Also allow for scripts that need to modify sys.path before imports
 [tool.ruff.lint.per-file-ignores]
 "*.ipynb" = ["E402"]
+"debug_progress.py" = ["E402"]
+"examples/*.py" = ["E402"]
 
 # ==========================================================
 # Coverage configuration

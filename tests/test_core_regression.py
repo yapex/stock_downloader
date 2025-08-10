@@ -4,10 +4,9 @@
 """
 import pytest
 import pandas as pd
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock
 from pathlib import Path
 import tempfile
-import os
 
 from downloader.engine import DownloadEngine
 from downloader.storage import DuckDBStorage

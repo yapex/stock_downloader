@@ -93,7 +93,7 @@ def main():
         print(f"按任务类型统计: {stats['by_task_type']}")
         print(f"按错误类型统计: {stats['by_error_type']}")
         
-        print(f"\n最近失败记录:")
+        print("\n最近失败记录:")
         for failure in stats['recent_failures'][:3]:  # 只显示前3条
             print(f"  {failure['symbol']} ({failure['task_type']}) - {failure['error_type']}")
         

@@ -9,9 +9,9 @@ import logging
 import threading
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
-from typing import Optional, Dict, List, Any, Callable
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from typing import Optional, Dict, List, Any
 from queue import Queue, Empty, Full
 import pandas as pd
 
@@ -21,14 +21,7 @@ from .storage_factory import get_storage
 from .error_handler import (
     enhanced_retry,
     classify_error,
-    ErrorCategory,
-    RetryStrategy,
     CONSERVATIVE_RETRY_STRATEGY
-)
-from .retry_policy import (
-    RetryPolicy, 
-    DEFAULT_RETRY_POLICY,
-    RetryLogger
 )
 from .utils import record_failed_task
 from .progress_events import batch_completed
@@ -236,12 +229,11 @@ class ConsumerWorker:
         if batches:
             first_batch = batches[0]
             data_type = first_batch.meta.get('task_type', 'unknown')
-            entity_id = first_batch.symbol or 'system'
         else:
             # 备用方案：从cache_key解析（但这种情况不应该发生）
             parts = cache_key.split('_', 1)
             data_type = parts[0]
-            entity_id = parts[1] if len(parts) > 1 else 'system'
+            parts[1] if len(parts) > 1 else 'system'
         
         # 根据数据类型调用相应的存储方法
         success = False

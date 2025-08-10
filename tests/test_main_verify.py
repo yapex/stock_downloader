@@ -2,7 +2,6 @@ import json
 import os
 import tempfile
 from unittest.mock import Mock, patch
-import pytest
 from typer.testing import CliRunner
 
 from src.downloader.main import app

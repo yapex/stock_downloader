@@ -11,10 +11,8 @@
 """
 
 import logging
-import sys
 import warnings
-from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 import typer
 from dotenv import load_dotenv
@@ -264,7 +262,6 @@ def batch(
 ):
     """分批处理大量股票，避免API限流"""
     import time
-    from .storage import DuckDBStorage
     
     setup_logging()
     
@@ -328,7 +325,7 @@ def batch(
                 progress_manager.print_info(f"等待 {delay_minutes} 分钟后处理下一批...")
                 time.sleep(delay_minutes * 60)
         
-        progress_manager.print_info(f"\n=== 批量处理完成 ===")
+        progress_manager.print_info("\n=== 批量处理完成 ===")
         progress_manager.print_info(f"共处理 {total_batches} 批，{total_stocks} 只股票")
         
     except Exception as e:
@@ -359,11 +356,8 @@ def verify(
     - 输出按业务分类的缺失数量统计
     """
     try:
-        from .storage import DuckDBStorage
         
-        import json
         import os
-        from datetime import datetime
 
         # 加载配置
         config = load_config(config_file)

@@ -3,7 +3,7 @@
 针对error_handler模块的边界情况和未覆盖功能进行测试
 """
 import pytest
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import patch
 
 from downloader.error_handler import (
     ErrorCategory, classify_error, is_test_task, 
@@ -115,7 +115,7 @@ class TestTaskTypeDetection:
         ]
         
         for task in test_tasks:
-            assert is_test_task(task) == True
+            assert is_test_task(task)
     
     def test_is_not_test_task(self):
         """测试非测试任务检测"""
@@ -127,7 +127,7 @@ class TestTaskTypeDetection:
         ]
         
         for task in normal_tasks:
-            assert is_test_task(task) == False
+            assert not is_test_task(task)
 
 
 class TestRetryStrategy:
@@ -161,22 +161,22 @@ class TestRetryStrategy:
         strategy = RetryStrategy()
         
         network_error = Exception("Connection timeout")
-        assert strategy.should_retry(network_error, 0) == True
-        assert strategy.should_retry(network_error, 2) == True
-        assert strategy.should_retry(network_error, 3) == False  # 超过max_retries
+        assert strategy.should_retry(network_error, 0)
+        assert strategy.should_retry(network_error, 2)
+        assert not strategy.should_retry(network_error, 3)  # 超过max_retries
         
         proxy_error = Exception("ProxyError occurred")
-        assert strategy.should_retry(proxy_error, 1) == True
+        assert strategy.should_retry(proxy_error, 1)
     
     def test_should_not_retry_parameter_errors(self):
         """测试参数错误不应重试"""
         strategy = RetryStrategy()
         
         param_error = Exception("Invalid parameter")
-        assert strategy.should_retry(param_error, 0) == False
+        assert not strategy.should_retry(param_error, 0)
         
         auth_error = Exception("Authentication failed")
-        assert strategy.should_retry(auth_error, 0) == False
+        assert not strategy.should_retry(auth_error, 0)
     
     def test_get_delay_exponential_backoff(self):
         """测试指数退避延迟计算"""

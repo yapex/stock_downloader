@@ -5,9 +5,7 @@
 
 import pytest
 import time
-import threading
 from unittest.mock import patch, MagicMock
-from queue import Queue, Empty
 
 from src.downloader.progress_events import (
     ProgressPhase, ProgressEventType, ProgressEvent, ProgressEventManager,

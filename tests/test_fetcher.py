@@ -1,4 +1,3 @@
-import logging
 import pandas as pd
 import pytest
 import tushare as ts  # 导入 tushare 以便 mock

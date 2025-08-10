@@ -1,10 +1,8 @@
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Set, Any
 
 import pandas as pd
-import pytest
 
 from src.downloader.missing_symbols import (
     MissingSymbolsDetector,
