@@ -1,0 +1,2 @@
+测试时从环境中读取TUSHARE_TOKEN的值
+测试duckdb相关时，使用内存数据库

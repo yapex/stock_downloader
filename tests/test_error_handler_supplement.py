@@ -31,8 +31,15 @@ class TestErrorClassification:
             assert classify_error(error) == ErrorCategory.NETWORK
     
     def test_classify_api_limit_errors(self):
-        """测试API限制错误分类"""
-        api_limit_errors = [
+        """测试API限流错误分类 - 只基于RateLimitException类型"""
+        from downloader.error_handler import RateLimitException
+        
+        # 只有RateLimitException类型才会被分类为API_LIMIT
+        rate_limit_error = RateLimitException("rate limit exceeded", period_remaining=60.0)
+        assert classify_error(rate_limit_error) == ErrorCategory.API_LIMIT
+        
+        # 普通Exception即使包含限流关键词也不会被分类为API_LIMIT
+        normal_errors = [
             Exception("rate limit exceeded"),
             Exception("quota exceeded"),
             Exception("too many requests"),
@@ -40,8 +47,8 @@ class TestErrorClassification:
             Exception("频次限制"),
         ]
         
-        for error in api_limit_errors:
-            assert classify_error(error) == ErrorCategory.API_LIMIT
+        for error in normal_errors:
+            assert classify_error(error) == ErrorCategory.BUSINESS
     
     def test_classify_data_unavailable_errors(self):
         """测试数据不可用错误分类"""
@@ -256,7 +263,7 @@ class TestErrorHandlerIntegration:
         """测试错误分类的一致性"""
         test_cases = [
             ("Connection failed", ErrorCategory.NETWORK),
-            ("rate limit exceeded", ErrorCategory.API_LIMIT),
+            ("rate limit exceeded", ErrorCategory.BUSINESS),  # 普通Exception不再分类为API_LIMIT
             ("invalid parameter", ErrorCategory.PARAMETER),
             ("test mock error", ErrorCategory.TEST),
             ("no data found", ErrorCategory.DATA_UNAVAILABLE),

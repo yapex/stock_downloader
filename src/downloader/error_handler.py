@@ -13,14 +13,25 @@ from .utils import record_failed_task
 
 try:
     from ratelimit import RateLimitException as _RateLimitException
-    # 使用类型别名来避免类型冲突
+    # 使用真实的RateLimitException
     RateLimitException = _RateLimitException
 except ImportError:
-    # 如果ratelimit库不可用，定义一个占位符异常
+    # 如果ratelimit库不可用，定义一个占位符
     class RateLimitException(Exception):
         def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
+            super().__init__(*args)
             self.period_remaining = kwargs.get('period_remaining', 60.0)
+
+
+class TushareRateLimitException(RateLimitException):
+    """Tushare API限流异常
+    
+    用于包装tushare返回的中文限流错误信息，转换为标准的RateLimitException
+    """
+    def __init__(self, original_message: str, period_remaining: float = 60.0):
+        super().__init__(original_message, period_remaining)
+        self.original_message = original_message
+        self.period_remaining = period_remaining
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +126,10 @@ class RetryStrategy:
         return min(delay, self.max_delay)
 
 
+# 注意：这些函数已不再需要，因为我们直接处理RateLimitException
+# 保留TushareRateLimitException类定义以保持向后兼容性
+
+
 def classify_error(error: Exception) -> ErrorCategory:
     """智能错误分类"""
     # 首先检查异常类型
@@ -138,15 +153,6 @@ def classify_error(error: Exception) -> ErrorCategory:
     ]
     if any(keyword in error_str for keyword in parameter_keywords):
         return ErrorCategory.PARAMETER
-    
-    # API限制错误（字符串匹配）
-    api_limit_keywords = [
-        "rate limit", "quota exceeded", "too many requests", 
-        "too many calls", "api limit", "频次限制", "ratelimitexception",
-        "每分钟最多访问", "抱歉，您每分钟最多访问"
-    ]
-    if any(keyword in error_str for keyword in api_limit_keywords):
-        return ErrorCategory.API_LIMIT
     
     # 测试相关错误
     if "test" in error_str or "mock" in error_str:
@@ -335,7 +341,7 @@ API_LIMIT_RETRY_STRATEGY = RetryStrategy(
     base_delay=10.0,
     max_delay=120.0,
     backoff_factor=2.0,
-    retry_on=["rate limit", "quota exceeded", "too many requests", "too many calls", "每分钟最多访问", "抱歉，您每分钟最多访问"]
+    retry_on=["RateLimitException"]  # 只基于RateLimitException异常类型
 )
 
 CONSERVATIVE_RETRY_STRATEGY = RetryStrategy(

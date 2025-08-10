@@ -11,6 +11,8 @@ import os
 
 from downloader.engine import DownloadEngine
 from downloader.storage import DuckDBStorage
+from downloader.database import DuckDBConnectionFactory
+from downloader.logger_interface import LoggerFactory
 from downloader.fetcher import TushareFetcher
 from downloader.models import DownloadTask, TaskType, Priority
 from downloader.domain.category_service import find_missing, find_missing_by_category, group_by_category
@@ -87,43 +89,49 @@ class TestCoreRegressionStorage:
 
     def test_storage_basic_crud_operations(self, temp_db):
         """测试存储模块的基本CRUD操作"""
-        storage = DuckDBStorage(temp_db)
+        db_factory = DuckDBConnectionFactory()
+        logger = LoggerFactory.create_logger("test_storage")
+        storage = DuckDBStorage(temp_db, db_factory, logger)
         
         # 测试数据
         df = pd.DataFrame({
+            'ts_code': ['000001.SZ', '000001.SZ', '000001.SZ'],
             'trade_date': ['20230101', '20230102', '20230103'],
             'close': [100.0, 101.0, 102.0],
             'volume': [1000, 1100, 1200]
         })
         
         # 测试保存
-        storage.save(df, "daily", "000001.SZ", date_col="trade_date")
+        storage.save_daily_data(df)
         
         # 测试获取最新日期
-        latest_date = storage.get_latest_date("daily", "000001.SZ", date_col="trade_date")
+        latest_date = storage.get_latest_date_by_stock("000001.SZ", "daily")
         assert latest_date == "20230103"
         
         # 测试增量更新
         new_df = pd.DataFrame({
+            'ts_code': ['000001.SZ', '000001.SZ'],
             'trade_date': ['20230104', '20230105'],
             'close': [103.0, 104.0],
             'volume': [1300, 1400]
         })
-        storage.save(new_df, "daily", "000001.SZ", date_col="trade_date")
+        storage.save_daily_data(new_df)
         
-        latest_date = storage.get_latest_date("daily", "000001.SZ", date_col="trade_date")
+        latest_date = storage.get_latest_date_by_stock("000001.SZ", "daily")
         assert latest_date == "20230105"
 
     def test_storage_handles_empty_dataframe(self, temp_db):
-        """测试存储模块能正确处理空DataFrame"""
-        storage = DuckDBStorage(temp_db)
+        """测试存储模块处理空DataFrame的能力"""
+        db_factory = DuckDBConnectionFactory()
+        logger = LoggerFactory.create_logger("test_storage")
+        storage = DuckDBStorage(temp_db, db_factory, logger)
         
         empty_df = pd.DataFrame()
         # 不应该抛出异常
-        storage.save(empty_df, "daily", "000001.SZ", date_col="trade_date")
+        storage.save_daily_data(empty_df)
         
         # 应该返回None（表不存在）
-        latest_date = storage.get_latest_date("daily", "000001.SZ", date_col="trade_date")
+        latest_date = storage.get_latest_date_by_stock("000001.SZ", "daily")
         assert latest_date is None
 
     def test_storage_table_name_generation(self):
@@ -209,7 +217,7 @@ class TestCoreRegressionTaskHandlers:
     def mock_storage(self):
         """模拟storage"""
         storage = Mock(spec=DuckDBStorage)
-        storage.get_latest_date.return_value = None
+        storage.get_latest_date_by_stock.return_value = None
         return storage
 
     def test_task_handlers_registration(self):
@@ -244,7 +252,7 @@ class TestCoreRegressionTaskHandlers:
         # 验证fetcher被调用
         mock_fetcher.fetch_daily_history.assert_called()
         # 验证storage被调用
-        mock_storage.save.assert_called()
+        mock_storage.save_daily_data.assert_called()
 
 
 class TestCoreRegressionModels:

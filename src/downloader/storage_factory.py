@@ -10,13 +10,12 @@ Storage工厂和单例实现
 """
 
 import threading
-import logging
 from typing import Optional, Dict, Any
 from pathlib import Path
 
 from .storage import PartitionedStorage
-
-logger = logging.getLogger(__name__)
+from .database import DuckDBConnectionFactory, DatabaseConnectionFactory
+from .logger_interface import LoggerFactory, LoggerInterface
 
 
 class StorageSingleton:
@@ -30,19 +29,35 @@ class StorageSingleton:
     _instance: Optional[PartitionedStorage] = None
     _lock = threading.Lock()
     _db_path: Optional[str] = None
+    _db_factory: Optional[DatabaseConnectionFactory] = None
+    _logger: Optional[LoggerInterface] = None
     
     @classmethod
-    def get_instance(cls, db_path: str = "data/stock.db", **kwargs) -> PartitionedStorage:
+    def get_instance(
+        cls, 
+        db_path: str = "data/stock.db", 
+        db_factory: Optional[DatabaseConnectionFactory] = None,
+        logger: Optional[LoggerInterface] = None,
+        **kwargs
+    ) -> PartitionedStorage:
         """
         获取Storage单例实例
         
         Args:
             db_path: 数据库文件路径
+            db_factory: 数据库连接工厂
+            logger: 日志接口
             **kwargs: 传递给PartitionedStorage构造函数的其他参数
             
         Returns:
             PartitionedStorage: storage实例
         """
+        # 使用默认工厂和日志器
+        if db_factory is None:
+            db_factory = DuckDBConnectionFactory()
+        if logger is None:
+            logger = LoggerFactory.create_logger(__name__)
+            
         if cls._instance is None or cls._db_path != db_path:
             with cls._lock:
                 # 双重检查锁定模式
@@ -51,8 +66,10 @@ class StorageSingleton:
                         logger.info(f"数据库路径变更，重新创建Storage实例: {cls._db_path} -> {db_path}")
                     
                     logger.debug(f"创建Storage单例实例: {db_path}")
-                    cls._instance = PartitionedStorage(db_path, **kwargs)
+                    cls._instance = PartitionedStorage(db_path, db_factory, logger)
                     cls._db_path = db_path
+                    cls._db_factory = db_factory
+                    cls._logger = logger
                     
                     logger.info(f"Storage单例实例已创建: {db_path}")
         
@@ -65,9 +82,12 @@ class StorageSingleton:
         """
         with cls._lock:
             if cls._instance is not None:
-                logger.debug("重置Storage单例实例")
+                if cls._logger:
+                    cls._logger.debug("重置Storage单例实例")
                 cls._instance = None
                 cls._db_path = None
+                cls._db_factory = None
+                cls._logger = None
     
     @classmethod
     def get_instance_info(cls) -> Dict[str, Any]:
@@ -86,23 +106,37 @@ class StorageSingleton:
             }
 
 
-def get_storage(use_singleton: bool = True, db_path: str = "data/stock.db", **kwargs) -> PartitionedStorage:
+def get_storage(
+    use_singleton: bool = True, 
+    db_path: str = "data/stock.db", 
+    db_factory: Optional[DatabaseConnectionFactory] = None,
+    logger: Optional[LoggerInterface] = None,
+    **kwargs
+) -> PartitionedStorage:
     """
     获取Storage实例的便捷函数
     
     Args:
         use_singleton: 是否使用单例模式，默认True
         db_path: 数据库文件路径
+        db_factory: 数据库连接工厂
+        logger: 日志接口
         **kwargs: 传递给PartitionedStorage构造函数的其他参数
         
     Returns:
         PartitionedStorage: storage实例
     """
+    # 使用默认工厂和日志器
+    if db_factory is None:
+        db_factory = DuckDBConnectionFactory()
+    if logger is None:
+        logger = LoggerFactory.create_logger(__name__)
+        
     if use_singleton:
-        return StorageSingleton.get_instance(db_path=db_path, **kwargs)
+        return StorageSingleton.get_instance(db_path=db_path, db_factory=db_factory, logger=logger, **kwargs)
     else:
         logger.debug(f"创建新的Storage实例: {db_path}")
-        return PartitionedStorage(db_path, **kwargs)
+        return PartitionedStorage(db_path, db_factory, logger)
 
 
 def get_storage_instance_info() -> Dict[str, Any]:
@@ -123,33 +157,53 @@ class StorageFactory:
     """
     
     @staticmethod
-    def create_storage(use_singleton: bool = True, db_path: str = "data/stock.db", **kwargs) -> PartitionedStorage:
+    def create_storage(
+        use_singleton: bool = True, 
+        db_path: str = "data/stock.db", 
+        db_factory: Optional[DatabaseConnectionFactory] = None,
+        logger: Optional[LoggerInterface] = None,
+        **kwargs
+    ) -> PartitionedStorage:
         """
         创建Storage实例
         
         Args:
             use_singleton: 是否使用单例模式，默认True
             db_path: 数据库文件路径
+            db_factory: 数据库连接工厂
+            logger: 日志接口
             **kwargs: 传递给PartitionedStorage构造函数的其他参数
             
         Returns:
             PartitionedStorage: storage实例
         """
-        return get_storage(use_singleton=use_singleton, db_path=db_path, **kwargs)
+        return get_storage(use_singleton=use_singleton, db_path=db_path, db_factory=db_factory, logger=logger, **kwargs)
     
     @staticmethod
-    def create_partitioned_storage(db_path: str = "data/stock.db", **kwargs) -> PartitionedStorage:
+    def create_partitioned_storage(
+        db_path: str = "data/stock.db", 
+        db_factory: Optional[DatabaseConnectionFactory] = None,
+        logger: Optional[LoggerInterface] = None,
+        **kwargs
+    ) -> PartitionedStorage:
         """
         直接创建分区表存储实例（非单例）
         
         Args:
             db_path: 数据库文件路径
+            db_factory: 数据库连接工厂
+            logger: 日志接口
             **kwargs: 传递给PartitionedStorage构造函数的其他参数
             
         Returns:
             PartitionedStorage: storage实例
         """
-        return PartitionedStorage(db_path, **kwargs)
+        # 使用默认工厂和日志器
+        if db_factory is None:
+            db_factory = DuckDBConnectionFactory()
+        if logger is None:
+            logger = LoggerFactory.create_logger(__name__)
+        return PartitionedStorage(db_path, db_factory, logger)
     
     @staticmethod
     def get_default_storage(config: Optional[Dict[str, Any]] = None) -> PartitionedStorage:
