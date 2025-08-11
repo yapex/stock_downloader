@@ -10,16 +10,15 @@
 - uv run dl verify             # 验证数据库状态
 """
 
-import logging
 import warnings
 from typing import Optional
 
 import typer
 from dotenv import load_dotenv
-
 from .app import DownloaderApp
 from .config import load_config
 from .logging_setup import setup_logging
+from .utils import get_logger
 from .progress_manager import progress_manager
 from .missing_symbols import scan_and_log_missing_symbols
 from .storage_factory import get_storage
@@ -107,7 +106,7 @@ def main(
         raise typer.Exit(code=0)
     except Exception as e:
         progress_manager.print_error(f"执行异常: {e}")
-        logging.getLogger(__name__).critical(f"程序执行异常: {e}", exc_info=True)
+        get_logger(__name__).critical(f"程序执行异常: {e}", exc_info=True)
         raise typer.Exit(code=1)
 
 

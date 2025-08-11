@@ -2,8 +2,8 @@
 """
 封装了数据下载器的核心业务逻辑。
 """
-import logging
 import time
+import logging
 from typing import List, Optional, Dict, Any
 
 from .config import load_config
@@ -12,6 +12,7 @@ from .fetcher import TushareFetcher
 from .fetcher_factory import get_singleton
 from .storage import PartitionedStorage
 from .storage_factory import get_storage
+from .utils import get_logger
 
 
 class DownloaderApp:
@@ -21,7 +22,7 @@ class DownloaderApp:
     """
 
     def __init__(self, logger: Optional[logging.Logger] = None):
-        self.logger = logger or logging.getLogger(__name__)
+        self.logger = logger or get_logger(__name__)
 
     def process_symbols_config(
         self, config: Dict[str, Any], symbols: Optional[List[str]] = None

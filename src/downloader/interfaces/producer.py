@@ -3,13 +3,14 @@
 定义生产者组件的核心接口，遵循KISS原则，使用事件通知机制。
 """
 
-from typing import Protocol, Optional
+from typing import Protocol, Optional, runtime_checkable
 from queue import Queue
 
 from ..models import DownloadTask, DataBatch
 from .events import IEventBus, IEventListener
 
 
+@runtime_checkable
 class IProducer(Protocol):
     """生产者接口
     

@@ -9,7 +9,6 @@
 简单策略：传入股票symbols列表，按既定策略下载，保存到duckdb，给出执行情况反馈
 """
 
-import logging
 import json
 from pathlib import Path
 from typing import Dict, List, Set, Any
@@ -18,8 +17,9 @@ from datetime import datetime
 from .storage import DuckDBStorage
 from .storage_factory import get_storage
 from .models import TaskType, DownloadTask, Priority
+from .utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MissingSymbolsDetector:
@@ -27,7 +27,7 @@ class MissingSymbolsDetector:
     
     def __init__(self, storage: DuckDBStorage):
         self.storage = storage
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
     
     def detect_missing_symbols(self) -> Dict[str, Set[str]]:
         """
@@ -89,7 +89,7 @@ class MissingSymbolsLogger:
     def __init__(self, log_path: str = "logs/missing_symbols.jsonl"):
         self.log_path = Path(log_path)
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
     
     def write_missing_symbols(self, missing_by_type: Dict[str, Set[str]]) -> None:
         """

@@ -1,4 +1,3 @@
-import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 import pandas as pd
@@ -11,7 +10,7 @@ from ..storage import DuckDBStorage
 # rate_limit装饰器已移至各个fetcher方法中使用ratelimit库
 
 # 从新的 utils 模块导入工具函数
-from ..utils import record_failed_task
+from ..utils import record_failed_task, get_logger
 # 移除对error_handler的依赖
 
 
@@ -29,7 +28,7 @@ class BaseTaskHandler(ABC):
         self.fetcher = fetcher
         self.storage = storage
         self.force_run = force_run
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = get_logger(self.__class__.__name__)
         self._current_progress_bar = None
 
     def _safe_log(self, level: str, message: str, *args, **kwargs):

@@ -4,9 +4,9 @@
 """
 
 import time
-import logging
 from functools import wraps
 from typing import Callable, Any
+from .utils import get_logger
 
 try:
     from pyrate_limiter import Limiter, Rate, Duration, BucketFullException
@@ -14,7 +14,7 @@ try:
 except ImportError:
     raise ImportError("请安装 pyrate-limiter: uv add pyrate-limiter")
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # 全局速率限制器实例
 _global_limiter = None

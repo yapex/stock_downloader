@@ -18,7 +18,7 @@ from .config import load_config
 
 
 @dataclass
-class TaskConfigImpl:
+class TaskConfigImpl(ITaskConfig):
     """任务配置实现"""
     _data: Dict[str, Any]
     
@@ -44,7 +44,7 @@ class TaskConfigImpl:
 
 
 @dataclass
-class GroupConfigImpl:
+class GroupConfigImpl(IGroupConfig):
     """任务组配置实现"""
     _data: Dict[str, Any]
     
@@ -62,7 +62,7 @@ class GroupConfigImpl:
 
 
 @dataclass
-class DownloaderConfigImpl:
+class DownloaderConfigImpl(IDownloaderConfig):
     """下载器配置实现"""
     _data: Dict[str, Any]
     
@@ -88,7 +88,7 @@ class DownloaderConfigImpl:
 
 
 @dataclass
-class ConsumerConfigImpl:
+class ConsumerConfigImpl(IConsumerConfig):
     """消费者配置实现"""
     _data: Dict[str, Any]
     
@@ -106,7 +106,7 @@ class ConsumerConfigImpl:
 
 
 @dataclass
-class DatabaseConfigImpl:
+class DatabaseConfigImpl(IDatabaseConfig):
     """数据库配置实现"""
     _data: Dict[str, Any]
     
@@ -115,7 +115,7 @@ class DatabaseConfigImpl:
         return self._data.get("path", "data/stock.db")
 
 
-class ConfigManager:
+class ConfigManager(IConfig):
     """配置管理器
     
     实现ConfigInterface，提供统一的配置访问方式。

@@ -5,10 +5,11 @@ import threading
 from typing import List, Dict, Optional, Any
 
 
-from .interfaces import IDatabaseFactory, IDatabase, ILogger
+from .interfaces import IDatabaseFactory, IDatabase, IStorage
+from .utils import get_logger
 
 
-class PartitionedStorage:
+class PartitionedStorage(IStorage):
     """
     分区表架构的数据存储层
 
@@ -26,7 +27,7 @@ class PartitionedStorage:
         self,
         db_path: str | Path,
         db_factory: IDatabaseFactory,
-        logger: ILogger,
+        logger = None,
     ):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -35,7 +36,7 @@ class PartitionedStorage:
         PartitionedStorage.DB_PATH = str(self.db_path)
 
         self._db_factory = db_factory
-        self._logger = logger
+        self._logger = logger or get_logger(__name__)
 
         # 使用线程本地存储管理连接
         self._local = threading.local()

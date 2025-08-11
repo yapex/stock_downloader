@@ -8,7 +8,6 @@
 - 可靠性保障：失败重试、优雅关闭、完善的异常处理
 """
 
-import logging
 import time
 from datetime import datetime
 from queue import Queue
@@ -21,11 +20,14 @@ from .storage_factory import get_storage
 from .producer import Producer
 from .consumer_pool import ConsumerPool
 from .models import DownloadTask, TaskType, Priority
+from .interfaces.events import SimpleEventBus, IEventBus, IEventListener
+from .interfaces.producer import ProducerEvents
 from .progress_events import (
     progress_event_manager, start_phase, end_phase, update_total, ProgressPhase
 )
+from .utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DownloadEngine:
@@ -37,6 +39,28 @@ class DownloadEngine:
     3. 生产者-消费者协调
     4. 进度监控与统计
     """
+    
+    class DataEventListener(IEventListener):
+        """数据事件监听器 - 将Producer的数据事件转发到data_queue"""
+        
+        def __init__(self, data_queue: Queue):
+            self.data_queue = data_queue
+            self.logger = get_logger(f"{__name__}.DataEventListener")
+        
+        def on_event(self, event_type: str, event_data: any) -> None:
+            """处理事件"""
+            if event_type == ProducerEvents.DATA_READY:
+                data_batch = event_data.get('data_batch')
+                if data_batch:
+                    try:
+                        self.data_queue.put(data_batch, block=True)
+                        self.logger.debug(f"Data batch forwarded to queue: {event_data.get('task_id')}")
+                    except Exception as e:
+                        self.logger.error(f"Failed to forward data batch: {e}")
+            elif event_type == ProducerEvents.TASK_FAILED:
+                self.logger.warning(f"Task failed: {event_data.get('task_id')} - {event_data.get('error')}")
+            elif event_type == ProducerEvents.TASK_COMPLETED:
+                self.logger.debug(f"Task completed: {event_data.get('task_id')}")
     
     def __init__(
         self,
@@ -75,6 +99,7 @@ class DownloadEngine:
         self.data_queue: Optional[Queue] = None
         self.consumer_pool: Optional[ConsumerPool] = None
         self.producers: List[Producer] = []
+        self.event_bus: Optional[IEventBus] = None
         
         # 配置参数
         self._load_configuration()
@@ -232,9 +257,17 @@ class DownloadEngine:
         """初始化基础设施"""
         logger.info("初始化队列和线程池...")
         
-        # 创建队列
-        self.task_queue = Queue(maxsize=self.producer_queue_size)
+        # 创建数据队列
         self.data_queue = Queue(maxsize=self.data_queue_size)
+        
+        # 创建事件总线
+        self.event_bus = SimpleEventBus()
+        
+        # 创建并注册数据事件监听器
+        data_listener = self.DataEventListener(self.data_queue)
+        self.event_bus.subscribe(ProducerEvents.DATA_READY, data_listener)
+        self.event_bus.subscribe(ProducerEvents.TASK_FAILED, data_listener)
+        self.event_bus.subscribe(ProducerEvents.TASK_COMPLETED, data_listener)
         
         # 创建消费者池
         consumer_config = self.config.get("consumer", {})
@@ -505,11 +538,14 @@ class DownloadEngine:
         try:
             # 创建生产者
             self.producers = []
+            from concurrent.futures import ThreadPoolExecutor
+            thread_pool_executor = ThreadPoolExecutor(max_workers=num_producers)
+            
             for i in range(num_producers):
                 producer = Producer(
-                    task_queue=self.task_queue,
-                    data_queue=self.data_queue,
-                    fetcher=self.fetcher
+                    fetcher=self.fetcher,
+                    thread_pool_executor=thread_pool_executor,
+                    event_bus=self.event_bus
                 )
                 self.producers.append(producer)
             
@@ -529,14 +565,22 @@ class DownloadEngine:
             self._stop_producers()
     
     def _submit_tasks_to_queue(self, tasks: List[DownloadTask]) -> None:
-        """提交任务到队列"""
-        logger.info(f"开始提交 {len(tasks)} 个任务到队列")
+        """提交任务到生产者"""
+        logger.info(f"开始提交 {len(tasks)} 个任务到生产者")
         
         submitted = 0
+        producer_index = 0
+        
         for task in tasks:
             try:
-                self.task_queue.put(task, timeout=5.0)
-                submitted += 1
+                # 轮询分配任务给生产者
+                producer = self.producers[producer_index]
+                if producer.submit_task(task, timeout=5.0):
+                    submitted += 1
+                    producer_index = (producer_index + 1) % len(self.producers)
+                else:
+                    logger.error(f"提交任务失败: {task.task_id}")
+                    self.execution_stats["failed_tasks"] += 1
             except Exception as e:
                 logger.error(f"提交任务失败: {task.task_id}, 错误: {e}")
                 self.execution_stats["failed_tasks"] += 1
@@ -548,10 +592,11 @@ class DownloadEngine:
         logger.info("等待所有任务完成...")
         
         while True:
-            # 检查队列是否为空且所有生产者都已完成
-            if (self.task_queue.empty() and 
-                all(not producer.is_alive() or not getattr(producer, 'running', True) 
-                    for producer in self.producers)):
+            # 检查所有生产者的任务队列是否为空且生产者都在运行
+            all_queues_empty = all(producer.task_queue.empty() for producer in self.producers)
+            all_producers_running = all(getattr(producer, 'running', False) for producer in self.producers)
+            
+            if all_queues_empty and not all_producers_running:
                 break
             
             time.sleep(1.0)

@@ -57,7 +57,7 @@ class IEventBus(Protocol):
         ...
 
 
-class SimpleEventBus:
+class SimpleEventBus(IEventBus):
     """简单的事件总线实现
     
     基于字典的内存事件总线，适用于单进程场景。
@@ -87,11 +87,11 @@ class SimpleEventBus:
         if event_type in self._listeners:
             for listener in self._listeners[event_type].copy():  # 复制列表避免并发修改
                 try:
-                    listener(event_data)
+                    listener.on_event(event_type, event_data)
                 except Exception as e:
                     # 记录错误但不影响其他监听器
-                    import logging
-                    logger = logging.getLogger(__name__)
+                    from ..utils import get_logger
+                    logger = get_logger(__name__)
                     logger.error(f"Error in event listener for {event_type}: {e}")
     
     def clear(self) -> None:

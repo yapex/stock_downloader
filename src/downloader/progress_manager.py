@@ -3,12 +3,15 @@
 实时进度显示管理器，使用 tqdm 监听任务进度。
 """
 
-import logging
 import threading
-from typing import Optional, Dict, Any
+from typing import Dict, Any, Optional
+from datetime import datetime
+from dataclasses import dataclass, field
 from tqdm import tqdm
+from .models import TaskType
+from .utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ProgressManager:

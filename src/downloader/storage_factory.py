@@ -15,7 +15,8 @@ from pathlib import Path
 
 from .storage import PartitionedStorage
 from .database import DuckDBConnectionFactory
-from .interfaces import IDatabaseFactory, ILogger, LoggerFactory, IConfig
+from .interfaces import IDatabaseFactory, IConfig
+from .utils import get_logger
 
 
 class StorageSingleton:
@@ -30,14 +31,14 @@ class StorageSingleton:
     _lock = threading.Lock()
     _db_path: Optional[str] = None
     _db_factory: Optional[IDatabaseFactory] = None
-    _logger: Optional[ILogger] = None
+    _logger = None
     
     @classmethod
     def get_instance(
         cls, 
         db_path: str, 
         db_factory: Optional[IDatabaseFactory] = None,
-        logger: Optional[ILogger] = None,
+        logger = None,
         **kwargs
     ) -> PartitionedStorage:
         """
@@ -46,7 +47,7 @@ class StorageSingleton:
         Args:
             db_path: 数据库文件路径
             db_factory: 数据库连接工厂
-            logger: 日志接口
+            logger: 日志接口 (可选，将使用默认logger)
             **kwargs: 传递给PartitionedStorage构造函数的其他参数
             
         Returns:
@@ -56,7 +57,7 @@ class StorageSingleton:
         if db_factory is None:
             db_factory = DuckDBConnectionFactory()
         if logger is None:
-            logger = LoggerFactory.create_logger(__name__)
+            logger = get_logger(__name__)
             
         if cls._instance is None or cls._db_path != db_path:
             with cls._lock:
@@ -110,7 +111,7 @@ def get_storage(
     use_singleton: bool = True, 
     db_path: Optional[str] = None, 
     db_factory: Optional[IDatabaseFactory] = None,
-    logger: Optional[ILogger] = None,
+    logger = None,
     **kwargs
 ) -> PartitionedStorage:
     """
@@ -134,7 +135,7 @@ def get_storage(
     if db_factory is None:
         db_factory = DuckDBConnectionFactory()
     if logger is None:
-        logger = LoggerFactory.create_logger(__name__)
+        logger = get_logger(__name__)
         
     if use_singleton:
         return StorageSingleton.get_instance(db_path=db_path, db_factory=db_factory, logger=logger, **kwargs)
@@ -165,7 +166,7 @@ class StorageFactory:
         use_singleton: bool = True, 
         db_path: Optional[str] = None, 
         db_factory: Optional[IDatabaseFactory] = None,
-        logger: Optional[ILogger] = None,
+        logger = None,
         **kwargs
     ) -> PartitionedStorage:
         """
@@ -187,7 +188,7 @@ class StorageFactory:
     def create_partitioned_storage(
         db_path: Optional[str] = None, 
         db_factory: Optional[IDatabaseFactory] = None,
-        logger: Optional[ILogger] = None,
+        logger = None,
         **kwargs
     ) -> PartitionedStorage:
         """
@@ -210,7 +211,7 @@ class StorageFactory:
         if db_factory is None:
             db_factory = DuckDBConnectionFactory()
         if logger is None:
-            logger = LoggerFactory.create_logger(__name__)
+            logger = get_logger(__name__)
         return PartitionedStorage(db_path, db_factory, logger)
     
     @staticmethod
@@ -258,7 +259,7 @@ class StorageFactory:
         db_factory = DuckDBConnectionFactory()
         
         # 创建日志器
-        logger = LoggerFactory.create_logger(__name__)
+        logger = get_logger(__name__)
         
         return get_storage(use_singleton=True, db_path=db_path, db_factory=db_factory, logger=logger)
 

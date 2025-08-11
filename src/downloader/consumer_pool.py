@@ -5,7 +5,6 @@
 累积到本地缓存，然后批量写入 DuckDB。实现延迟初始化和失败处理机制。
 """
 
-import logging
 import threading
 import time
 from collections import defaultdict
@@ -19,10 +18,10 @@ from .models import DataBatch
 from .storage import DuckDBStorage
 from .storage_factory import get_storage
 from .simple_retry import simple_retry
-from .utils import record_failed_task
+from .utils import record_failed_task, get_logger
 from .progress_events import batch_completed
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ConsumerWorker:
@@ -68,7 +67,7 @@ class ConsumerWorker:
         self.flush_operations = 0
         self.failed_operations = 0
         
-        self.logger = logging.getLogger(f"{__name__}.worker_{worker_id}")
+        self.logger = get_logger(f"{__name__}.worker_{worker_id}")
     
     @property
     def storage(self) -> DuckDBStorage:
@@ -350,7 +349,7 @@ class ConsumerPool:
         self.start_time: Optional[datetime] = None
         self._stats_lock = threading.Lock()
         
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
     
     def start(self) -> None:
         """

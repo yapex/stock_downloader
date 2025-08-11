@@ -1,4 +1,5 @@
 import re
+import logging
 from datetime import datetime
 
 # 用于跟踪日志文件是否已经在当前运行中被初始化（覆盖）
@@ -150,3 +151,35 @@ def is_interval_greater_than_7_days(start_date: str, end_date: str) -> bool:
 
     # 检查差值是否大于 7 天
     return delta.days > 7
+
+
+# 用于跟踪日志是否已经配置
+_logging_configured = False
+
+
+def get_logger(name: str) -> logging.Logger:
+    """
+    获取日志器，如果日志系统未配置则自动配置。
+    
+    Args:
+        name: 日志器名称，通常使用 __name__
+        
+    Returns:
+        logging.Logger: 配置好的日志器实例
+        
+    Examples:
+        >>> logger = get_logger(__name__)
+        >>> logger.info("这是一条信息")
+    """
+    global _logging_configured
+    
+    if not _logging_configured:
+        # 检查是否已有处理器配置
+        root_logger = logging.getLogger()
+        if not root_logger.handlers or root_logger.level == logging.NOTSET:
+            # 如果没有配置，则进行基本配置
+            from .logging_setup import setup_logging
+            setup_logging()
+            _logging_configured = True
+    
+    return logging.getLogger(name)

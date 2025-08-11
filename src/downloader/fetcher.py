@@ -1,15 +1,15 @@
 import os
 import tushare as ts
 import pandas as pd
-import logging
-from .utils import normalize_stock_code, is_interval_greater_than_7_days
+from .utils import normalize_stock_code, is_interval_greater_than_7_days, get_logger
 from .simple_retry import simple_retry
 from .rate_limiter import rate_limit
+from .interfaces.fetcher import IFetcher
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
-class TushareFetcher:
+class TushareFetcher(IFetcher):
     """
     封装 Tushare Pro API 的数据获取器。
     
@@ -30,7 +30,7 @@ class TushareFetcher:
         if not token or not token.strip():
             raise ValueError("Tushare token 不能为空")
             
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
         
         # 设置 token 并初始化 API
         self._token = token.strip()

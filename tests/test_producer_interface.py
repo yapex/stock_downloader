@@ -34,6 +34,8 @@ class MockProducer:
     """Mock Producer实现"""
     
     def __init__(self, event_bus: IEventBus):
+        if event_bus is None:
+            raise ValueError("event_bus is required")
         self.event_bus = event_bus
         self._running = False
         self.task_queue = Queue()

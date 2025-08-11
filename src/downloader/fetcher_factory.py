@@ -10,12 +10,12 @@ TushareFetcher工厂实现
 
 import os
 import threading
-import logging
 from typing import Optional, Callable
 from .fetcher import TushareFetcher
 from .interfaces import ConfigInterface
+from .utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class TushareFetcherFactory:

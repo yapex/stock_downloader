@@ -5,11 +5,11 @@
 """
 
 import time
-import logging
 from functools import wraps
 from typing import Callable, Any
+from .utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # 不应该重试的错误模式
 NON_RETRYABLE_PATTERNS = [

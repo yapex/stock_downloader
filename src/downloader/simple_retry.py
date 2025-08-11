@@ -6,9 +6,9 @@
 """
 
 import time
-import logging
 from functools import wraps
 from typing import Callable, Any, Optional
+from .utils import get_logger
 
 # 定义速率限制异常类（不再依赖 ratelimit 库）
 class RateLimitException(Exception):
@@ -16,7 +16,7 @@ class RateLimitException(Exception):
         super().__init__(message)
         self.period_remaining = period_remaining
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # 不应该重试的错误模式
 NON_RETRYABLE_PATTERNS = [

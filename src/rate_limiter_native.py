@@ -4,14 +4,19 @@
 使用 limiter.as_decorator() 方法，避免重复造轮子
 """
 
-import logging
 from functools import wraps
 from typing import Any, Callable
 
 from pyrate_limiter import Duration, Rate, Limiter, BucketFullException, InMemoryBucket
 
+# 需要导入 downloader 模块的 get_logger
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent / 'downloader'))
+from utils import get_logger
+
 # 配置日志
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Tushare API 限制：每个方法每分钟最多 190 次调用
 TUSHARE_RATE_LIMIT = Rate(190, Duration.MINUTE)
