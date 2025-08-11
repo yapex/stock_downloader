@@ -21,12 +21,16 @@ class TushareFetcherFactory:
     """
     TushareFetcher工厂类
     
-    提供统一的fetcher创建接口，使用单例模式确保全局唯一实例。
+    提供统一的fetcher创建接口，支持全局单例和线程本地两种模式。
     """
     
+    # 全局单例相关
     _instance: Optional[TushareFetcher] = None
     _lock = threading.Lock()
     _initialized = False
+    
+    # 线程本地存储相关
+    _thread_local = threading.local()
     
     @staticmethod
     def get_instance() -> TushareFetcher:
@@ -89,6 +93,68 @@ class TushareFetcherFactory:
             Optional[int]: 实例ID，如果未初始化则返回None
         """
         return id(TushareFetcherFactory._instance) if TushareFetcherFactory._instance else None
+    
+    @staticmethod
+    def get_thread_local_instance() -> TushareFetcher:
+        """
+        获取线程本地的TushareFetcher实例
+        
+        每个线程都有自己独立的fetcher实例，但在同一线程内保持唯一。
+        这样可以避免多线程环境下的速率限制器冲突，同时保证线程内的一致性。
+        
+        Returns:
+            TushareFetcher: 线程本地实例
+            
+        Raises:
+            ValueError: 当未设置TUSHARE_TOKEN环境变量时
+        """
+        # 检查当前线程是否已有实例
+        if not hasattr(TushareFetcherFactory._thread_local, 'instance'):
+            token = os.getenv("TUSHARE_TOKEN")
+            if not token:
+                raise ValueError("错误：未设置 TUSHARE_TOKEN 环境变量")
+            
+            thread_id = threading.get_ident()
+            logger.info(f"为线程 {thread_id} 创建TushareFetcher实例")
+            TushareFetcherFactory._thread_local.instance = TushareFetcher(token)
+            logger.info(f"线程 {thread_id} 的TushareFetcher实例创建完成，实例ID: {id(TushareFetcherFactory._thread_local.instance)}")
+        else:
+            thread_id = threading.get_ident()
+            logger.debug(f"返回线程 {thread_id} 已存在的TushareFetcher实例，实例ID: {id(TushareFetcherFactory._thread_local.instance)}")
+        
+        return TushareFetcherFactory._thread_local.instance
+    
+    @staticmethod
+    def reset_thread_local() -> None:
+        """
+        重置当前线程的fetcher实例（主要用于测试）
+        """
+        if hasattr(TushareFetcherFactory._thread_local, 'instance'):
+            thread_id = threading.get_ident()
+            logger.info(f"重置线程 {thread_id} 的TushareFetcher实例，原实例ID: {id(TushareFetcherFactory._thread_local.instance)}")
+            delattr(TushareFetcherFactory._thread_local, 'instance')
+    
+    @staticmethod
+    def has_thread_local_instance() -> bool:
+        """
+        检查当前线程是否已有fetcher实例
+        
+        Returns:
+            bool: 当前线程是否已有实例
+        """
+        return hasattr(TushareFetcherFactory._thread_local, 'instance')
+    
+    @staticmethod
+    def get_thread_local_instance_id() -> Optional[int]:
+        """
+        获取当前线程fetcher实例的ID（用于调试）
+        
+        Returns:
+            Optional[int]: 实例ID，如果当前线程未初始化则返回None
+        """
+        if hasattr(TushareFetcherFactory._thread_local, 'instance'):
+            return id(TushareFetcherFactory._thread_local.instance)
+        return None
 
 
 # 对外接口
@@ -100,6 +166,19 @@ def get_singleton() -> TushareFetcher:
         TushareFetcher: 单例实例
     """
     return TushareFetcherFactory.get_instance()
+
+
+def get_thread_local_fetcher() -> TushareFetcher:
+    """
+    获取线程本地的TushareFetcher实例
+    
+    每个线程都有自己独立的fetcher实例，但在同一线程内保持唯一。
+    适用于多线程环境，避免速率限制器冲突。
+        
+    Returns:
+        TushareFetcher: 线程本地实例
+    """
+    return TushareFetcherFactory.get_thread_local_instance()
 
 
 # 向后兼容接口
