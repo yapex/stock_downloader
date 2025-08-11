@@ -11,10 +11,10 @@ downloader:
   max_consumers: 1  # 单消费者避免数据库锁竞争
   
   # 任务队列: 减小队列避免积压
-  producer_queue_size: 1000
+  producer_queue_size: 200
   
   # 数据队列: 减小数据队列
-  data_queue_size: 500
+  data_queue_size: 200
   
   retry_policy:
     max_retries: 3

@@ -3,7 +3,7 @@ import time
 from importlib.metadata import entry_points
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
-from queue import Queue
+from queue import Queue, Full
 from typing import Dict, List, Any, Optional
 from time import sleep
 
@@ -505,9 +505,16 @@ class DownloadEngine:
                 f"队列大小: {queue_size_before} -> {self.task_queue.qsize()}"
             )
             return True
+        except Full:
+            logger.error(
+                f"[引擎队列操作] 提交任务到共享队列失败 - 队列已满 - "
+                f"ID: {task.task_id}, 股票: {task.symbol}, 类型: {task.task_type.value}, "
+                f"超时时间: {timeout}s, 队列大小: {self.task_queue.qsize()}"
+            )
+            return False
         except Exception as e:
             logger.error(
-                f"[引擎队列操作] 提交任务到共享队列失败 - "
+                f"[引擎队列操作] 提交任务到共享队列失败 - 未知错误 - "
                 f"ID: {task.task_id}, 股票: {task.symbol}, 类型: {task.task_type.value}, "
                 f"错误: {e}, 队列大小: {self.task_queue.qsize()}"
             )
