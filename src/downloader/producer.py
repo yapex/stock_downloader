@@ -12,10 +12,9 @@ from queue import Queue, Empty, Full
 from datetime import datetime
 
 from .fetcher import TushareFetcher
-from .fetcher_factory import get_fetcher
+from .fetcher_factory import get_singleton
 from .models import DownloadTask, DataBatch, TaskType
-from .error_handler import classify_error
-from .retry_policy import RetryPolicy, DEFAULT_RETRY_POLICY, RetryLogger
+# 移除复杂的错误处理依赖
 from .utils import record_failed_task
 from .progress_events import task_started, task_completed, task_failed
 
@@ -116,82 +115,7 @@ class TaskProcessor:
             raise ValueError(f"Unknown statement_type: {statement_type}")
 
 
-class RetryManager:
-    """重试管理器 - 负责任务重试逻辑"""
-    
-    def __init__(self, retry_policy: RetryPolicy, dead_letter_path: str):
-        self.retry_policy = retry_policy
-        self.retry_logger = RetryLogger(dead_letter_path)
-        self.logger = logging.getLogger(f"{__name__}.retry")
-    
-    def handle_task_failure(self, task: DownloadTask, error: Exception, task_queue: Queue) -> bool:
-        """处理任务失败，返回是否成功重新入队"""
-        should_retry = self.retry_policy.should_retry(error, task.retry_count + 1)
-        
-        self.logger.info(
-            f"[重试管理] 评估任务重试 - ID: {task.task_id}, "
-            f"股票: {task.symbol}, 当前重试: {task.retry_count}, "
-            f"最大重试: {task.max_retries}, 是否可重试: {should_retry and task.can_retry()}"
-        )
-        
-        if should_retry and task.can_retry():
-            return self._retry_task(task, task_queue)
-        else:
-            self.logger.warning(
-                f"[重试管理] 任务不可重试 - ID: {task.task_id}, "
-                f"股票: {task.symbol}, 原因: {'超过最大重试次数' if not task.can_retry() else '重试策略拒绝'}"
-            )
-            self._send_to_dead_letter(task, error)
-            return False
-    
-    def _retry_task(self, task: DownloadTask, task_queue: Queue) -> bool:
-        """重试任务"""
-        delay = self.retry_policy.get_delay(task.retry_count + 1)
-        retry_task = task.increment_retry()
-        
-        self.logger.info(
-            f"[重试管理] 准备重试任务 - ID: {task.task_id}, "
-            f"股票: {task.symbol}, 新重试次数: {retry_task.retry_count}/{task.max_retries}, "
-            f"延迟: {delay:.2f}s"
-        )
-        
-        if delay > 0:
-            time.sleep(delay)
-        
-        try:
-            task_queue.put(retry_task, timeout=1.0)
-            self.logger.info(
-                f"[重试管理] 任务重新入队成功 - ID: {task.task_id}, "
-                f"股票: {task.symbol}, 当前队列大小: {task_queue.qsize()}"
-            )
-            return True
-        except Full:
-            self.logger.error(
-                f"[重试管理] 任务重新入队失败 - ID: {task.task_id}, "
-                f"股票: {task.symbol}, 原因: 队列已满"
-            )
-            self._send_to_dead_letter(task, Exception("Queue full during retry"))
-            return False
-    
-    def _send_to_dead_letter(self, task: DownloadTask, error: Exception):
-        """发送任务到死信队列"""
-        self.retry_logger.log_failed_symbol(task.symbol)
-        
-        error_category = classify_error(error)
-        reason = "max_retries_exceeded" if task.retry_count >= task.max_retries else str(error)
-        
-        record_failed_task(
-            task_name=f"{task.task_type.value}_task",
-            entity_id=task.symbol,
-            reason=reason,
-            error_category=error_category.value
-        )
-        
-        self.logger.error(
-            f"[重试管理] 任务发送到死信队列 - ID: {task.task_id}, "
-            f"股票: {task.symbol}, 最终重试次数: {task.retry_count}, "
-            f"失败原因: {reason}, 错误类型: {error_category.value}"
-        )
+# 简化的重试逻辑，移除复杂的重试管理器
 
 
 class ProducerStats:
@@ -235,7 +159,6 @@ class Producer:
     def __init__(self, 
                  task_queue: Optional[Queue] = None,
                  data_queue: Optional[Queue] = None,
-                 retry_policy: Optional[RetryPolicy] = None,
                  dead_letter_path: str = "logs/dead_letter.jsonl",
                  fetcher: Optional[TushareFetcher] = None):
         """初始化生产者"""
@@ -247,15 +170,12 @@ class Producer:
             self.fetcher = fetcher
             logger.info(f"Producer使用传入的fetcher实例，ID: {id(fetcher)}")
         else:
-            self.fetcher = get_fetcher(use_singleton=True)
+            self.fetcher = get_singleton()
             logger.info(f"Producer使用单例fetcher实例，ID: {id(self.fetcher)}")
         
         # 组件初始化
         self.processor = TaskProcessor(self.fetcher)
-        self.retry_manager = RetryManager(
-            retry_policy or DEFAULT_RETRY_POLICY, 
-            dead_letter_path
-        )
+        self.dead_letter_path = dead_letter_path
         self.stats = ProducerStats()
         
         # 运行状态
@@ -415,22 +335,43 @@ class Producer:
                 f"处理时间: {processing_time:.2f}s, 重试次数: {task.retry_count}"
             )
             
-            # 使用重试管理器处理失败
-            retry_success = self.retry_manager.handle_task_failure(task, e, self.task_queue)
-            
-            if not retry_success:
-                self.stats.increment_failed()
-                self.logger.error(
-                    f"[任务处理] 任务最终失败 - ID: {task.task_id}, "
-                    f"股票: {task.symbol}, 已达最大重试次数"
+            # 简单的重试逻辑
+            if task.can_retry():
+                retry_task = task.increment_retry()
+                self.logger.info(
+                    f"[任务处理] 重试任务 - ID: {task.task_id}, "
+                    f"股票: {task.symbol}, 新重试次数: {retry_task.retry_count}/{task.max_retries}"
                 )
-                
-                # 发送任务失败事件
-                task_failed(
-                    task_id=task.task_id,
-                    symbol=task.symbol,
-                    message=str(e)
-                )
+                try:
+                    self.task_queue.put(retry_task, timeout=1.0)
+                except Full:
+                    self.logger.error(f"[任务处理] 重试队列已满 - ID: {task.task_id}, 股票: {task.symbol}")
+                    self._handle_final_failure(task, e)
+            else:
+                self._handle_final_failure(task, e)
+    
+    def _handle_final_failure(self, task: DownloadTask, error: Exception):
+        """处理最终失败的任务"""
+        self.stats.increment_failed()
+        self.logger.error(
+            f"[任务处理] 任务最终失败 - ID: {task.task_id}, "
+            f"股票: {task.symbol}, 已达最大重试次数"
+        )
+        
+        # 记录失败任务
+        record_failed_task(
+            task_name=f"{task.task_type.value}_task",
+            entity_id=task.symbol,
+            reason=str(error),
+            error_category="unknown"
+        )
+        
+        # 发送任务失败事件
+        task_failed(
+            task_id=task.task_id,
+            symbol=task.symbol,
+            message=str(error)
+        )
     
     @property
     def is_running(self) -> bool:

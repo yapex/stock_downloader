@@ -4,11 +4,7 @@ import pandas as pd
 import logging
 from ratelimit import limits
 from .utils import normalize_stock_code, is_interval_greater_than_7_days
-from .error_handler import (
-    enhanced_retry,
-    NETWORK_RETRY_STRATEGY,
-    API_LIMIT_RETRY_STRATEGY,
-)
+from .simple_retry import simple_retry
 
 # 限流配置常量
 RATE_LIMIT_CALLS = 190  # API调用次数限制
@@ -20,29 +16,54 @@ logger = logging.getLogger(__name__)
 class TushareFetcher:
     """
     封装 Tushare Pro API 的数据获取器。
+    
+    通过构造函数注入 token，避免直接依赖环境变量。
+    延迟验证 API 连接，避免构造函数中的网络调用。
     """
 
-    def __init__(self):
+    def __init__(self, token: str):
         """
         初始化 TushareFetcher
-        """
         
-        token = os.getenv("TUSHARE_TOKEN")
-        if not token:
-            raise ValueError("错误：未设置 TUSHARE_TOKEN 环境变量。")
-        ts.set_token(token)
+        Args:
+            token: Tushare Pro API token
+            
+        Raises:
+            ValueError: 当 token 为空或无效时
+        """
+        if not token or not token.strip():
+            raise ValueError("Tushare token 不能为空")
+            
+        self.logger = logging.getLogger(__name__)
+        
+        # 设置 token 并初始化 API
+        self._token = token.strip()
+        ts.set_token(self._token)
         self.pro = ts.pro_api()
+        self._verified = False
+    
+    def verify_connection(self) -> bool:
+        """
+        验证 API 连接是否正常
+        
+        Returns:
+            bool: 连接正常返回 True，否则返回 False
+        """
         try:
             self.pro.trade_cal(exchange="SSE", limit=1)
-            logger.debug("Tushare Pro API 初始化并验证成功。")
+            self._verified = True
+            logger.debug("Tushare Pro API 连接验证成功")
+            return True
         except Exception as e:
-            logger.error(f"Tushare Pro API 初始化或验证失败: {e}")
+            logger.error(f"Tushare Pro API 连接验证失败: {e}")
+            self._verified = False
+            return False
     
 
     
 
 
-    @enhanced_retry(strategy=NETWORK_RETRY_STRATEGY, task_name="获取A股列表")
+    @simple_retry(max_retries=3, task_name="获取A股列表")
     @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
     def fetch_stock_list(self) -> pd.DataFrame | None:
         """获取所有A股的列表。"""
@@ -59,7 +80,7 @@ class TushareFetcher:
             logger.warning(f"[API调用失败] 获取A股列表失败: {e}")
             raise
 
-    @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="日K线数据")
+    @simple_retry(max_retries=3, task_name="日K线数据")
     @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
     def fetch_daily_history(
         self, ts_code: str, start_date: str, end_date: str, adjust: str
@@ -101,7 +122,7 @@ class TushareFetcher:
 
         return df
 
-    @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="每日指标")
+    @simple_retry(max_retries=3, task_name="每日指标")
     @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
     def fetch_daily_basic(
         self, ts_code: str, start_date: str, end_date: str
@@ -134,7 +155,7 @@ class TushareFetcher:
             raise
 
     # ---> 新增的财务报表获取方法 <---
-    @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="财务报表-利润表")
+    @simple_retry(max_retries=3, task_name="财务报表-利润表")
     @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
     def fetch_income(
         self, ts_code: str, start_date: str, end_date: str
@@ -159,7 +180,7 @@ class TushareFetcher:
             logger.warning(f"[API调用失败] 利润表获取失败 - 股票: {normalized_code}, 错误: {e}")
             raise
 
-    @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="财务报表-资产负债表")
+    @simple_retry(max_retries=3, task_name="财务报表-资产负债表")
     @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
     def fetch_balancesheet(
         self, ts_code: str, start_date: str, end_date: str
@@ -184,7 +205,7 @@ class TushareFetcher:
             logger.warning(f"[API调用失败] 资产负债表获取失败 - 股票: {normalized_code}, 错误: {e}")
             raise
 
-    @enhanced_retry(strategy=API_LIMIT_RETRY_STRATEGY, task_name="财务报表-现金流量表")
+    @simple_retry(max_retries=3, task_name="财务报表-现金流量表")
     @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
     def fetch_cashflow(
         self, ts_code: str, start_date: str, end_date: str

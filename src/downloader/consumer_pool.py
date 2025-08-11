@@ -18,11 +18,7 @@ import pandas as pd
 from .models import DataBatch
 from .storage import DuckDBStorage
 from .storage_factory import get_storage
-from .error_handler import (
-    enhanced_retry,
-    classify_error,
-    CONSERVATIVE_RETRY_STRATEGY
-)
+from .simple_retry import simple_retry
 from .utils import record_failed_task
 from .progress_events import batch_completed
 
@@ -191,7 +187,7 @@ class ConsumerWorker:
                 self.logger.error(f"Worker {self.worker_id}: 批量插入失败 {cache_key}: {e}")
                 self._handle_flush_error(cache_key, batches, e)
     
-    @enhanced_retry(strategy=CONSERVATIVE_RETRY_STRATEGY, task_name="bulk_insert")
+    @simple_retry(max_retries=2, task_name="bulk_insert")
     def _bulk_insert_batches(self, cache_key: str, batches: List[DataBatch]) -> None:
         """批量插入数据批次到数据库"""
         if not batches:
@@ -261,14 +257,12 @@ class ConsumerWorker:
     
     def _handle_batch_error(self, batch: DataBatch, error: Exception) -> None:
         """处理批次处理错误"""
-        error_category = classify_error(error)
-        
         # 记录失败的批次
         record_failed_task(
             task_name=f"process_batch_worker_{self.worker_id}",
             entity_id=batch.symbol or batch.batch_id,
             reason=str(error),
-            error_category=error_category.value
+            error_category="unknown"
         )
         
         self.failed_operations += 1
@@ -276,14 +270,12 @@ class ConsumerWorker:
     
     def _handle_flush_error(self, cache_key: str, batches: List[DataBatch], error: Exception) -> None:
         """处理刷新错误，将失败的批次写入死信"""
-        error_category = classify_error(error)
-        
         for batch in batches:
             record_failed_task(
                 task_name=f"bulk_insert_worker_{self.worker_id}",
                 entity_id=batch.symbol or cache_key,
                 reason=f"flush_failed_{error}",
-                error_category=error_category.value
+                error_category="unknown"
             )
         
         self.failed_operations += 1

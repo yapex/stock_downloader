@@ -12,7 +12,7 @@ from ..storage import DuckDBStorage
 
 # 从新的 utils 模块导入工具函数
 from ..utils import record_failed_task
-from ..error_handler import is_test_task, classify_error
+# 移除对error_handler的依赖
 
 
 class BaseTaskHandler(ABC):
@@ -203,15 +203,12 @@ class IncrementalTaskHandler(BaseTaskHandler):
 
         except Exception as e:
             # Task层的异常（通常是非网络相关的逻辑错误）
-            error_category = classify_error(e)
-            task_category = "test" if is_test_task(task_name) else error_category.value
-            
             self._log_error(f"❌ 处理股票 {ts_code} 时发生错误: {e}")
             record_failed_task(
                 task_name, 
                 f"{data_type}_{ts_code}", 
                 str(e),
-                task_category
+                "unknown"
             )
             return False
 

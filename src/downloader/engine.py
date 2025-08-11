@@ -8,13 +8,13 @@ from typing import Dict, List, Any, Optional
 from time import sleep
 
 from .fetcher import TushareFetcher
-from .fetcher_factory import get_fetcher, get_fetcher_instance_info
+from .fetcher_factory import get_singleton, _get_instance_info
 from .storage import DuckDBStorage
 from .storage_factory import get_storage
 from .producer import Producer
 from .consumer_pool import ConsumerPool
 from .models import DownloadTask, TaskType, Priority
-from .retry_policy import RetryPolicy, DEFAULT_RETRY_POLICY
+# 移除对retry_policy的依赖
 from .progress_events import (
     progress_event_manager, start_phase, end_phase, update_total, ProgressPhase
 )
@@ -70,9 +70,7 @@ class DownloadEngine:
         self.submit_delay = downloader_config.get("submit_delay", 1.0)  # 批次间延迟（秒）
         self.queue_high_watermark = downloader_config.get("queue_high_watermark", 0.8)  # 队列高水位线
 
-        # 重试策略
-        retry_config = downloader_config.get("retry_policy", {})
-        self.retry_policy = self._build_retry_policy(retry_config)
+        # 移除重试策略配置
 
         # 任务发现（不依赖数据库连接）
         self.task_registry = self._discover_task_handlers()
@@ -102,17 +100,7 @@ class DownloadEngine:
             logger.error(f"自动发现任务处理器时发生错误: {e}", exc_info=True)
         return registry
 
-    def _build_retry_policy(self, retry_config: Dict[str, Any]) -> RetryPolicy:
-        """构建重试策略"""
-        if not retry_config:
-            return DEFAULT_RETRY_POLICY
-
-        return RetryPolicy(
-            max_attempts=retry_config.get("max_attempts", 3),
-            base_delay=retry_config.get("base_delay", 1.0),
-            max_delay=retry_config.get("max_delay", 30.0),
-            backoff_factor=retry_config.get("backoff_factor", 2.0),
-        )
+# 移除复杂的重试策略构建
 
     def _setup_queues(self) -> None:
         """初始化队列和线程池"""
@@ -1138,10 +1126,10 @@ class DownloadEngine:
         """获取fetcher单例实例"""
         if self._singleton_fetcher is None:
             logger.info("初始化TushareFetcher单例实例")
-            self._singleton_fetcher = get_fetcher(use_singleton=True)
+            self._singleton_fetcher = get_singleton()
             
             # 记录fetcher实例信息
-            instance_info = get_fetcher_instance_info()
+            instance_info = _get_instance_info()
             logger.info(f"TushareFetcher实例信息: {instance_info}")
             
         return self._singleton_fetcher

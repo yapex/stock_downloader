@@ -17,11 +17,15 @@ class TestRateLimitFix:
         mock_ts.set_token.return_value = None
         mock_pro.trade_cal.return_value = MagicMock()
         
-        TushareFetcher()
+        fetcher = TushareFetcher("test_token")
         
         # 验证tushare API初始化
-        mock_ts.set_token.assert_called_once()
+        mock_ts.set_token.assert_called_once_with("test_token")
         mock_ts.pro_api.assert_called_once()
+        
+        # 验证手动连接验证
+        result = fetcher.verify_connection()
+        assert result is True
         mock_pro.trade_cal.assert_called_once()
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
@@ -34,7 +38,7 @@ class TestRateLimitFix:
         mock_ts.set_token.return_value = None
         mock_pro.trade_cal.return_value = MagicMock()
         
-        fetcher = TushareFetcher()
+        fetcher = TushareFetcher("test_token")
         
         # 检查关键方法是否存在ratelimit装饰器
         methods_to_check = [
@@ -70,7 +74,7 @@ class TestRateLimitFix:
         mock_pro.balancesheet.return_value = financial_data
         mock_pro.cashflow.return_value = financial_data
         
-        fetcher = TushareFetcher()
+        fetcher = TushareFetcher("test_token")
         
         # 测试股票列表获取
         result = fetcher.fetch_stock_list()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TushareFetcher工厂和单例实现
+TushareFetcher工厂实现
 
 解决问题：
 1. 确保整个应用只有一个TushareFetcher实例
@@ -8,6 +8,7 @@ TushareFetcher工厂和单例实现
 3. 提供统一的fetcher创建入口
 """
 
+import os
 import threading
 import logging
 from typing import Optional
@@ -16,160 +17,124 @@ from .fetcher import TushareFetcher
 logger = logging.getLogger(__name__)
 
 
-class TushareFetcherSingleton:
+class TushareFetcherFactory:
     """
-    TushareFetcher单例实现
+    TushareFetcher工厂类
     
-    确保整个应用程序只有一个TushareFetcher实例，
-    避免多实例导致的ratelimit计数器分散问题。
+    提供统一的fetcher创建接口，使用单例模式确保全局唯一实例。
     """
     
     _instance: Optional[TushareFetcher] = None
     _lock = threading.Lock()
     _initialized = False
     
-    @classmethod
-    def get_instance(cls, **kwargs) -> TushareFetcher:
+    @staticmethod
+    def get_instance() -> TushareFetcher:
         """
         获取TushareFetcher单例实例
         
-        Args:
-            **kwargs: 传递给TushareFetcher构造函数的参数
+        从环境变量读取TUSHARE_TOKEN并创建实例
             
         Returns:
             TushareFetcher: 单例实例
+            
+        Raises:
+            ValueError: 当未设置TUSHARE_TOKEN环境变量时
         """
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
+        if TushareFetcherFactory._instance is None:
+            with TushareFetcherFactory._lock:
+                if TushareFetcherFactory._instance is None:
+                    token = os.getenv("TUSHARE_TOKEN")
+                    if not token:
+                        raise ValueError("错误：未设置 TUSHARE_TOKEN 环境变量")
+                    
                     logger.info("创建TushareFetcher单例实例")
-                    cls._instance = TushareFetcher(**kwargs)
-                    cls._initialized = True
-                    logger.info(f"TushareFetcher单例实例创建完成，实例ID: {id(cls._instance)}")
+                    TushareFetcherFactory._instance = TushareFetcher(token)
+                    TushareFetcherFactory._initialized = True
+                    logger.info(f"TushareFetcher单例实例创建完成，实例ID: {id(TushareFetcherFactory._instance)}")
                 else:
-                    logger.debug(f"返回已存在的TushareFetcher单例实例，实例ID: {id(cls._instance)}")
+                    logger.debug(f"返回已存在的TushareFetcher单例实例，实例ID: {id(TushareFetcherFactory._instance)}")
         else:
-            logger.debug(f"返回已存在的TushareFetcher单例实例，实例ID: {id(cls._instance)}")
+            logger.debug(f"返回已存在的TushareFetcher单例实例，实例ID: {id(TushareFetcherFactory._instance)}")
         
-        return cls._instance
+        return TushareFetcherFactory._instance
     
-    @classmethod
-    def reset(cls) -> None:
+    @staticmethod
+    def reset() -> None:
         """
         重置单例实例（主要用于测试）
         """
-        with cls._lock:
-            if cls._instance is not None:
-                logger.info(f"重置TushareFetcher单例实例，原实例ID: {id(cls._instance)}")
-            cls._instance = None
-            cls._initialized = False
+        with TushareFetcherFactory._lock:
+            if TushareFetcherFactory._instance is not None:
+                logger.info(f"重置TushareFetcher单例实例，原实例ID: {id(TushareFetcherFactory._instance)}")
+            TushareFetcherFactory._instance = None
+            TushareFetcherFactory._initialized = False
     
-    @classmethod
-    def is_initialized(cls) -> bool:
+    @staticmethod
+    def is_initialized() -> bool:
         """
         检查单例是否已初始化
         
         Returns:
             bool: 是否已初始化
         """
-        return cls._initialized
+        return TushareFetcherFactory._initialized
     
-    @classmethod
-    def get_instance_id(cls) -> Optional[int]:
+    @staticmethod
+    def get_instance_id() -> Optional[int]:
         """
         获取当前实例的ID（用于调试）
         
         Returns:
             Optional[int]: 实例ID，如果未初始化则返回None
         """
-        return id(cls._instance) if cls._instance else None
+        return id(TushareFetcherFactory._instance) if TushareFetcherFactory._instance else None
 
 
-class TushareFetcherFactory:
+# 对外接口
+def get_singleton() -> TushareFetcher:
     """
-    TushareFetcher工厂类
-    
-    提供统一的fetcher创建接口，支持单例和非单例模式。
+    获取TushareFetcher单例实例
+        
+    Returns:
+        TushareFetcher: 单例实例
     """
-    
-    @staticmethod
-    def create_fetcher(use_singleton: bool = True, **kwargs) -> TushareFetcher:
-        """
-        创建TushareFetcher实例
-        
-        Args:
-            use_singleton: 是否使用单例模式，默认True
-            **kwargs: 传递给TushareFetcher构造函数的参数
-            
-        Returns:
-            TushareFetcher: fetcher实例
-        """
-        if use_singleton:
-            logger.debug("使用单例模式创建TushareFetcher")
-            return TushareFetcherSingleton.get_instance(**kwargs)
-        else:
-            logger.debug("创建新的TushareFetcher实例")
-            return TushareFetcher(**kwargs)
-    
-    @staticmethod
-    def get_singleton() -> Optional[TushareFetcher]:
-        """
-        获取单例实例（如果存在）
-        
-        Returns:
-            Optional[TushareFetcher]: 单例实例，如果不存在则返回None
-        """
-        return TushareFetcherSingleton._instance
-    
-    @staticmethod
-    def reset_singleton() -> None:
-        """
-        重置单例实例
-        """
-        TushareFetcherSingleton.reset()
-    
-    @staticmethod
-    def is_singleton_initialized() -> bool:
-        """
-        检查单例是否已初始化
-        
-        Returns:
-            bool: 是否已初始化
-        """
-        return TushareFetcherSingleton.is_initialized()
+    return TushareFetcherFactory.get_instance()
 
 
-# 便捷函数
-def get_fetcher(use_singleton: bool = True, **kwargs) -> TushareFetcher:
+# 向后兼容接口
+def get_fetcher(use_singleton: bool = True) -> TushareFetcher:
     """
-    便捷函数：获取TushareFetcher实例
+    向后兼容接口：获取TushareFetcher实例
     
     Args:
-        use_singleton: 是否使用单例模式，默认True
-        **kwargs: 传递给TushareFetcher构造函数的参数
+        use_singleton: 是否使用单例模式，默认True（非单例模式已废弃）
         
     Returns:
         TushareFetcher: fetcher实例
     """
-    return TushareFetcherFactory.create_fetcher(use_singleton=use_singleton, **kwargs)
+    if not use_singleton:
+        logger.warning("非单例模式已废弃，将使用单例模式")
+    return get_singleton()
 
 
-def reset_fetcher_singleton() -> None:
+# 内部使用的调试和测试接口
+def _reset_singleton() -> None:
     """
-    便捷函数：重置fetcher单例
+    重置fetcher单例（仅供测试使用）
     """
-    TushareFetcherFactory.reset_singleton()
+    TushareFetcherFactory.reset()
 
 
-def get_fetcher_instance_info() -> dict:
+def _get_instance_info() -> dict:
     """
-    获取fetcher实例信息（用于调试）
+    获取fetcher实例信息（仅供调试使用）
     
     Returns:
         dict: 包含实例信息的字典
     """
     return {
-        "is_singleton_initialized": TushareFetcherSingleton.is_initialized(),
-        "singleton_instance_id": TushareFetcherSingleton.get_instance_id(),
-        "singleton_exists": TushareFetcherSingleton._instance is not None
+        "is_singleton_initialized": TushareFetcherFactory.is_initialized(),
+        "singleton_instance_id": TushareFetcherFactory.get_instance_id(),
+        "singleton_exists": TushareFetcherFactory._instance is not None
     }

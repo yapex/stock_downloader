@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, Any
 from .config import load_config
 from .engine import DownloadEngine
 from .fetcher import TushareFetcher
-from .fetcher_factory import get_fetcher
+from .fetcher_factory import get_singleton
 from .storage import PartitionedStorage
 from .storage_factory import get_storage
 
@@ -64,7 +64,7 @@ class DownloaderApp:
         Returns:
             (fetcher, storage) 元组
         """
-        fetcher = get_fetcher(use_singleton=True)
+        fetcher = get_singleton()
         storage = get_storage(
             db_path=config.get("storage", {}).get("db_path", "data/stock.db")
         )

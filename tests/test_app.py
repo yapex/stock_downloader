@@ -103,9 +103,9 @@ class TestDownloaderApp:
         assert overridden is True
 
     def test_create_components(self, downloader_app, sample_config):
-        with patch('downloader.app.get_fetcher') as mock_get_fetcher, \
+        with patch('downloader.app.get_singleton') as mock_get_singleton, \
              patch('downloader.app.get_storage') as mock_get_storage:
-            mock_get_fetcher.return_value = "fetcher_instance"
+            mock_get_singleton.return_value = "fetcher_instance"
             mock_get_storage.return_value = "storage_instance"
             
             fetcher, storage = downloader_app.create_components(sample_config)
@@ -114,19 +114,19 @@ class TestDownloaderApp:
             assert storage == "storage_instance"
             
             # 验证调用参数
-            mock_get_fetcher.assert_called_once_with(use_singleton=True)
+            mock_get_singleton.assert_called_once_with()
             mock_get_storage.assert_called_once_with(db_path=sample_config["storage"]["db_path"])
 
     def test_create_components_default_storage_path(self, downloader_app):
         config = {}
 
-        with patch('downloader.app.get_fetcher') as mock_get_fetcher, \
+        with patch('downloader.app.get_singleton') as mock_get_singleton, \
              patch('downloader.app.get_storage') as mock_get_storage:
 
             downloader_app.create_components(config)
 
             # 验证调用参数
-            mock_get_fetcher.assert_called_once_with(use_singleton=True)
+            mock_get_singleton.assert_called_once_with()
             mock_get_storage.assert_called_once_with(db_path="data/stock.db")
 
     @patch('downloader.app.DownloadEngine')
