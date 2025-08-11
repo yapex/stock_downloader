@@ -3,14 +3,15 @@
 import os
 import pytest
 from unittest.mock import patch, MagicMock
-from src.downloader.fetcher_factory import (
+from downloader.fetcher_factory import (
     TushareFetcherFactory,
+    TushareFetcherTestHelper,
     get_singleton,
     get_fetcher,
     _reset_singleton,
     _get_instance_info
 )
-from src.downloader.fetcher import TushareFetcher
+from downloader.fetcher import TushareFetcher
 
 
 class TestTushareFetcherFactory:
@@ -25,7 +26,7 @@ class TestTushareFetcherFactory:
         TushareFetcherFactory.reset()
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token_123'})
-    @patch('src.downloader.fetcher_factory.TushareFetcher')
+    @patch('downloader.fetcher_factory.TushareFetcher')
     def test_get_instance_success(self, mock_fetcher_class):
         """测试成功获取单例实例"""
         mock_instance = MagicMock()
@@ -44,7 +45,7 @@ class TestTushareFetcherFactory:
         mock_fetcher_class.assert_called_once()
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
-    @patch('src.downloader.fetcher_factory.TushareFetcher')
+    @patch('downloader.fetcher_factory.TushareFetcher')
     def test_get_instance_already_exists(self, mock_fetcher_class):
         """测试当实例已存在时直接返回"""
         mock_instance = MagicMock()
@@ -73,7 +74,7 @@ class TestTushareFetcherFactory:
             TushareFetcherFactory.get_instance()
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
-    @patch('src.downloader.fetcher_factory.TushareFetcher')
+    @patch('downloader.fetcher_factory.TushareFetcher')
     def test_reset(self, mock_fetcher_class):
         """测试重置单例"""
         mock_instance = MagicMock()
@@ -81,11 +82,11 @@ class TestTushareFetcherFactory:
         
         # 创建实例
         instance1 = TushareFetcherFactory.get_instance()
-        assert TushareFetcherFactory.is_initialized()
+        assert TushareFetcherTestHelper.is_singleton_initialized()
         
         # 重置
         TushareFetcherFactory.reset()
-        assert not TushareFetcherFactory.is_initialized()
+        assert not TushareFetcherTestHelper.is_singleton_initialized()
         assert TushareFetcherFactory._instance is None
         
         # 重新创建应该是新实例
@@ -95,27 +96,27 @@ class TestTushareFetcherFactory:
     def test_is_initialized(self):
         """测试初始化状态检查"""
         # 初始状态
-        assert not TushareFetcherFactory.is_initialized()
+        assert not TushareFetcherTestHelper.is_singleton_initialized()
         
         # 创建实例后
         with patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'}):
-            with patch('src.downloader.fetcher_factory.TushareFetcher'):
+            with patch('downloader.fetcher_factory.TushareFetcher'):
                 TushareFetcherFactory.get_instance()
-                assert TushareFetcherFactory.is_initialized()
+                assert TushareFetcherTestHelper.is_singleton_initialized()
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
-    @patch('src.downloader.fetcher_factory.TushareFetcher')
+    @patch('downloader.fetcher_factory.TushareFetcher')
     def test_get_instance_id(self, mock_fetcher_class):
         """测试获取实例ID"""
         # 未初始化时
-        assert TushareFetcherFactory.get_instance_id() is None
+        assert TushareFetcherTestHelper.get_singleton_instance_id() is None
         
         # 创建实例后
         mock_instance = MagicMock()
         mock_fetcher_class.return_value = mock_instance
         
         TushareFetcherFactory.get_instance()
-        instance_id = TushareFetcherFactory.get_instance_id()
+        instance_id = TushareFetcherTestHelper.get_singleton_instance_id()
         assert instance_id == id(mock_instance)
 
 
@@ -131,7 +132,7 @@ class TestModuleFunctions:
         _reset_singleton()
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
-    @patch('src.downloader.fetcher_factory.TushareFetcher')
+    @patch('downloader.fetcher_factory.TushareFetcher')
     def test_get_singleton(self, mock_fetcher_class):
         """测试 get_singleton 函数"""
         mock_instance = MagicMock()
@@ -142,7 +143,7 @@ class TestModuleFunctions:
         mock_fetcher_class.assert_called_once_with('test_token')
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
-    @patch('src.downloader.fetcher_factory.TushareFetcher')
+    @patch('downloader.fetcher_factory.TushareFetcher')
     def test_get_fetcher_singleton_mode(self, mock_fetcher_class):
         """测试 get_fetcher 函数（单例模式）"""
         mock_instance = MagicMock()
@@ -152,13 +153,13 @@ class TestModuleFunctions:
         assert result == mock_instance
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
-    @patch('src.downloader.fetcher_factory.TushareFetcher')
+    @patch('downloader.fetcher_factory.TushareFetcher')
     def test_get_fetcher_non_singleton_mode_deprecated(self, mock_fetcher_class):
         """测试 get_fetcher 函数（非单例模式已废弃）"""
         mock_instance = MagicMock()
         mock_fetcher_class.return_value = mock_instance
         
-        with patch('src.downloader.fetcher_factory.logger') as mock_logger:
+        with patch('downloader.fetcher_factory.logger') as mock_logger:
             result = get_fetcher(use_singleton=False)
             assert result == mock_instance
             mock_logger.warning.assert_called_once_with("非单例模式已废弃，将使用单例模式")
@@ -169,21 +170,21 @@ class TestModuleFunctions:
             with patch('src.downloader.fetcher_factory.TushareFetcher'):
                 # 创建实例
                 get_singleton()
-                assert TushareFetcherFactory.is_initialized()
+                assert TushareFetcherTestHelper.is_singleton_initialized()
                 
                 # 重置
                 _reset_singleton()
-                assert not TushareFetcherFactory.is_initialized()
+                assert not TushareFetcherTestHelper.is_singleton_initialized()
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
-    @patch('src.downloader.fetcher_factory.TushareFetcher')
+    @patch('downloader.fetcher_factory.TushareFetcher')
     def test_get_instance_info(self, mock_fetcher_class):
         """测试 _get_instance_info 函数"""
         # 未初始化时
         info = _get_instance_info()
         assert info['is_singleton_initialized'] is False
         assert info['singleton_instance_id'] is None
-        assert info['singleton_exists'] is False
+        assert info['singleton_instance_exists'] is False
         
         # 创建实例后
         mock_instance = MagicMock()
@@ -193,7 +194,7 @@ class TestModuleFunctions:
         info = _get_instance_info()
         assert info['is_singleton_initialized'] is True
         assert info['singleton_instance_id'] == id(mock_instance)
-        assert info['singleton_exists'] is True
+        assert info['singleton_instance_exists'] is True
 
 
 class TestThreadSafety:
@@ -208,7 +209,7 @@ class TestThreadSafety:
         TushareFetcherFactory.reset()
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
-    @patch('src.downloader.fetcher_factory.TushareFetcher')
+    @patch('downloader.fetcher_factory.TushareFetcher')
     def test_concurrent_access(self, mock_fetcher_class):
         """测试并发访问时的线程安全性"""
         import threading
@@ -245,7 +246,7 @@ class TestThreadSafety:
         mock_fetcher_class.assert_called_once()
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
-    @patch('src.downloader.fetcher_factory.TushareFetcher')
+    @patch('downloader.fetcher_factory.TushareFetcher')
     def test_concurrent_access_with_lock_contention(self, mock_fetcher_class):
         """测试锁竞争情况下的线程安全性"""
         import threading

@@ -75,9 +75,9 @@ class TushareFetcherFactory:
             TushareFetcherFactory._initialized = False
     
     @staticmethod
-    def is_initialized() -> bool:
+    def _is_initialized() -> bool:
         """
-        检查单例是否已初始化
+        检查单例是否已初始化（内部使用）
         
         Returns:
             bool: 是否已初始化
@@ -85,9 +85,9 @@ class TushareFetcherFactory:
         return TushareFetcherFactory._initialized
     
     @staticmethod
-    def get_instance_id() -> Optional[int]:
+    def _get_instance_id() -> Optional[int]:
         """
-        获取当前实例的ID（用于调试）
+        获取当前实例的ID（内部调试使用）
         
         Returns:
             Optional[int]: 实例ID，如果未初始化则返回None
@@ -125,9 +125,9 @@ class TushareFetcherFactory:
         return TushareFetcherFactory._thread_local.instance
     
     @staticmethod
-    def reset_thread_local() -> None:
+    def _reset_thread_local() -> None:
         """
-        重置当前线程的fetcher实例（主要用于测试）
+        重置当前线程的fetcher实例（内部测试使用）
         """
         if hasattr(TushareFetcherFactory._thread_local, 'instance'):
             thread_id = threading.get_ident()
@@ -135,9 +135,9 @@ class TushareFetcherFactory:
             delattr(TushareFetcherFactory._thread_local, 'instance')
     
     @staticmethod
-    def has_thread_local_instance() -> bool:
+    def _has_thread_local_instance() -> bool:
         """
-        检查当前线程是否已有fetcher实例
+        检查当前线程是否已有fetcher实例（内部使用）
         
         Returns:
             bool: 当前线程是否已有实例
@@ -145,9 +145,9 @@ class TushareFetcherFactory:
         return hasattr(TushareFetcherFactory._thread_local, 'instance')
     
     @staticmethod
-    def get_thread_local_instance_id() -> Optional[int]:
+    def _get_thread_local_instance_id() -> Optional[int]:
         """
-        获取当前线程fetcher实例的ID（用于调试）
+        获取当前线程fetcher实例的ID（内部调试使用）
         
         Returns:
             Optional[int]: 实例ID，如果当前线程未初始化则返回None
@@ -155,6 +155,45 @@ class TushareFetcherFactory:
         if hasattr(TushareFetcherFactory._thread_local, 'instance'):
             return id(TushareFetcherFactory._thread_local.instance)
         return None
+
+
+class TushareFetcherTestHelper:
+    """
+    TushareFetcher测试辅助类
+    
+    提供测试所需的内部状态查询和重置功能。
+    仅用于测试，不应在生产代码中使用。
+    """
+    
+    @staticmethod
+    def is_singleton_initialized() -> bool:
+        """检查单例是否已初始化"""
+        return TushareFetcherFactory._is_initialized()
+    
+    @staticmethod
+    def get_singleton_instance_id() -> Optional[int]:
+        """获取单例实例ID"""
+        return TushareFetcherFactory._get_instance_id()
+    
+    @staticmethod
+    def reset_singleton() -> None:
+        """重置单例实例"""
+        TushareFetcherFactory.reset()
+    
+    @staticmethod
+    def has_thread_local_instance() -> bool:
+        """检查当前线程是否有实例"""
+        return TushareFetcherFactory._has_thread_local_instance()
+    
+    @staticmethod
+    def get_thread_local_instance_id() -> Optional[int]:
+        """获取线程本地实例ID"""
+        return TushareFetcherFactory._get_thread_local_instance_id()
+    
+    @staticmethod
+    def reset_thread_local() -> None:
+        """重置线程本地实例"""
+        TushareFetcherFactory._reset_thread_local()
 
 
 # 对外接口
@@ -207,13 +246,13 @@ def _reset_singleton() -> None:
 
 def _get_instance_info() -> dict:
     """
-    获取fetcher实例信息（仅供调试使用）
+    获取实例信息（用于调试和测试）
     
     Returns:
         dict: 包含实例信息的字典
     """
     return {
-        "is_singleton_initialized": TushareFetcherFactory.is_initialized(),
-        "singleton_instance_id": TushareFetcherFactory.get_instance_id(),
-        "singleton_exists": TushareFetcherFactory._instance is not None
+        "is_singleton_initialized": TushareFetcherFactory._is_initialized(),
+        "singleton_instance_id": TushareFetcherFactory._get_instance_id(),
+        "singleton_instance_exists": TushareFetcherFactory._instance is not None,
     }

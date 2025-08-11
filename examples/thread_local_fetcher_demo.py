@@ -25,7 +25,8 @@ os.environ['TUSHARE_TOKEN'] = 'demo_token_for_testing'
 
 from downloader.fetcher_factory import (
     get_thread_local_fetcher,
-    TushareFetcherFactory
+    TushareFetcherFactory,
+    TushareFetcherTestHelper
 )
 
 
@@ -201,8 +202,8 @@ def demonstrate_factory_status():
     logger.info("=== 演示工厂状态查询 ===")
     
     # 检查当前线程状态
-    has_instance = TushareFetcherFactory.has_thread_local_instance()
-    instance_id = TushareFetcherFactory.get_thread_local_instance_id()
+    has_instance = TushareFetcherTestHelper.has_thread_local_instance()
+    instance_id = TushareFetcherTestHelper.get_thread_local_instance_id()
     
     logger.info(f"当前线程是否有fetcher实例: {has_instance}")
     logger.info(f"当前线程fetcher实例ID: {instance_id}")
@@ -213,8 +214,8 @@ def demonstrate_factory_status():
         logger.info(f"新实例ID: {id(fetcher)}")
     
     # 重新检查状态
-    has_instance_after = TushareFetcherFactory.has_thread_local_instance()
-    instance_id_after = TushareFetcherFactory.get_thread_local_instance_id()
+    has_instance_after = TushareFetcherTestHelper.has_thread_local_instance()
+    instance_id_after = TushareFetcherTestHelper.get_thread_local_instance_id()
     
     logger.info(f"创建后 - 是否有实例: {has_instance_after}")
     logger.info(f"创建后 - 实例ID: {instance_id_after}")

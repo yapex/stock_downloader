@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock
 
 from downloader.fetcher_factory import (
     TushareFetcherFactory,
+    TushareFetcherTestHelper,
     get_thread_local_fetcher
 )
 from downloader.fetcher import TushareFetcher
@@ -16,26 +17,26 @@ class TestThreadLocalFetcher:
     
     def setup_method(self):
         """每个测试前重置状态"""
-        TushareFetcherFactory.reset_thread_local()
+        TushareFetcherTestHelper.reset_thread_local()
     
     def teardown_method(self):
         """每个测试后清理状态"""
-        TushareFetcherFactory.reset_thread_local()
+        TushareFetcherTestHelper.reset_thread_local()
     
     @patch.dict(os.environ, {'TUSHARE_TOKEN': 'test_token'})
     def test_get_thread_local_instance_creates_new_instance(self):
         """测试获取线程本地实例会创建新实例"""
         # 初始状态下没有实例
-        assert not TushareFetcherFactory.has_thread_local_instance()
-        assert TushareFetcherFactory.get_thread_local_instance_id() is None
+        assert not TushareFetcherTestHelper.has_thread_local_instance()
+        assert TushareFetcherTestHelper.get_thread_local_instance_id() is None
         
         # 获取实例
         fetcher = TushareFetcherFactory.get_thread_local_instance()
         
         # 验证实例已创建
         assert isinstance(fetcher, TushareFetcher)
-        assert TushareFetcherFactory.has_thread_local_instance()
-        assert TushareFetcherFactory.get_thread_local_instance_id() is not None
+        assert TushareFetcherTestHelper.has_thread_local_instance()
+        assert TushareFetcherTestHelper.get_thread_local_instance_id() is not None
     
     @patch.dict(os.environ, {'TUSHARE_TOKEN': 'test_token'})
     def test_get_thread_local_instance_returns_same_instance(self):
@@ -46,7 +47,7 @@ class TestThreadLocalFetcher:
         # 验证是同一个实例
         assert fetcher1 is fetcher2
         assert id(fetcher1) == id(fetcher2)
-        assert TushareFetcherFactory.get_thread_local_instance_id() == id(fetcher1)
+        assert TushareFetcherTestHelper.get_thread_local_instance_id() == id(fetcher1)
     
     def test_get_thread_local_instance_without_token_raises_error(self):
         """测试没有token时抛出异常"""
@@ -62,30 +63,35 @@ class TestThreadLocalFetcher:
         instance_id = id(fetcher)
         
         # 验证实例存在
-        assert TushareFetcherFactory.has_thread_local_instance()
-        assert TushareFetcherFactory.get_thread_local_instance_id() == instance_id
+        assert TushareFetcherTestHelper.has_thread_local_instance()
+        assert TushareFetcherTestHelper.get_thread_local_instance_id() == instance_id
         
         # 重置实例
-        TushareFetcherFactory.reset_thread_local()
+        TushareFetcherTestHelper.reset_thread_local()
         
         # 验证实例已清除
-        assert not TushareFetcherFactory.has_thread_local_instance()
-        assert TushareFetcherFactory.get_thread_local_instance_id() is None
+        assert not TushareFetcherTestHelper.has_thread_local_instance()
+        assert TushareFetcherTestHelper.get_thread_local_instance_id() is None
     
     @patch.dict(os.environ, {'TUSHARE_TOKEN': 'test_token'})
     def test_different_threads_get_different_instances(self):
-        """测试不同线程获取不同的实例"""
+        """测试不同线程获得不同的实例"""
         results = {}
+        barrier = threading.Barrier(3)  # 同步屏障，确保所有线程同时开始
         
         def thread_worker(thread_name):
             """线程工作函数"""
-            fetcher = TushareFetcherFactory.get_thread_local_instance()
-            results[thread_name] = {
-                'instance_id': id(fetcher),
-                'thread_id': threading.get_ident(),
-                'has_instance': TushareFetcherFactory.has_thread_local_instance(),
-                'factory_instance_id': TushareFetcherFactory.get_thread_local_instance_id()
-            }
+            try:
+                barrier.wait()  # 等待所有线程就绪
+                fetcher = TushareFetcherFactory.get_thread_local_instance()
+                results[thread_name] = {
+                    'instance_id': id(fetcher),
+                    'thread_id': threading.get_ident(),
+                    'has_instance': TushareFetcherTestHelper.has_thread_local_instance(),
+                    'factory_instance_id': TushareFetcherTestHelper.get_thread_local_instance_id()
+                }
+            except Exception as e:
+                results[thread_name] = {'error': str(e)}
         
         # 创建多个线程
         threads = []
@@ -100,6 +106,11 @@ class TestThreadLocalFetcher:
         
         # 验证每个线程都有自己的实例
         assert len(results) == 3
+        
+        # 检查是否有错误
+        for thread_name, result in results.items():
+            assert 'error' not in result, f"Thread {thread_name} failed: {result.get('error')}"
+        
         instance_ids = [result['instance_id'] for result in results.values()]
         thread_ids = [result['thread_id'] for result in results.values()]
         
@@ -129,12 +140,12 @@ class TestThreadLocalFetcher:
         assert global_id != thread_local_id
         
         # 验证全局单例状态不受影响
-        assert TushareFetcherFactory.is_initialized() is True
-        assert TushareFetcherFactory.get_instance_id() == global_id
+        assert TushareFetcherTestHelper.is_singleton_initialized() is True
+        assert TushareFetcherTestHelper.get_singleton_instance_id() == global_id
         
         # 验证线程本地状态独立
-        assert TushareFetcherFactory.has_thread_local_instance() is True
-        assert TushareFetcherFactory.get_thread_local_instance_id() == thread_local_id
+        assert TushareFetcherTestHelper.has_thread_local_instance() is True
+        assert TushareFetcherTestHelper.get_thread_local_instance_id() == thread_local_id
     
     @patch.dict(os.environ, {'TUSHARE_TOKEN': 'test_token'})
     def test_get_thread_local_fetcher_function(self):
@@ -176,11 +187,11 @@ class TestThreadLocalFetcher:
             # 在另一个线程中获取实例
             fetcher = TushareFetcherFactory.get_thread_local_instance()
             other_thread_result['fetcher_id'] = id(fetcher)
-            other_thread_result['has_instance'] = TushareFetcherFactory.has_thread_local_instance()
+            other_thread_result['has_instance'] = TushareFetcherTestHelper.has_thread_local_instance()
             
             # 重置另一个线程的实例
-            TushareFetcherFactory.reset_thread_local()
-            other_thread_result['has_instance_after_reset'] = TushareFetcherFactory.has_thread_local_instance()
+            TushareFetcherTestHelper.reset_thread_local()
+            other_thread_result['has_instance_after_reset'] = TushareFetcherTestHelper.has_thread_local_instance()
         
         thread = threading.Thread(target=other_thread_work)
         thread.start()
@@ -192,6 +203,6 @@ class TestThreadLocalFetcher:
         assert other_thread_result['has_instance_after_reset'] is False
         
         # 验证主线程的实例不受影响
-        assert TushareFetcherFactory.has_thread_local_instance() is True
-        assert TushareFetcherFactory.get_thread_local_instance_id() == main_thread_id
+        assert TushareFetcherTestHelper.has_thread_local_instance() is True
+        assert TushareFetcherTestHelper.get_thread_local_instance_id() == main_thread_id
         assert TushareFetcherFactory.get_thread_local_instance() is main_thread_fetcher
