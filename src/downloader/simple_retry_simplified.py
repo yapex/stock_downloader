@@ -1,20 +1,13 @@
 """简化的重试机制
 
-基于KISS原则，只处理两种核心场景：
-1. RateLimitException: 使用period_remaining等待
-2. 其他错误: 按配置重试次数处理
+基于KISS原则，专注于处理网络错误和API错误的重试。
+速率限制已由 pyrate-limiter 内置阻塞机制处理，无需在此重复处理。
 """
 
 import time
 import logging
 from functools import wraps
-from typing import Callable, Any, Optional
-
-# 定义速率限制异常类（不再依赖 ratelimit 库）
-class RateLimitException(Exception):
-    def __init__(self, message, period_remaining=60.0):
-        super().__init__(message)
-        self.period_remaining = period_remaining
+from typing import Callable, Any
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +27,9 @@ NON_RETRYABLE_PATTERNS = [
 def simple_retry(max_retries: int = 3, task_name: str = "Unknown Task"):
     """简化的重试装饰器
     
+    专注于处理网络错误和临时性API错误的重试。
+    速率限制由 pyrate-limiter 的内置阻塞机制处理。
+    
     Args:
         max_retries: 最大重试次数
         task_name: 任务名称，用于日志
@@ -52,23 +48,6 @@ def simple_retry(max_retries: int = 3, task_name: str = "Unknown Task"):
             for attempt in range(max_retries + 1):
                 try:
                     return func(*args, **kwargs)
-                    
-                except RateLimitException as rate_error:
-                    last_error = rate_error
-                    
-                    if attempt < max_retries:
-                        # 使用API返回的等待时间
-                        period = getattr(rate_error, 'period_remaining', 60.0)
-                        logger.warning(
-                            f"[限流等待] {task_name} - 实体: {entity_id}, 等待 {period} 秒"
-                        )
-                        time.sleep(period)
-                        continue
-                    else:
-                        logger.error(
-                            f"[限流重试] {task_name} 超过最大重试次数 - 实体: {entity_id}"
-                        )
-                        break
                         
                 except Exception as error:
                     last_error = error

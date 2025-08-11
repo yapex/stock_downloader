@@ -32,6 +32,7 @@ dependencies = [
     "tqdm>=4.67.1",
     "tushare>=1.4.21",
     "typer>=0.12.3",
+    "pyrate-limiter>=3.9.0",
 ]
 
 [project.scripts]

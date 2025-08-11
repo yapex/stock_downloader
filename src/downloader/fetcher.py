@@ -2,13 +2,9 @@ import os
 import tushare as ts
 import pandas as pd
 import logging
-from ratelimit import limits
 from .utils import normalize_stock_code, is_interval_greater_than_7_days
 from .simple_retry import simple_retry
-
-# 限流配置常量
-RATE_LIMIT_CALLS = 190  # API调用次数限制
-RATE_LIMIT_PERIOD = 60  # 时间窗口（秒）
+from .rate_limiter import rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +60,7 @@ class TushareFetcher:
 
 
     @simple_retry(max_retries=3, task_name="获取A股列表")
-    @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
+    @rate_limit("fetch_stock_list")
     def fetch_stock_list(self) -> pd.DataFrame | None:
         """获取所有A股的列表。"""
         logger.info(f"[API调用] 开始获取A股列表 - Fetcher实例ID: {id(self)}")
@@ -81,7 +77,7 @@ class TushareFetcher:
             raise
 
     @simple_retry(max_retries=3, task_name="日K线数据")
-    @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
+    @rate_limit("fetch_daily_history")
     def fetch_daily_history(
         self, ts_code: str, start_date: str, end_date: str, adjust: str
     ) -> pd.DataFrame | None:
@@ -123,7 +119,7 @@ class TushareFetcher:
         return df
 
     @simple_retry(max_retries=3, task_name="每日指标")
-    @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
+    @rate_limit("fetch_daily_basic")
     def fetch_daily_basic(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
@@ -156,7 +152,7 @@ class TushareFetcher:
 
     # ---> 新增的财务报表获取方法 <---
     @simple_retry(max_retries=3, task_name="财务报表-利润表")
-    @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
+    @rate_limit("fetch_income")
     def fetch_income(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
@@ -181,7 +177,7 @@ class TushareFetcher:
             raise
 
     @simple_retry(max_retries=3, task_name="财务报表-资产负债表")
-    @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
+    @rate_limit("fetch_balancesheet")
     def fetch_balancesheet(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
@@ -206,7 +202,7 @@ class TushareFetcher:
             raise
 
     @simple_retry(max_retries=3, task_name="财务报表-现金流量表")
-    @limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
+    @rate_limit("fetch_cashflow")
     def fetch_cashflow(
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:

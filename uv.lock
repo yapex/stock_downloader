@@ -797,6 +797,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyrate-limiter"
+version = "3.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ec/da/f682c5c5f9f0a5414363eb4397e6b07d84a02cde69c4ceadcbf32c85537c/pyrate_limiter-3.9.0.tar.gz", hash = "sha256:6b882e2c77cda07a241d3730975daea4258344b39c878f1dd8849df73f70b0ce", size = 289308, upload-time = "2025-07-30T14:36:58.659Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/af/d8bf0959ece9bc4679bd203908c31019556a421d76d8143b0c6871c7f614/pyrate_limiter-3.9.0-py3-none-any.whl", hash = "sha256:77357840c8cf97a36d67005d4e090787043f54000c12c2b414ff65657653e378", size = 33628, upload-time = "2025-07-30T14:36:57.71Z" },
+]
+
+[[package]]
 name = "pytest"
 version = "8.4.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1135,6 +1144,7 @@ dependencies = [
     { name = "pandas" },
     { name = "pipdeptree" },
     { name = "plotly" },
+    { name = "pyrate-limiter" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "ratelimit" },
@@ -1174,6 +1184,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.1" },
     { name = "pipdeptree", specifier = ">=2.28.0" },
     { name = "plotly", specifier = ">=6.2.0" },
+    { name = "pyrate-limiter", specifier = ">=3.9.0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "ratelimit", specifier = ">=2.2.1" },
