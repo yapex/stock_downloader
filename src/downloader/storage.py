@@ -5,11 +5,7 @@ import threading
 from typing import List, Dict, Optional, Any
 
 
-from .database import (
-    DatabaseConnectionFactory,
-    DatabaseConnection,
-)
-from .logger_interface import LoggerInterface
+from .interfaces import IDatabaseFactory, IDatabase, ILogger
 
 
 class PartitionedStorage:
@@ -29,8 +25,8 @@ class PartitionedStorage:
     def __init__(
         self,
         db_path: str | Path,
-        db_factory: DatabaseConnectionFactory,
-        logger: LoggerInterface,
+        db_factory: IDatabaseFactory,
+        logger: ILogger,
     ):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -550,7 +546,7 @@ class PartitionedStorage:
             self._logger.warning(f"更新分区元数据失败: {e}")
 
     def _update_partition_metadata_with_conn(
-        self, conn: DatabaseConnection, table_name: str, df: pd.DataFrame
+        self, conn: IDatabase, table_name: str, df: pd.DataFrame
     ):
         """使用指定连接更新分区元数据 - 已弃用，保留向后兼容性"""
         # 为了向后兼容性，调用新的方法

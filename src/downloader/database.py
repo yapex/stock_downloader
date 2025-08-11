@@ -28,6 +28,13 @@ def connect_db(database_path: str, read_only: bool = False):
     return duckdb.connect(database=database_path, read_only=read_only)
 
 
+from .interfaces import IDatabase, IDatabaseFactory
+
+# 向后兼容的别名
+DatabaseConnection = IDatabase
+DatabaseConnectionFactory = IDatabaseFactory
+
+
 class DatabaseConnection(Protocol):
     """数据库连接协议接口"""
 

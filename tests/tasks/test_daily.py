@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from downloader.tasks.daily import DailyTaskHandler
+from tests.test_implementations import MockFetcher, MockStorage
 
 
 def test_daily_task_handler_executes_correctly(mock_fetcher, mock_storage):
@@ -87,9 +88,7 @@ def test_daily_task_handler_handles_no_existing_data(
 def test_daily_task_handler_skips_if_data_is_up_to_date(
     mock_fetcher, mock_storage
 ):
-    """
-    【专项测试】验证当本地数据已经是最新时，是否会跳过网络请求。
-    """
+    """【专项测试】验证当本地数据已经是最新时，是否会跳过网络请求。"""
     task_config = {"name": "Test Daily Skip", "type": "daily", "adjust": "qfq"}
     target_symbols = ["000001.SZ"]
 
@@ -98,6 +97,37 @@ def test_daily_task_handler_skips_if_data_is_up_to_date(
     mock_storage.get_latest_date_by_stock.return_value = today
 
     handler = DailyTaskHandler(task_config, mock_fetcher, mock_storage)
+
+
+def test_daily_task_handler_with_test_implementations():
+    """【改进测试】使用测试实现类而不是mock，验证完整的数据流。"""
+    task_config = {"name": "Test Daily Real", "type": "daily", "adjust": "qfq"}
+    target_symbols = ["000001.SZ", "000002.SZ"]
+
+    # 使用测试实现类
+    test_fetcher = MockFetcher()
+    test_storage = MockStorage()
+    
+    # 设置存储中已有的数据
+    test_storage.latest_dates[("000001.SZ", "daily")] = "20231110"
+    # 000002.SZ 没有历史数据
+
+    handler = DailyTaskHandler(task_config, test_fetcher, test_storage)
     handler.execute(target_symbols=target_symbols)
 
-    mock_fetcher.fetch_daily_history.assert_not_called()
+    # 验证调用历史
+    assert len([call for call in test_fetcher.call_history if "fetch_daily_history" in call]) == 2
+    assert len([call for call in test_storage.call_history if "save_daily_data" in call]) == 2
+    
+    # 验证具体的调用参数
+    daily_calls = [call for call in test_fetcher.call_history if "fetch_daily_history" in call]
+    
+    # 000001.SZ 应该从20231111开始（增量更新）
+    assert any("000001.SZ_20231111" in call for call in daily_calls)
+    
+    # 000002.SZ 应该从19901219开始（全量更新）
+    assert any("000002.SZ_19901219" in call for call in daily_calls)
+    
+    # 验证数据确实被保存到storage中
+    assert "000001.SZ" in test_storage.daily_data
+    assert "000002.SZ" in test_storage.daily_data

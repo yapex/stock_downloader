@@ -6,9 +6,10 @@ from unittest.mock import Mock
 
 from downloader.storage import DuckDBStorage
 from downloader.database import DuckDBConnectionFactory
-from downloader.logger_interface import LoggerFactory
+from downloader.interfaces import LoggerFactory
 from downloader.engine import DownloadEngine
 from downloader.fetcher import TushareFetcher
+from tests.test_implementations import MockFetcher
 
 
 @pytest.fixture
@@ -141,42 +142,36 @@ def test_save_dataframe_without_date_col(storage: DuckDBStorage, caplog):
     assert len(result_df) == 0
 
 
-def test_engine_run_end_to_end(tmp_path: Path, monkeypatch):
-    """测试 engine.run() 的端到端功能，使用 monkeypatch 伪造 fetcher 返回空 DataFrame。"""
+def test_engine_run_end_to_end():
+    """测试 engine.run() 的端到端功能，使用测试实现类避免mock和monkeypatch。"""
     # 创建模拟的配置
     config = {
-        "tasks": [{"name": "测试任务", "type": "test_task", "enabled": True}],
+        "tasks": [{"name": "测试任务", "type": "stock_list", "enabled": True}],
         "defaults": {},
         "downloader": {"symbols": ["000001.SZ"], "max_concurrent_tasks": 1},
     }
 
-    # 创建模拟的 fetcher，返回空 DataFrame
-    mock_fetcher = Mock(spec=TushareFetcher)
-    mock_fetcher.fetch_stock_list.return_value = pd.DataFrame()
-    mock_fetcher.fetch_daily_history.return_value = pd.DataFrame()
+    # 使用测试实现类，返回空 DataFrame
+    test_fetcher = MockFetcher()
+    test_fetcher.set_return_empty(True)  # 设置返回空DataFrame
 
-    # 创建真实的存储实例
-    db_path = tmp_path / "test_engine.db"
+    # 使用内存数据库
     db_factory = DuckDBConnectionFactory()
     logger = LoggerFactory.create_logger("test_storage")
-    storage = DuckDBStorage(db_path, db_factory, logger)
+    storage = DuckDBStorage(":memory:", db_factory, logger)
 
-    # 创建引擎实例
+    # 通过构造函数注入依赖，避免使用monkeypatch
     engine = DownloadEngine(
-        config=config, fetcher=mock_fetcher, storage=storage, force_run=False
+        config=config, fetcher=test_fetcher, storage=storage, force_run=False
     )
-
-    # 模拟任务处理器注册表为空（这样就不会真正执行任务）
-    monkeypatch.setattr(engine, "task_registry", {})
-    
-    # 模拟 fetcher 属性，避免调用 get_singleton() 需要 TUSHARE_TOKEN
-    monkeypatch.setattr(engine, "_singleton_fetcher", mock_fetcher)
 
     # 执行引擎，应该不会抛出异常
     try:
         engine.run()
         # 如果能到达这里，说明 run() 方法执行成功
         assert True
+        # 验证调用历史
+        assert "fetch_stock_list" in test_fetcher.call_history
     except Exception as e:
         pytest.fail(f"engine.run() 应该能正常执行，但抛出异常: {e}")
 

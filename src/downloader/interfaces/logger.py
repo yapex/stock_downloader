@@ -1,10 +1,13 @@
-"""日志接口抽象"""
+"""日志接口定义
+
+定义日志相关的Protocol接口。
+"""
 
 from typing import Protocol
 import logging
 
 
-class LoggerInterface(Protocol):
+class ILogger(Protocol):
     """日志接口协议"""
     
     def debug(self, message: str, *args, **kwargs) -> None:
@@ -24,7 +27,7 @@ class LoggerInterface(Protocol):
         ...
 
 
-class StandardLogger(LoggerInterface):
+class StandardLogger(ILogger):
     """标准日志实现"""
     
     def __init__(self, logger):
@@ -47,7 +50,7 @@ class LoggerFactory:
     """日志工厂"""
     
     @staticmethod
-    def create_logger(name: str) -> LoggerInterface:
+    def create_logger(name: str) -> ILogger:
         """创建日志实例"""
         logger = logging.getLogger(name)
         return StandardLogger(logger)

@@ -13,6 +13,7 @@ import threading
 import logging
 from typing import Optional, Callable
 from .fetcher import TushareFetcher
+from .interfaces import ConfigInterface
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +25,16 @@ class TushareFetcherFactory:
     通过策略模式提供不同的实例获取策略。
     """
     
-    def __init__(self, instance_strategy: Callable[[], TushareFetcher]):
+    def __init__(self, config: ConfigInterface, instance_strategy: Optional[Callable[[str], TushareFetcher]] = None):
         """
         初始化工厂
         
         Args:
-            instance_strategy: 获取实例的策略函数
+            config: 配置接口
+            instance_strategy: 获取实例的策略函数，接受token参数
         """
-        self._instance_strategy = instance_strategy
+        self._config = config
+        self._instance_strategy = instance_strategy or (lambda token: TushareFetcher(token))
     
     def get_instance(self) -> TushareFetcher:
         """
@@ -40,11 +43,15 @@ class TushareFetcherFactory:
         Returns:
             TushareFetcher: fetcher实例
         """
-        return self._instance_strategy()
+        token = self._config.get_runtime_token()
+        if not token:
+            raise ValueError("错误：未配置 TUSHARE_TOKEN")
+        return self._instance_strategy(token)
 
 
 # 全局单例相关
 _instance: Optional[TushareFetcher] = None
+_config_instance: Optional[ConfigInterface] = None
 _lock = threading.Lock()
 _initialized = False
 
@@ -97,22 +104,33 @@ class TushareFetcherTestHelper:
 
 
 # 对外接口
-def get_singleton() -> TushareFetcher:
+def get_singleton(config: Optional[ConfigInterface] = None) -> TushareFetcher:
     """
     获取TushareFetcher单例实例
+    
+    Args:
+        config: 配置接口，如果为None则尝试从环境变量获取token（向后兼容）
     
     Returns:
         TushareFetcher: 单例实例
     """
-    global _instance, _initialized
-    if _instance is None:
+    global _instance, _config_instance, _initialized
+    if _instance is None or (_config_instance != config and config is not None):
         with _lock:
-            if _instance is None:
-                token = os.getenv("TUSHARE_TOKEN")
-                if not token:
-                    raise ValueError("错误：未设置 TUSHARE_TOKEN 环境变量")
+            if _instance is None or (_config_instance != config and config is not None):
+                if config is not None:
+                    token = config.get_runtime_token()
+                    if not token:
+                        raise ValueError("错误：未配置 TUSHARE_TOKEN")
+                    _config_instance = config
+                    logger.info("使用配置接口创建TushareFetcher单例实例")
+                else:
+                    # 向后兼容：从环境变量获取
+                    token = os.getenv("TUSHARE_TOKEN")
+                    if not token:
+                        raise ValueError("错误：未设置 TUSHARE_TOKEN 环境变量")
+                    logger.info("从环境变量创建TushareFetcher单例实例")
                 
-                logger.info("创建TushareFetcher单例实例")
                 _instance = TushareFetcher(token)
                 _initialized = True
                 logger.info(f"TushareFetcher单例实例创建完成，实例ID: {id(_instance)}")
@@ -120,21 +138,30 @@ def get_singleton() -> TushareFetcher:
     return _instance
 
 
-def get_thread_local_fetcher() -> TushareFetcher:
+def get_thread_local_fetcher(config: Optional[ConfigInterface] = None) -> TushareFetcher:
     """
     获取线程本地的TushareFetcher实例
     
     每个线程都有自己独立的fetcher实例，但在同一线程内保持唯一。
     适用于多线程环境，避免速率限制器冲突。
+    
+    Args:
+        config: 配置接口，如果为None则尝试从环境变量获取token（向后兼容）
         
     Returns:
         TushareFetcher: 线程本地实例
     """
     # 检查当前线程是否已有实例
     if not hasattr(_thread_local, 'instance'):
-        token = os.getenv("TUSHARE_TOKEN")
-        if not token:
-            raise ValueError("错误：未设置 TUSHARE_TOKEN 环境变量")
+        if config is not None:
+            token = config.get_runtime_token()
+            if not token:
+                raise ValueError("错误：未配置 TUSHARE_TOKEN")
+        else:
+            # 向后兼容：从环境变量获取
+            token = os.getenv("TUSHARE_TOKEN")
+            if not token:
+                raise ValueError("错误：未设置 TUSHARE_TOKEN 环境变量")
         
         thread_id = threading.get_ident()
         logger.info(f"为线程 {thread_id} 创建TushareFetcher实例")
@@ -183,21 +210,27 @@ def _get_instance_info() -> dict:
     }
 
 
-def create_singleton_factory() -> TushareFetcherFactory:
+def create_singleton_factory(config: ConfigInterface) -> TushareFetcherFactory:
     """
     创建单例策略的工厂
+    
+    Args:
+        config: 配置接口
     
     Returns:
         TushareFetcherFactory: 使用单例策略的工厂实例
     """
-    return TushareFetcherFactory(get_singleton)
+    return TushareFetcherFactory(config, lambda token: get_singleton(config))
 
 
-def create_thread_local_factory() -> TushareFetcherFactory:
+def create_thread_local_factory(config: ConfigInterface) -> TushareFetcherFactory:
     """
     创建线程本地策略的工厂
+    
+    Args:
+        config: 配置接口
     
     Returns:
         TushareFetcherFactory: 使用线程本地策略的工厂实例
     """
-    return TushareFetcherFactory(get_thread_local_fetcher)
+    return TushareFetcherFactory(config, lambda token: get_thread_local_fetcher(config))

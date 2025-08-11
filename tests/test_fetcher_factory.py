@@ -14,6 +14,8 @@ from downloader.fetcher_factory import (
     create_thread_local_factory
 )
 from downloader.fetcher import TushareFetcher
+from downloader.config_impl import create_config_manager
+from tests.test_implementations import MockFetcher, MockStrategy, SingletonMockStrategy
 
 
 class TestTushareFetcherFactory:
@@ -28,30 +30,43 @@ class TestTushareFetcherFactory:
         """每个测试方法后重置单例"""
         TushareFetcherTestHelper.reset_singleton()
     
+    @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
     def test_factory_with_custom_strategy(self):
         """测试工厂使用自定义策略"""
-        mock_instance = MagicMock()
-        strategy = MagicMock(return_value=mock_instance)
+        test_fetcher = MockFetcher()
+        strategy = MockStrategy(test_fetcher)
         
-        factory = TushareFetcherFactory(strategy)
+        # 创建配置对象
+        config = create_config_manager("config.yaml")
+        
+        factory = TushareFetcherFactory(config, strategy)
         result = factory.get_instance()
         
-        assert result == mock_instance
-        strategy.assert_called_once()
+        assert result == test_fetcher
+        assert strategy.call_count == 1
     
+    @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
     def test_factory_calls_strategy_each_time(self):
         """测试工厂每次都调用策略函数"""
-        mock_instance1 = MagicMock()
-        mock_instance2 = MagicMock()
-        strategy = MagicMock(side_effect=[mock_instance1, mock_instance2])
+        test_fetcher1 = MockFetcher()
+        test_fetcher2 = MockFetcher()
         
-        factory = TushareFetcherFactory(strategy)
+        call_count = 0
+        def multi_strategy(token: str):
+            nonlocal call_count
+            call_count += 1
+            return test_fetcher1 if call_count == 1 else test_fetcher2
+        
+        # 创建配置对象
+        config = create_config_manager("config.yaml")
+        
+        factory = TushareFetcherFactory(config, multi_strategy)
         result1 = factory.get_instance()
         result2 = factory.get_instance()
         
-        assert result1 == mock_instance1
-        assert result2 == mock_instance2
-        assert strategy.call_count == 2
+        assert result1 == test_fetcher1
+        assert result2 == test_fetcher2
+        assert call_count == 2
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
     @patch('downloader.fetcher_factory.TushareFetcher')
@@ -60,7 +75,10 @@ class TestTushareFetcherFactory:
         mock_instance = MagicMock()
         mock_fetcher_class.return_value = mock_instance
         
-        factory = create_singleton_factory()
+        # 创建配置对象
+        config = create_config_manager("config.yaml")
+        
+        factory = create_singleton_factory(config)
         result1 = factory.get_instance()
         result2 = factory.get_instance()
         
@@ -78,7 +96,10 @@ class TestTushareFetcherFactory:
         mock_instance = MagicMock()
         mock_fetcher_class.return_value = mock_instance
         
-        factory = create_thread_local_factory()
+        # 创建配置对象
+        config = create_config_manager("config.yaml")
+        
+        factory = create_thread_local_factory(config)
         result1 = factory.get_instance()
         result2 = factory.get_instance()
         

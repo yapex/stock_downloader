@@ -160,7 +160,8 @@ class Producer:
                  task_queue: Optional[Queue] = None,
                  data_queue: Optional[Queue] = None,
                  dead_letter_path: str = "logs/dead_letter.jsonl",
-                 fetcher: Optional[TushareFetcher] = None):
+                 fetcher: Optional[TushareFetcher] = None,
+                 config: Optional['ConfigInterface'] = None):
         """初始化生产者"""
         self.task_queue = task_queue or Queue()
         self.data_queue = data_queue or Queue()
@@ -170,7 +171,7 @@ class Producer:
             self.fetcher = fetcher
             logger.info(f"Producer使用传入的fetcher实例，ID: {id(fetcher)}")
         else:
-            self.fetcher = get_singleton()
+            self.fetcher = get_singleton(config)
             logger.info(f"Producer使用单例fetcher实例，ID: {id(self.fetcher)}")
         
         # 组件初始化

@@ -14,8 +14,8 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 
 from .storage import PartitionedStorage
-from .database import DuckDBConnectionFactory, DatabaseConnectionFactory
-from .logger_interface import LoggerFactory, LoggerInterface
+from .database import DuckDBConnectionFactory
+from .interfaces import IDatabaseFactory, ILogger, LoggerFactory, IConfig
 
 
 class StorageSingleton:
@@ -29,15 +29,15 @@ class StorageSingleton:
     _instance: Optional[PartitionedStorage] = None
     _lock = threading.Lock()
     _db_path: Optional[str] = None
-    _db_factory: Optional[DatabaseConnectionFactory] = None
-    _logger: Optional[LoggerInterface] = None
+    _db_factory: Optional[IDatabaseFactory] = None
+    _logger: Optional[ILogger] = None
     
     @classmethod
     def get_instance(
         cls, 
-        db_path: str = "data/stock.db", 
-        db_factory: Optional[DatabaseConnectionFactory] = None,
-        logger: Optional[LoggerInterface] = None,
+        db_path: str, 
+        db_factory: Optional[IDatabaseFactory] = None,
+        logger: Optional[ILogger] = None,
         **kwargs
     ) -> PartitionedStorage:
         """
@@ -108,9 +108,9 @@ class StorageSingleton:
 
 def get_storage(
     use_singleton: bool = True, 
-    db_path: str = "data/stock.db", 
-    db_factory: Optional[DatabaseConnectionFactory] = None,
-    logger: Optional[LoggerInterface] = None,
+    db_path: Optional[str] = None, 
+    db_factory: Optional[IDatabaseFactory] = None,
+    logger: Optional[ILogger] = None,
     **kwargs
 ) -> PartitionedStorage:
     """
@@ -118,7 +118,7 @@ def get_storage(
     
     Args:
         use_singleton: 是否使用单例模式，默认True
-        db_path: 数据库文件路径
+        db_path: 数据库文件路径，如果为None则使用默认路径
         db_factory: 数据库连接工厂
         logger: 日志接口
         **kwargs: 传递给PartitionedStorage构造函数的其他参数
@@ -126,6 +126,10 @@ def get_storage(
     Returns:
         PartitionedStorage: storage实例
     """
+    # 处理默认路径
+    if db_path is None:
+        db_path = "data/stock.db"
+    
     # 使用默认工厂和日志器
     if db_factory is None:
         db_factory = DuckDBConnectionFactory()
@@ -159,9 +163,9 @@ class StorageFactory:
     @staticmethod
     def create_storage(
         use_singleton: bool = True, 
-        db_path: str = "data/stock.db", 
-        db_factory: Optional[DatabaseConnectionFactory] = None,
-        logger: Optional[LoggerInterface] = None,
+        db_path: Optional[str] = None, 
+        db_factory: Optional[IDatabaseFactory] = None,
+        logger: Optional[ILogger] = None,
         **kwargs
     ) -> PartitionedStorage:
         """
@@ -181,16 +185,16 @@ class StorageFactory:
     
     @staticmethod
     def create_partitioned_storage(
-        db_path: str = "data/stock.db", 
-        db_factory: Optional[DatabaseConnectionFactory] = None,
-        logger: Optional[LoggerInterface] = None,
+        db_path: Optional[str] = None, 
+        db_factory: Optional[IDatabaseFactory] = None,
+        logger: Optional[ILogger] = None,
         **kwargs
     ) -> PartitionedStorage:
         """
         直接创建分区表存储实例（非单例）
         
         Args:
-            db_path: 数据库文件路径
+            db_path: 数据库文件路径，如果为None则使用默认路径
             db_factory: 数据库连接工厂
             logger: 日志接口
             **kwargs: 传递给PartitionedStorage构造函数的其他参数
@@ -198,6 +202,10 @@ class StorageFactory:
         Returns:
             PartitionedStorage: storage实例
         """
+        # 处理默认路径
+        if db_path is None:
+            db_path = "data/stock.db"
+            
         # 使用默认工厂和日志器
         if db_factory is None:
             db_factory = DuckDBConnectionFactory()
@@ -231,6 +239,28 @@ class StorageFactory:
             db_path = str(db_path)
         
         return get_storage(use_singleton=True, db_path=db_path)
+    
+    @staticmethod
+    def create_storage_from_config(config: IConfig) -> PartitionedStorage:
+        """
+        根据配置接口创建Storage实例
+        
+        Args:
+            config: 配置接口
+            
+        Returns:
+            PartitionedStorage: storage实例
+        """
+        db_config = config.database
+        db_path = db_config.path
+        
+        # 创建数据库连接工厂
+        db_factory = DuckDBConnectionFactory()
+        
+        # 创建日志器
+        logger = LoggerFactory.create_logger(__name__)
+        
+        return get_storage(use_singleton=True, db_path=db_path, db_factory=db_factory, logger=logger)
 
 
 # 向后兼容的别名
