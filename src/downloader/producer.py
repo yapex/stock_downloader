@@ -14,6 +14,7 @@ from datetime import datetime
 from .fetcher import TushareFetcher
 from .fetcher_factory import get_singleton
 from .models import DownloadTask, DataBatch, TaskType
+from .interfaces import IConfig
 # 移除复杂的错误处理依赖
 from .utils import record_failed_task
 from .progress_events import task_started, task_completed, task_failed
@@ -161,7 +162,7 @@ class Producer:
                  data_queue: Optional[Queue] = None,
                  dead_letter_path: str = "logs/dead_letter.jsonl",
                  fetcher: Optional[TushareFetcher] = None,
-                 config: Optional['ConfigInterface'] = None):
+                 config: Optional['IConfig'] = None):
         """初始化生产者"""
         self.task_queue = task_queue or Queue()
         self.data_queue = data_queue or Queue()
@@ -388,3 +389,12 @@ class Producer:
     def data_queue_size(self) -> int:
         """获取数据队列大小"""
         return self.data_queue.qsize()
+    
+    def is_alive(self) -> bool:
+        """检查工作线程是否存活（兼容threading.Thread接口）"""
+        return self.worker_thread is not None and self.worker_thread.is_alive()
+    
+    def join(self, timeout: Optional[float] = None) -> None:
+        """等待工作线程结束（兼容threading.Thread接口）"""
+        if self.worker_thread is not None:
+            self.worker_thread.join(timeout=timeout)

@@ -15,6 +15,8 @@ from .logger import ILogger, StandardLogger, LoggerFactory
 from .database import IDatabase, IDatabaseFactory
 from .fetcher import IFetcher, FetcherProtocol
 from .storage import IStorage, StorageProtocol
+from .events import IEventListener, IEventBus, SimpleEventBus
+from .producer import IProducer, ProducerEvents
 
 # 向后兼容的别名
 ConfigInterface = IConfig
@@ -40,7 +42,12 @@ __all__ = [
     "IDatabaseFactory",
     "IFetcher",
     "IStorage",
+    "IEventListener",
+    "IEventBus",
+    "IProducer",
+    "ProducerEvents",
     # 实现类
+    "SimpleEventBus",
     "StandardLogger",
     "LoggerFactory",
     # 向后兼容的别名
