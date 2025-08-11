@@ -141,14 +141,19 @@ class DownloaderApp:
                     # 旧格式：完整任务定义（向后兼容）
                     resolved_tasks.append(task_ref)
             
+            # 构建完整配置，保留原始配置中的所有设置
             config = {
+                "database": raw_config.get("database", {}),
                 "storage": raw_config.get("storage", {}),
-                "downloader": {
-                    "symbols": group_config.get("symbols", []),
-                    "max_concurrent_tasks": raw_config.get("concurrency", {}).get("max_concurrent_tasks", 1)
-                },
+                "downloader": raw_config.get("downloader", {}),
+                "consumer": raw_config.get("consumer", {}),
                 "tasks": resolved_tasks
             }
+            
+            # 添加组特定的配置
+            config["downloader"]["symbols"] = group_config.get("symbols", [])
+            if "concurrency" in raw_config:
+                config["downloader"]["max_concurrent_tasks"] = raw_config["concurrency"].get("max_concurrent_tasks", 1)
             
             # 处理命令行股票参数覆盖
             config, symbols_overridden = self.process_symbols_config(config, symbols)
