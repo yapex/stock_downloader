@@ -3,7 +3,7 @@
 TushareFetcher工厂实现
 
 解决问题：
-1. 确保整个应用只有一个TushareFetcher实例
+1. 通过策略模式提供不同的实例获取策略
 2. 避免多个实例导致的ratelimit计数器分散
 3. 提供统一的fetcher创建入口
 """
@@ -11,7 +11,7 @@ TushareFetcher工厂实现
 import os
 import threading
 import logging
-from typing import Optional
+from typing import Optional, Callable
 from .fetcher import TushareFetcher
 
 logger = logging.getLogger(__name__)
@@ -21,140 +21,35 @@ class TushareFetcherFactory:
     """
     TushareFetcher工厂类
     
-    提供统一的fetcher创建接口，支持全局单例和线程本地两种模式。
+    通过策略模式提供不同的实例获取策略。
     """
     
-    # 全局单例相关
-    _instance: Optional[TushareFetcher] = None
-    _lock = threading.Lock()
-    _initialized = False
-    
-    # 线程本地存储相关
-    _thread_local = threading.local()
-    
-    @staticmethod
-    def get_instance() -> TushareFetcher:
+    def __init__(self, instance_strategy: Callable[[], TushareFetcher]):
         """
-        获取TushareFetcher单例实例
+        初始化工厂
         
-        从环境变量读取TUSHARE_TOKEN并创建实例
-            
-        Returns:
-            TushareFetcher: 单例实例
-            
-        Raises:
-            ValueError: 当未设置TUSHARE_TOKEN环境变量时
+        Args:
+            instance_strategy: 获取实例的策略函数
         """
-        if TushareFetcherFactory._instance is None:
-            with TushareFetcherFactory._lock:
-                if TushareFetcherFactory._instance is None:
-                    token = os.getenv("TUSHARE_TOKEN")
-                    if not token:
-                        raise ValueError("错误：未设置 TUSHARE_TOKEN 环境变量")
-                    
-                    logger.info("创建TushareFetcher单例实例")
-                    TushareFetcherFactory._instance = TushareFetcher(token)
-                    TushareFetcherFactory._initialized = True
-                    logger.info(f"TushareFetcher单例实例创建完成，实例ID: {id(TushareFetcherFactory._instance)}")
-                else:
-                    logger.debug(f"返回已存在的TushareFetcher单例实例，实例ID: {id(TushareFetcherFactory._instance)}")
-        else:
-            logger.debug(f"返回已存在的TushareFetcher单例实例，实例ID: {id(TushareFetcherFactory._instance)}")
-        
-        return TushareFetcherFactory._instance
+        self._instance_strategy = instance_strategy
     
-    @staticmethod
-    def reset() -> None:
+    def get_instance(self) -> TushareFetcher:
         """
-        重置单例实例（主要用于测试）
-        """
-        with TushareFetcherFactory._lock:
-            if TushareFetcherFactory._instance is not None:
-                logger.info(f"重置TushareFetcher单例实例，原实例ID: {id(TushareFetcherFactory._instance)}")
-            TushareFetcherFactory._instance = None
-            TushareFetcherFactory._initialized = False
-    
-    @staticmethod
-    def _is_initialized() -> bool:
-        """
-        检查单例是否已初始化（内部使用）
+        获取TushareFetcher实例
         
         Returns:
-            bool: 是否已初始化
+            TushareFetcher: fetcher实例
         """
-        return TushareFetcherFactory._initialized
-    
-    @staticmethod
-    def _get_instance_id() -> Optional[int]:
-        """
-        获取当前实例的ID（内部调试使用）
-        
-        Returns:
-            Optional[int]: 实例ID，如果未初始化则返回None
-        """
-        return id(TushareFetcherFactory._instance) if TushareFetcherFactory._instance else None
-    
-    @staticmethod
-    def get_thread_local_instance() -> TushareFetcher:
-        """
-        获取线程本地的TushareFetcher实例
-        
-        每个线程都有自己独立的fetcher实例，但在同一线程内保持唯一。
-        这样可以避免多线程环境下的速率限制器冲突，同时保证线程内的一致性。
-        
-        Returns:
-            TushareFetcher: 线程本地实例
-            
-        Raises:
-            ValueError: 当未设置TUSHARE_TOKEN环境变量时
-        """
-        # 检查当前线程是否已有实例
-        if not hasattr(TushareFetcherFactory._thread_local, 'instance'):
-            token = os.getenv("TUSHARE_TOKEN")
-            if not token:
-                raise ValueError("错误：未设置 TUSHARE_TOKEN 环境变量")
-            
-            thread_id = threading.get_ident()
-            logger.info(f"为线程 {thread_id} 创建TushareFetcher实例")
-            TushareFetcherFactory._thread_local.instance = TushareFetcher(token)
-            logger.info(f"线程 {thread_id} 的TushareFetcher实例创建完成，实例ID: {id(TushareFetcherFactory._thread_local.instance)}")
-        else:
-            thread_id = threading.get_ident()
-            logger.debug(f"返回线程 {thread_id} 已存在的TushareFetcher实例，实例ID: {id(TushareFetcherFactory._thread_local.instance)}")
-        
-        return TushareFetcherFactory._thread_local.instance
-    
-    @staticmethod
-    def _reset_thread_local() -> None:
-        """
-        重置当前线程的fetcher实例（内部测试使用）
-        """
-        if hasattr(TushareFetcherFactory._thread_local, 'instance'):
-            thread_id = threading.get_ident()
-            logger.info(f"重置线程 {thread_id} 的TushareFetcher实例，原实例ID: {id(TushareFetcherFactory._thread_local.instance)}")
-            delattr(TushareFetcherFactory._thread_local, 'instance')
-    
-    @staticmethod
-    def _has_thread_local_instance() -> bool:
-        """
-        检查当前线程是否已有fetcher实例（内部使用）
-        
-        Returns:
-            bool: 当前线程是否已有实例
-        """
-        return hasattr(TushareFetcherFactory._thread_local, 'instance')
-    
-    @staticmethod
-    def _get_thread_local_instance_id() -> Optional[int]:
-        """
-        获取当前线程fetcher实例的ID（内部调试使用）
-        
-        Returns:
-            Optional[int]: 实例ID，如果当前线程未初始化则返回None
-        """
-        if hasattr(TushareFetcherFactory._thread_local, 'instance'):
-            return id(TushareFetcherFactory._thread_local.instance)
-        return None
+        return self._instance_strategy()
+
+
+# 全局单例相关
+_instance: Optional[TushareFetcher] = None
+_lock = threading.Lock()
+_initialized = False
+
+# 线程本地存储相关
+_thread_local = threading.local()
 
 
 class TushareFetcherTestHelper:
@@ -162,49 +57,67 @@ class TushareFetcherTestHelper:
     TushareFetcher测试辅助类
     
     提供测试所需的内部状态查询和重置功能。
-    仅用于测试，不应在生产代码中使用。
     """
     
     @staticmethod
     def is_singleton_initialized() -> bool:
         """检查单例是否已初始化"""
-        return TushareFetcherFactory._is_initialized()
+        return _initialized
     
     @staticmethod
     def get_singleton_instance_id() -> Optional[int]:
         """获取单例实例ID"""
-        return TushareFetcherFactory._get_instance_id()
+        return id(_instance) if _instance else None
     
     @staticmethod
     def reset_singleton() -> None:
         """重置单例实例"""
-        TushareFetcherFactory.reset()
+        global _instance, _initialized
+        with _lock:
+            _instance = None
+            _initialized = False
     
     @staticmethod
     def has_thread_local_instance() -> bool:
         """检查当前线程是否有实例"""
-        return TushareFetcherFactory._has_thread_local_instance()
+        return hasattr(_thread_local, 'instance')
     
     @staticmethod
     def get_thread_local_instance_id() -> Optional[int]:
         """获取线程本地实例ID"""
-        return TushareFetcherFactory._get_thread_local_instance_id()
+        if hasattr(_thread_local, 'instance'):
+            return id(_thread_local.instance)
+        return None
     
     @staticmethod
     def reset_thread_local() -> None:
         """重置线程本地实例"""
-        TushareFetcherFactory._reset_thread_local()
+        if hasattr(_thread_local, 'instance'):
+            delattr(_thread_local, 'instance')
 
 
 # 对外接口
 def get_singleton() -> TushareFetcher:
     """
     获取TushareFetcher单例实例
-        
+    
     Returns:
         TushareFetcher: 单例实例
     """
-    return TushareFetcherFactory.get_instance()
+    global _instance, _initialized
+    if _instance is None:
+        with _lock:
+            if _instance is None:
+                token = os.getenv("TUSHARE_TOKEN")
+                if not token:
+                    raise ValueError("错误：未设置 TUSHARE_TOKEN 环境变量")
+                
+                logger.info("创建TushareFetcher单例实例")
+                _instance = TushareFetcher(token)
+                _initialized = True
+                logger.info(f"TushareFetcher单例实例创建完成，实例ID: {id(_instance)}")
+    
+    return _instance
 
 
 def get_thread_local_fetcher() -> TushareFetcher:
@@ -217,7 +130,18 @@ def get_thread_local_fetcher() -> TushareFetcher:
     Returns:
         TushareFetcher: 线程本地实例
     """
-    return TushareFetcherFactory.get_thread_local_instance()
+    # 检查当前线程是否已有实例
+    if not hasattr(_thread_local, 'instance'):
+        token = os.getenv("TUSHARE_TOKEN")
+        if not token:
+            raise ValueError("错误：未设置 TUSHARE_TOKEN 环境变量")
+        
+        thread_id = threading.get_ident()
+        logger.info(f"为线程 {thread_id} 创建TushareFetcher实例")
+        _thread_local.instance = TushareFetcher(token)
+        logger.info(f"线程 {thread_id} 的TushareFetcher实例创建完成，实例ID: {id(_thread_local.instance)}")
+    
+    return _thread_local.instance
 
 
 # 向后兼容接口
@@ -241,18 +165,39 @@ def _reset_singleton() -> None:
     """
     重置fetcher单例（仅供测试使用）
     """
-    TushareFetcherFactory.reset()
+    TushareFetcherTestHelper.reset_singleton()
 
 
 def _get_instance_info() -> dict:
     """
-    获取实例信息（用于调试和测试）
+    获取实例信息（内部使用）
     
     Returns:
         dict: 包含实例信息的字典
     """
     return {
-        "is_singleton_initialized": TushareFetcherFactory._is_initialized(),
-        "singleton_instance_id": TushareFetcherFactory._get_instance_id(),
-        "singleton_instance_exists": TushareFetcherFactory._instance is not None,
+        "singleton_instance_exists": TushareFetcherTestHelper.is_singleton_initialized(),
+        "singleton_instance_id": TushareFetcherTestHelper.get_singleton_instance_id(),
+        "thread_local_instance_exists": TushareFetcherTestHelper.has_thread_local_instance(),
+        "thread_local_instance_id": TushareFetcherTestHelper.get_thread_local_instance_id(),
     }
+
+
+def create_singleton_factory() -> TushareFetcherFactory:
+    """
+    创建单例策略的工厂
+    
+    Returns:
+        TushareFetcherFactory: 使用单例策略的工厂实例
+    """
+    return TushareFetcherFactory(get_singleton)
+
+
+def create_thread_local_factory() -> TushareFetcherFactory:
+    """
+    创建线程本地策略的工厂
+    
+    Returns:
+        TushareFetcherFactory: 使用线程本地策略的工厂实例
+    """
+    return TushareFetcherFactory(get_thread_local_fetcher)

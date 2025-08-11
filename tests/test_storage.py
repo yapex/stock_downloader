@@ -168,6 +168,9 @@ def test_engine_run_end_to_end(tmp_path: Path, monkeypatch):
 
     # 模拟任务处理器注册表为空（这样就不会真正执行任务）
     monkeypatch.setattr(engine, "task_registry", {})
+    
+    # 模拟 fetcher 属性，避免调用 get_singleton() 需要 TUSHARE_TOKEN
+    monkeypatch.setattr(engine, "_singleton_fetcher", mock_fetcher)
 
     # 执行引擎，应该不会抛出异常
     try:
