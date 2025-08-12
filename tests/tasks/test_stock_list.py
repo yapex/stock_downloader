@@ -1,4 +1,5 @@
 from downloader.tasks.stock_list import StockListTaskHandler
+from downloader.storage import TableNames
 
 
 def test_stock_list_handler_executes_correctly(mock_fetcher, mock_storage):

@@ -7,7 +7,7 @@ import time
 import pytest
 from unittest.mock import patch
 
-from src.rate_limiter_native import rate_limit, get_limiter, reset_limiter
+from src.downloader.rate_limiter_native import rate_limit, get_limiter, reset_limiter
 from pyrate_limiter import BucketFullException
 
 

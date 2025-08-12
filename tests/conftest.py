@@ -51,7 +51,7 @@ def mock_storage():
     storage = MagicMock()
     # 为每个方法都设置一个默认的、安全的返回值
     storage.get_latest_date_by_stock.return_value = "20230101"
-    storage.save_daily_data.return_value = None
+    storage.save_daily.return_value = None
     storage.save_fundamental_data.return_value = None
     storage.save_financial_data.return_value = None
     storage.save_stock_list.return_value = None

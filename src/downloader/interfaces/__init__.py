@@ -14,22 +14,10 @@ from .config import (
 
 # logger module removed
 from .database import IDatabase, IDatabaseFactory
-from .fetcher import IFetcher, FetcherProtocol
-from .storage import IStorage, StorageProtocol
+from .fetcher import IFetcher
+from .storage import IStorageSaver, IStorageSearcher
 from .events import IEventListener, IEventBus
 from .producer import IProducer, ProducerEvents
-from .task import ITask
-
-# 向后兼容的别名
-ConfigInterface = IConfig
-TaskConfig = ITaskConfig
-GroupConfig = IGroupConfig
-DownloaderConfig = IDownloaderConfig
-ConsumerConfig = IConsumerConfig
-DatabaseConfig = IDatabaseConfig
-# LoggerInterface removed
-DatabaseConnection = IDatabase
-DatabaseConnectionFactory = IDatabaseFactory
 
 __all__ = [
     # 新的接口名称
@@ -39,11 +27,11 @@ __all__ = [
     "IDownloaderConfig",
     "IConsumerConfig",
     "IDatabaseConfig",
-    # "ILogger", # removed
     "IDatabase",
     "IDatabaseFactory",
     "IFetcher",
-    "IStorage",
+    "IStorageSaver",
+    "IStorageSearcher",
     "IEventListener",
     "IEventBus",
     "IProducer",
@@ -51,22 +39,4 @@ __all__ = [
     "ITaskHandler",
     "IIncrementalTaskHandler",
     "ITaskHandlerFactory",
-
-    # "StandardLogger", # removed
-    # "LoggerFactory", # removed
-    # 向后兼容的别名
-    "ConfigInterface",
-    "TaskConfig",
-    "GroupConfig",
-    "DownloaderConfig",
-    "ConsumerConfig",
-    "DatabaseConfig",
-    # "LoggerInterface", # removed
-    "DatabaseConnection",
-    "FetcherProtocol",
-    "StorageProtocol",
-    "DatabaseConnectionFactory",
-    "TaskHandlerProtocol",
-    "IncrementalTaskHandlerProtocol",
-    "TaskHandlerFactoryProtocol",
 ]

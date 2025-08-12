@@ -15,7 +15,7 @@ from queue import Queue, Empty, Full
 import pandas as pd
 
 from .models import DataBatch
-from .storage import DuckDBStorage
+from .storage import PartitionedStorage
 from .storage_factory import get_storage
 from .simple_retry import simple_retry
 from .utils import record_failed_task, get_logger
@@ -54,7 +54,7 @@ class ConsumerWorker:
         self.running = False
         
         # 延迟初始化DuckDB连接
-        self._storage: Optional[DuckDBStorage] = None
+        self._storage: Optional[PartitionedStorage] = None
         self._last_flush_time = time.time()
         
         # 本地缓存：按数据类型分组累积DataBatch
@@ -70,7 +70,7 @@ class ConsumerWorker:
         self.logger = get_logger(f"{__name__}.worker_{worker_id}")
     
     @property
-    def storage(self) -> DuckDBStorage:
+    def storage(self) -> PartitionedStorage:
         """延迟初始化DuckDB连接"""
         if self._storage is None:
             self.logger.info(f"Worker {self.worker_id}: 初始化DuckDB连接 -> {self.db_path}")
@@ -233,7 +233,7 @@ class ConsumerWorker:
         # 根据数据类型调用相应的存储方法
         success = False
         if data_type in ['daily', 'daily_basic']:
-            success = self.storage.save_daily_data(combined_df)
+            success = self.storage.save_daily(combined_df)
         elif data_type in ['income', 'balancesheet', 'cashflow', 'financials']:
             success = self.storage.save_financial_data(combined_df)
         elif data_type == 'stock_list':
@@ -241,7 +241,7 @@ class ConsumerWorker:
         else:
             # 对于其他类型，尝试使用通用方法
             self.logger.warning(f"未知数据类型 {data_type}，使用通用保存方法")
-            success = self.storage.save_daily_data(combined_df)
+            success = self.storage.save_daily(combined_df)
         
         if not success:
             raise Exception(f"保存数据失败: {data_type}")

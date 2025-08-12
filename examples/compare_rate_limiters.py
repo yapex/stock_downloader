@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.downloader.rate_limiter import rate_limit as custom_rate_limit
-from src.rate_limiter_native import rate_limit as native_rate_limit
+from src.downloader.rate_limiter_native import rate_limit as native_rate_limit
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

@@ -2,7 +2,7 @@
 
 import pandas as pd
 from typing import Optional, List
-from downloader.interfaces import IFetcher, IStorage
+from downloader.interfaces import IFetcher, IStorageSaver, IStorageSearcher
 
 
 class MockFetcher(IFetcher):
@@ -84,7 +84,7 @@ class MockFetcher(IFetcher):
         self.call_history.clear()
 
 
-class MockStorage(IStorage):
+class MockStorage(IStorageSaver, IStorageSearcher):
     """测试专用的Storage实现，使用内存存储数据"""
     
     def __init__(self):
@@ -95,9 +95,9 @@ class MockStorage(IStorage):
         self.stock_list: Optional[pd.DataFrame] = None
         self.latest_dates: dict = {}  # (ts_code, data_type) -> date
     
-    def save_daily_data(self, df: pd.DataFrame) -> None:
+    def save_daily(self, df: pd.DataFrame) -> None:
         """保存日线数据"""
-        self.call_history.append("save_daily_data")
+        self.call_history.append("save_daily")
         if not df.empty and "ts_code" in df.columns:
             for ts_code in df["ts_code"].unique():
                 stock_data = df[df["ts_code"] == ts_code].copy()

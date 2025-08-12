@@ -15,7 +15,7 @@ from typing import Dict, List, Any, Optional
 
 from .fetcher import TushareFetcher
 from .fetcher_factory import get_singleton
-from .storage import DuckDBStorage
+from .storage import PartitionedStorage
 from .storage_factory import get_storage
 from .producer import Producer
 from .consumer_pool import ConsumerPool
@@ -67,7 +67,7 @@ class DownloadEngine:
         self,
         config: Dict[str, Any],
         fetcher: Optional[TushareFetcher] = None,
-        storage: Optional[DuckDBStorage] = None,
+        storage: Optional[PartitionedStorage] = None,
         force_run: bool = False,
         symbols_overridden: bool = False,
         group_name: str = "default",
@@ -93,7 +93,7 @@ class DownloadEngine:
         
         # 运行时实例
         self._singleton_fetcher: Optional[TushareFetcher] = None
-        self._runtime_storage: Optional[DuckDBStorage] = None
+        self._runtime_storage: Optional[PartitionedStorage] = None
         
         # 队列和线程池组件
         self.task_queue: Optional[Queue] = None
@@ -146,11 +146,11 @@ class DownloadEngine:
         return self._singleton_fetcher
     
     @property
-    def storage(self) -> Optional[DuckDBStorage]:
+    def storage(self) -> Optional[PartitionedStorage]:
         """获取storage实例"""
         return self._injected_storage
     
-    def _get_runtime_storage(self) -> DuckDBStorage:
+    def _get_runtime_storage(self) -> PartitionedStorage:
         """获取运行时storage实例"""
         if self._injected_storage is not None:
             return self._injected_storage

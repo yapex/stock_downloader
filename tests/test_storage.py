@@ -4,7 +4,7 @@ from pathlib import Path
 import logging
 from unittest.mock import Mock
 
-from downloader.storage import DuckDBStorage
+from downloader.storage import PartitionedStorage, TableNames
 from downloader.database import DuckDBConnectionFactory
 from downloader.utils import get_logger
 from downloader.engine import DownloadEngine
@@ -19,11 +19,11 @@ def db_path(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def storage(db_path: Path) -> DuckDBStorage:
+def storage(db_path: Path) -> PartitionedStorage:
     """创建一个 DuckDBStorage 实例。"""
     db_factory = DuckDBConnectionFactory()
     logger = get_logger("test_storage")
-    return DuckDBStorage(db_path, db_factory, logger)
+    return PartitionedStorage(db_path, db_factory, logger)
 
 
 @pytest.fixture
@@ -55,29 +55,29 @@ def test_initialization(db_path: Path):
     assert not db_path.exists()
     db_factory = DuckDBConnectionFactory()
     logger = get_logger("test_storage")
-    DuckDBStorage(db_path, db_factory, logger)
+    PartitionedStorage(db_path, db_factory, logger)
     assert db_path.exists()
 
 
 # test_get_table_name 已移除，因为新的分区表架构不再需要动态表名生成
 
 
-def test_save_and_get_latest_date(storage: DuckDBStorage, sample_df: pd.DataFrame):
+def test_save_and_get_latest_date(storage: PartitionedStorage, sample_df: pd.DataFrame):
     """测试基本的保存和获取最新日期的功能。"""
-    storage.save_daily_data(sample_df)
-    latest_date = storage.get_latest_date_by_stock("000001.SZ", "daily")
+    storage.save_daily(sample_df)
+    latest_date = storage.get_latest_date_by_stock("000001.SZ", TableNames.DAILY_DATA)
     assert latest_date == "2023-01-02"
 
 
 def test_save_upsert_logic(
-    storage: DuckDBStorage, sample_df: pd.DataFrame, updated_df: pd.DataFrame
+    storage: PartitionedStorage, sample_df: pd.DataFrame, updated_df: pd.DataFrame
 ):
     """测试增量保存（UPSERT）的逻辑是否正确。"""
     # 1. 初始保存
-    storage.save_daily_data(sample_df)
+    storage.save_daily(sample_df)
 
     # 2. 使用新数据进行增量保存
-    storage.save_daily_data(updated_df)
+    storage.save_daily(updated_df)
 
     # 3. 验证结果 - 使用新的分区表查询方法
     result_df = storage.query_daily_data_by_stock("000001.SZ")
@@ -90,10 +90,10 @@ def test_save_upsert_logic(
     assert result_df["trade_date"].max() == "2023-01-03"
 
 
-def test_save_daily_data_upsert(storage: DuckDBStorage, sample_df: pd.DataFrame):
+def test_save_daily_upsert(storage: PartitionedStorage, sample_df: pd.DataFrame):
     """测试日线数据的增量保存功能。"""
     # 先保存一些数据
-    storage.save_daily_data(sample_df)
+    storage.save_daily(sample_df)
 
     # 创建一个新的 DataFrame 用于增量保存
     new_df = pd.DataFrame(
@@ -103,7 +103,7 @@ def test_save_daily_data_upsert(storage: DuckDBStorage, sample_df: pd.DataFrame)
             "close": [200.0],
         }
     )
-    storage.save_daily_data(new_df)
+    storage.save_daily(new_df)
 
     # 验证 - 使用新的分区表查询方法
     result_df = storage.query_daily_data_by_stock("000001.SZ")
@@ -114,27 +114,27 @@ def test_save_daily_data_upsert(storage: DuckDBStorage, sample_df: pd.DataFrame)
     assert new_data["close"].iloc[0] == 200.0
 
 
-def test_get_latest_date_on_empty_table(storage: DuckDBStorage):
+def test_get_latest_date_on_empty_table(storage: PartitionedStorage):
     """测试在空表或不存在的表上获取最新日期。"""
     latest_date = storage.get_latest_date_by_stock("999999.SZ", "daily")
     assert latest_date is None
 
 
-def test_save_empty_dataframe(storage: DuckDBStorage):
+def test_save_empty_dataframe(storage: PartitionedStorage):
     """测试保存空 DataFrame 时不应执行任何操作。"""
     empty_df = pd.DataFrame()
-    storage.save_daily_data(empty_df)
+    storage.save_daily(empty_df)
 
     # 验证数据库中没有数据（分区表已预创建）
     result_df = storage.query_daily_data_by_stock("000001.SZ")
     assert len(result_df) == 0
 
 
-def test_save_dataframe_without_date_col(storage: DuckDBStorage, caplog):
+def test_save_dataframe_without_date_col(storage: PartitionedStorage, caplog):
     """测试当 DataFrame 缺少日期列时应记录错误并跳过。"""
     df = pd.DataFrame({"close": [1.0, 2.0]})
     with caplog.at_level(logging.ERROR, logger="downloader.storage"):
-        storage.save_daily_data(df)
+        storage.save_daily(df)
         # 验证异常被正确处理
 
     # 验证数据库中没有数据（分区表已预创建）
@@ -143,7 +143,7 @@ def test_save_dataframe_without_date_col(storage: DuckDBStorage, caplog):
 
 
 
-def test_get_table_last_updated_system_type(storage: DuckDBStorage):
+def test_get_table_last_updated_system_type(storage: PartitionedStorage):
     """测试 get_table_last_updated 方法对 system 数据类型的支持"""
     # 创建测试用的股票列表数据
     stock_list_df = pd.DataFrame(
@@ -187,7 +187,7 @@ def test_database_connect_context_smoke():
         assert result is not None
 
 
-def test_get_stock_list_returns_only_ts_code(storage: DuckDBStorage):
+def test_get_stock_list_returns_only_ts_code(storage: PartitionedStorage):
     """测试 get_stock_list 方法只返回 ts_code 列"""
     # 创建测试用的股票列表数据
     stock_list_df = pd.DataFrame(
@@ -219,7 +219,7 @@ def test_get_stock_list_returns_only_ts_code(storage: DuckDBStorage):
     assert result_df["ts_code"].is_monotonic_increasing
 
 
-def test_save_financial_data(storage: DuckDBStorage):
+def test_save_financial_data(storage: PartitionedStorage):
     """测试保存财务数据功能"""
     # 创建测试用的财务数据
     financial_df = pd.DataFrame(
@@ -242,14 +242,14 @@ def test_save_financial_data(storage: DuckDBStorage):
     assert query_result["total_revenue"].iloc[0] == 1000000
 
 
-def test_save_financial_data_empty(storage: DuckDBStorage):
+def test_save_financial_data_empty(storage: PartitionedStorage):
     """测试保存空财务数据"""
     empty_df = pd.DataFrame()
     result = storage.save_financial_data(empty_df)
     assert result is False
 
 
-def test_save_financial_data_missing_fields(storage: DuckDBStorage):
+def test_save_financial_data_missing_fields(storage: PartitionedStorage):
     """测试保存缺少必需字段的财务数据"""
     invalid_df = pd.DataFrame(
         {
@@ -263,7 +263,7 @@ def test_save_financial_data_missing_fields(storage: DuckDBStorage):
     assert result is False
 
 
-def test_save_daily_data_incremental(storage: DuckDBStorage):
+def test_save_daily_incremental(storage: PartitionedStorage):
     """测试增量保存日线数据"""
     daily_df = pd.DataFrame(
         {
@@ -274,11 +274,11 @@ def test_save_daily_data_incremental(storage: DuckDBStorage):
         }
     )
 
-    result = storage.save_daily_data_incremental(daily_df)
+    result = storage.save_daily(daily_df)
     assert result is True
 
 
-def test_get_all_stock_codes(storage: DuckDBStorage):
+def test_get_all_stock_codes(storage: PartitionedStorage):
     """测试获取所有股票代码"""
     # 先保存一些股票列表数据
     stock_list_df = pd.DataFrame(
@@ -301,13 +301,13 @@ def test_get_all_stock_codes(storage: DuckDBStorage):
     assert "000002.SZ" in codes
 
 
-def test_get_summary(storage: DuckDBStorage):
+def test_get_summary(storage: PartitionedStorage):
     """测试获取数据摘要"""
     # 保存一些测试数据
     daily_df = pd.DataFrame(
         {"ts_code": ["000001.SZ"], "trade_date": ["20231201"], "close": [100.0]}
     )
-    storage.save_daily_data(daily_df)
+    storage.save_daily(daily_df)
 
     # 获取摘要
     summary = storage.get_summary()
@@ -317,20 +317,20 @@ def test_get_summary(storage: DuckDBStorage):
     assert "record_count" in summary[0]
 
 
-def test_list_business_tables(storage: DuckDBStorage):
+def test_list_business_tables(storage: PartitionedStorage):
     """测试列出业务表"""
     # 保存一些测试数据
     daily_df = pd.DataFrame(
         {"ts_code": ["000001.SZ"], "trade_date": ["20231201"], "close": [100.0]}
     )
-    storage.save_daily_data(daily_df)
+    storage.save_daily(daily_df)
 
     # 列出业务表
     tables = storage.list_business_tables()
     assert isinstance(tables, list)
 
 
-def test_save_fundamental_data(storage: DuckDBStorage):
+def test_save_daily_basic_data(storage: PartitionedStorage):
     """测试保存基本面数据"""
     fundamental_df = pd.DataFrame(
         {
@@ -341,7 +341,7 @@ def test_save_fundamental_data(storage: DuckDBStorage):
         }
     )
 
-    result = storage.save_fundamental_data(fundamental_df)
+    result = storage.save_daily_basic_data(fundamental_df)
     assert result is True
 
     # 验证数据已保存
@@ -350,7 +350,7 @@ def test_save_fundamental_data(storage: DuckDBStorage):
     assert query_result["pe"].iloc[0] == 15.5
 
 
-def test_query_fundamental_data_by_stock_with_date_range(storage: DuckDBStorage):
+def test_query_fundamental_data_by_stock_with_date_range(storage: PartitionedStorage):
     """测试按日期范围查询基本面数据"""
     # 先保存一些数据
     fundamental_df = pd.DataFrame(
@@ -361,7 +361,7 @@ def test_query_fundamental_data_by_stock_with_date_range(storage: DuckDBStorage)
             "pb": [1.2, 1.3],
         }
     )
-    storage.save_fundamental_data(fundamental_df)
+    storage.save_daily_basic_data(fundamental_df)
 
     # 查询指定日期范围的数据
     result = storage.query_fundamental_data_by_stock(
@@ -371,49 +371,49 @@ def test_query_fundamental_data_by_stock_with_date_range(storage: DuckDBStorage)
     assert result["trade_date"].iloc[0] == "20231201"
 
 
-def test_save_daily_data_empty_dataframe(storage: DuckDBStorage):
+def test_save_daily_empty_dataframe(storage: PartitionedStorage):
     """测试保存空的日线数据"""
     empty_df = pd.DataFrame()
-    result = storage.save_daily_data(empty_df)
+    result = storage.save_daily(empty_df)
     assert result is False
 
 
-def test_save_daily_data_invalid_input(storage: DuckDBStorage):
+def test_save_daily_invalid_input(storage: PartitionedStorage):
     """测试保存无效输入的日线数据"""
-    result = storage.save_daily_data(None)
+    result = storage.save_daily(None)
     assert result is False
 
-    result = storage.save_daily_data("not a dataframe")
+    result = storage.save_daily("not a dataframe")
     assert result is False
 
 
-def test_save_financial_data_empty_dataframe(storage: DuckDBStorage):
+def test_save_financial_data_empty_dataframe(storage: PartitionedStorage):
     """测试保存空的财务数据"""
     empty_df = pd.DataFrame()
     result = storage.save_financial_data(empty_df)
     assert result is False
 
 
-def test_save_financial_data_invalid_input(storage: DuckDBStorage):
+def test_save_financial_data_invalid_input(storage: PartitionedStorage):
     """测试保存无效输入的财务数据"""
     result = storage.save_financial_data(None)
     assert result is False
 
 
-def test_save_stock_list_empty_dataframe(storage: DuckDBStorage):
+def test_save_stock_list_empty_dataframe(storage: PartitionedStorage):
     """测试保存空的股票列表"""
     empty_df = pd.DataFrame()
     result = storage.save_stock_list(empty_df)
     assert result is False
 
 
-def test_save_stock_list_invalid_input(storage: DuckDBStorage):
+def test_save_stock_list_invalid_input(storage: PartitionedStorage):
     """测试保存无效输入的股票列表"""
     result = storage.save_stock_list(None)
     assert result is False
 
 
-def test_query_daily_data_by_stock_exception_handling(storage: DuckDBStorage):
+def test_query_daily_data_by_stock_exception_handling(storage: PartitionedStorage):
     """测试查询日线数据时的异常处理"""
     # 查询不存在的股票
     result = storage.query_daily_data_by_stock("INVALID.CODE")
@@ -421,7 +421,7 @@ def test_query_daily_data_by_stock_exception_handling(storage: DuckDBStorage):
     assert len(result) == 0
 
 
-def test_query_daily_data_by_date_range_exception_handling(storage: DuckDBStorage):
+def test_query_daily_data_by_date_range_exception_handling(storage: PartitionedStorage):
     """测试按日期范围查询日线数据时的异常处理"""
     # 查询无效日期范围
     result = storage.query_daily_data_by_date_range("invalid_date", "invalid_date")
@@ -429,7 +429,7 @@ def test_query_daily_data_by_date_range_exception_handling(storage: DuckDBStorag
     assert len(result) == 0
 
 
-def test_query_financial_data_by_stock_exception_handling(storage: DuckDBStorage):
+def test_query_financial_data_by_stock_exception_handling(storage: PartitionedStorage):
     """测试查询财务数据时的异常处理"""
     # 查询不存在的股票
     result = storage.query_financial_data_by_stock("INVALID.CODE")
@@ -437,7 +437,7 @@ def test_query_financial_data_by_stock_exception_handling(storage: DuckDBStorage
     assert len(result) == 0
 
 
-def test_query_daily_data_by_stocks_exception_handling(storage: DuckDBStorage):
+def test_query_daily_data_by_stocks_exception_handling(storage: PartitionedStorage):
     """测试按股票列表查询日线数据时的异常处理"""
     # 查询不存在的股票列表
     result = storage.query_daily_data_by_stocks(["INVALID1.CODE", "INVALID2.CODE"])
@@ -445,27 +445,27 @@ def test_query_daily_data_by_stocks_exception_handling(storage: DuckDBStorage):
     assert len(result) == 0
 
 
-def test_get_latest_date_by_stock_unsupported_data_type(storage: DuckDBStorage):
+def test_get_latest_date_by_stock_unsupported_data_type(storage: PartitionedStorage):
     """测试获取最新日期时使用不支持的数据类型"""
     result = storage.get_latest_date_by_stock("000001.SZ", "unsupported_type")
     assert result is None
 
 
-def test_get_latest_date_by_stock_exception_handling(storage: DuckDBStorage):
+def test_get_latest_date_by_stock_exception_handling(storage: PartitionedStorage):
     """测试获取最新日期时的异常处理"""
     # 查询不存在的股票
     result = storage.get_latest_date_by_stock("INVALID.CODE", "daily")
     assert result is None
 
 
-def test_batch_get_latest_dates_unsupported_data_type(storage: DuckDBStorage):
+def test_batch_get_latest_dates_unsupported_data_type(storage: PartitionedStorage):
     """测试批量获取最新日期时使用不支持的数据类型"""
     result = storage.batch_get_latest_dates(["000001.SZ"], "unsupported_type")
     assert isinstance(result, dict)
     assert len(result) == 0
 
 
-def test_batch_get_latest_dates_exception_handling(storage: DuckDBStorage):
+def test_batch_get_latest_dates_exception_handling(storage: PartitionedStorage):
     """测试批量获取最新日期时的异常处理"""
     # 查询不存在的股票列表
     result = storage.batch_get_latest_dates(["INVALID1.CODE", "INVALID2.CODE"], "daily")
@@ -473,7 +473,7 @@ def test_batch_get_latest_dates_exception_handling(storage: DuckDBStorage):
     assert len(result) == 0
 
 
-def test_query_daily_data_by_date_range_with_ts_codes(storage: DuckDBStorage):
+def test_query_daily_data_by_date_range_with_ts_codes(storage: PartitionedStorage):
     """测试按日期范围和股票代码查询日线数据"""
     # 准备测试数据
     df = pd.DataFrame(
@@ -483,7 +483,7 @@ def test_query_daily_data_by_date_range_with_ts_codes(storage: DuckDBStorage):
             "close": [100.0, 200.0],
         }
     )
-    storage.save_daily_data(df)
+    storage.save_daily(df)
 
     # 查询特定股票的数据
     result = storage.query_daily_data_by_date_range(
@@ -493,7 +493,7 @@ def test_query_daily_data_by_date_range_with_ts_codes(storage: DuckDBStorage):
     assert result["ts_code"].iloc[0] == "000001.SZ"
 
 
-def test_query_daily_data_by_stock_with_date_range(storage: DuckDBStorage):
+def test_query_daily_data_by_stock_with_date_range(storage: PartitionedStorage):
     """测试按股票查询日线数据（带日期范围）"""
     # 准备测试数据
     df = pd.DataFrame(
@@ -503,7 +503,7 @@ def test_query_daily_data_by_stock_with_date_range(storage: DuckDBStorage):
             "close": [100.0, 101.0, 102.0],
         }
     )
-    storage.save_daily_data(df)
+    storage.save_daily(df)
 
     # 查询指定日期范围的数据
     result = storage.query_daily_data_by_stock("000001.SZ", "20230102", "20230103")
@@ -512,7 +512,7 @@ def test_query_daily_data_by_stock_with_date_range(storage: DuckDBStorage):
     assert result["trade_date"].max() == "20230103"
 
 
-def test_query_financial_data_by_stock_with_date_range(storage: DuckDBStorage):
+def test_query_financial_data_by_stock_with_date_range(storage: PartitionedStorage):
     """测试按股票查询财务数据（带日期范围）"""
     # 准备测试数据
     df = pd.DataFrame(
@@ -530,7 +530,7 @@ def test_query_financial_data_by_stock_with_date_range(storage: DuckDBStorage):
     assert len(result) == 2
 
 
-def test_query_daily_data_by_stocks_with_date_range(storage: DuckDBStorage):
+def test_query_daily_data_by_stocks_with_date_range(storage: PartitionedStorage):
     """测试按股票列表查询日线数据（带日期范围）"""
     # 准备测试数据
     df = pd.DataFrame(
@@ -540,7 +540,7 @@ def test_query_daily_data_by_stocks_with_date_range(storage: DuckDBStorage):
             "close": [100.0, 200.0, 101.0],
         }
     )
-    storage.save_daily_data(df)
+    storage.save_daily(df)
 
     # 查询指定股票和日期范围的数据
     result = storage.query_daily_data_by_stocks(
@@ -549,7 +549,7 @@ def test_query_daily_data_by_stocks_with_date_range(storage: DuckDBStorage):
     assert len(result) == 2
 
 
-def test_get_latest_date_by_stock_financial_type(storage: DuckDBStorage):
+def test_get_latest_date_by_stock_financial_type(storage: PartitionedStorage):
     """测试获取财务数据的最新日期"""
     # 准备测试数据
     df = pd.DataFrame(
@@ -567,20 +567,20 @@ def test_get_latest_date_by_stock_financial_type(storage: DuckDBStorage):
     assert result == "20230331"
 
 
-def test_get_latest_date_by_stock_fundamental_type(storage: DuckDBStorage):
+def test_get_latest_date_by_stock_fundamental_type(storage: PartitionedStorage):
     """测试获取基本面数据的最新日期"""
     # 准备测试数据
     df = pd.DataFrame(
         {"ts_code": ["000001.SZ"], "trade_date": ["20230101"], "pe": [10.5]}
     )
-    storage.save_fundamental_data(df)
+    storage.save_daily_basic_data(df)
 
     # 获取最新日期
     result = storage.get_latest_date_by_stock("000001.SZ", "fundamental")
     assert result == "20230101"
 
 
-def test_batch_get_latest_dates_financial_type(storage: DuckDBStorage):
+def test_batch_get_latest_dates_financial_type(storage: PartitionedStorage):
     """测试批量获取财务数据的最新日期"""
     # 准备测试数据
     df = pd.DataFrame(
@@ -600,7 +600,7 @@ def test_batch_get_latest_dates_financial_type(storage: DuckDBStorage):
     assert result["000002.SZ"] == "20230331"
 
 
-def test_batch_get_latest_dates_fundamental_type(storage: DuckDBStorage):
+def test_batch_get_latest_dates_fundamental_type(storage: PartitionedStorage):
     """测试批量获取基本面数据的最新日期"""
     # 准备测试数据
     df = pd.DataFrame(
@@ -610,7 +610,7 @@ def test_batch_get_latest_dates_fundamental_type(storage: DuckDBStorage):
             "pe": [10.5, 15.2],
         }
     )
-    storage.save_fundamental_data(df)
+    storage.save_daily_basic_data(df)
 
     # 批量获取最新日期
     result = storage.batch_get_latest_dates(["000001.SZ", "000002.SZ"], "fundamental")
@@ -619,7 +619,7 @@ def test_batch_get_latest_dates_fundamental_type(storage: DuckDBStorage):
     assert result["000002.SZ"] == "20230101"
 
 
-def test_save_financial_data_no_matching_columns(storage: DuckDBStorage):
+def test_save_financial_data_no_matching_columns(storage: PartitionedStorage):
     """测试保存财务数据时没有匹配的列"""
     # 创建一个没有任何匹配列的DataFrame
     df = pd.DataFrame({"invalid_column1": ["value1"], "invalid_column2": ["value2"]})
@@ -628,7 +628,7 @@ def test_save_financial_data_no_matching_columns(storage: DuckDBStorage):
     assert result is False
 
 
-def test_get_stock_list_exception_handling(storage: DuckDBStorage):
+def test_get_stock_list_exception_handling(storage: PartitionedStorage):
     """测试获取股票列表时的异常处理"""
     # 在没有数据的情况下获取股票列表
     result = storage.get_stock_list()
@@ -636,7 +636,7 @@ def test_get_stock_list_exception_handling(storage: DuckDBStorage):
     assert len(result) == 0
 
 
-def test_save_daily_data_database_exception(storage: DuckDBStorage, monkeypatch):
+def test_save_daily_database_exception(storage: PartitionedStorage, monkeypatch):
     """测试保存日线数据时数据库异常"""
     from unittest.mock import Mock, patch
 
@@ -651,11 +651,11 @@ def test_save_daily_data_database_exception(storage: DuckDBStorage, monkeypatch)
             {"ts_code": ["000001.SZ"], "trade_date": ["20230101"], "close": [100.0]}
         )
 
-        result = storage.save_daily_data(df)
+        result = storage.save_daily(df)
         assert result is False
 
 
-def test_save_financial_data_database_exception(storage: DuckDBStorage, monkeypatch):
+def test_save_financial_data_database_exception(storage: PartitionedStorage, monkeypatch):
     """测试保存财务数据时数据库异常"""
     from unittest.mock import Mock, patch
 
@@ -679,7 +679,7 @@ def test_save_financial_data_database_exception(storage: DuckDBStorage, monkeypa
         assert result is False
 
 
-def test_save_stock_list_database_exception(storage: DuckDBStorage, monkeypatch):
+def test_save_stock_list_database_exception(storage: PartitionedStorage, monkeypatch):
     """测试保存股票列表时数据库异常"""
     from unittest.mock import Mock, patch
 
@@ -705,7 +705,7 @@ def test_save_stock_list_database_exception(storage: DuckDBStorage, monkeypatch)
         assert result is False
 
 
-def test_init_partitioned_tables_index_creation_warning(storage: DuckDBStorage, caplog):
+def test_init_partitioned_tables_index_creation_warning(storage: PartitionedStorage, caplog):
     """测试分区表索引创建失败时的警告日志"""
     from unittest.mock import Mock, patch
     import logging
@@ -731,7 +731,7 @@ def test_init_partitioned_tables_index_creation_warning(storage: DuckDBStorage, 
         assert any("创建分区表索引失败" in record.message for record in caplog.records)
 
 
-def test_update_partition_metadata_exception_handling(storage: DuckDBStorage):
+def test_update_partition_metadata_exception_handling(storage: PartitionedStorage):
     """测试更新分区元数据时的异常处理"""
     from unittest.mock import Mock, patch
 
@@ -753,7 +753,7 @@ def test_update_partition_metadata_exception_handling(storage: DuckDBStorage):
             )
 
 
-def test_save_fundamental_data_success(storage: DuckDBStorage):
+def test_save_daily_basic_data_success(storage: PartitionedStorage):
     """测试保存基本面数据成功"""
     df = pd.DataFrame(
         {
@@ -764,18 +764,18 @@ def test_save_fundamental_data_success(storage: DuckDBStorage):
         }
     )
 
-    result = storage.save_fundamental_data(df)
+    result = storage.save_daily_basic_data(df)
     assert result is True
 
 
-def test_save_fundamental_data_empty_df(storage: DuckDBStorage):
+def test_save_daily_basic_data_empty_df(storage: PartitionedStorage):
     """测试保存空的基本面数据"""
     df = pd.DataFrame()
-    result = storage.save_fundamental_data(df)
+    result = storage.save_daily_basic_data(df)
     assert result is False  # 空DataFrame应该返回False
 
 
-def test_save_fundamental_data_exception(storage: DuckDBStorage):
+def test_save_daily_basic_data_exception(storage: PartitionedStorage):
     """测试保存基本面数据异常处理"""
     from unittest.mock import Mock, patch
 
@@ -789,11 +789,11 @@ def test_save_fundamental_data_exception(storage: DuckDBStorage):
             {"ts_code": ["000001.SZ"], "trade_date": ["20230101"], "pe": [15.5]}
         )
 
-        result = storage.save_fundamental_data(df)
+        result = storage.save_daily_basic_data(df)
         assert result is False
 
 
-def test_query_fundamental_data_by_stock_success(storage: DuckDBStorage):
+def test_query_fundamental_data_by_stock_success(storage: PartitionedStorage):
     """测试按股票查询基本面数据成功"""
     # 先保存一些基本面数据
     df = pd.DataFrame(
@@ -804,7 +804,7 @@ def test_query_fundamental_data_by_stock_success(storage: DuckDBStorage):
             "pb": [1.2],
         }
     )
-    storage.save_fundamental_data(df)
+    storage.save_daily_basic_data(df)
 
     # 查询数据
     result = storage.query_fundamental_data_by_stock("000001.SZ")
@@ -812,7 +812,7 @@ def test_query_fundamental_data_by_stock_success(storage: DuckDBStorage):
     assert result.iloc[0]["ts_code"] == "000001.SZ"
 
 
-def test_query_fundamental_data_by_stock_with_date_range_new(storage: DuckDBStorage):
+def test_query_fundamental_data_by_stock_with_date_range_new(storage: PartitionedStorage):
     """测试按股票和日期范围查询基本面数据"""
     # 先保存一些基本面数据
     df = pd.DataFrame(
@@ -823,7 +823,7 @@ def test_query_fundamental_data_by_stock_with_date_range_new(storage: DuckDBStor
             "pb": [1.2, 1.3],
         }
     )
-    storage.save_fundamental_data(df)
+    storage.save_daily_basic_data(df)
 
     # 查询指定日期范围的数据
     result = storage.query_fundamental_data_by_stock(
@@ -833,7 +833,7 @@ def test_query_fundamental_data_by_stock_with_date_range_new(storage: DuckDBStor
     assert result.iloc[0]["trade_date"] == "20230101"
 
 
-def test_query_fundamental_data_by_stock_exception(storage: DuckDBStorage):
+def test_query_fundamental_data_by_stock_exception(storage: PartitionedStorage):
     """测试查询基本面数据异常处理"""
     from unittest.mock import Mock, patch
 
@@ -847,7 +847,7 @@ def test_query_fundamental_data_by_stock_exception(storage: DuckDBStorage):
         assert result.empty
 
 
-def test_get_all_stock_codes_from_other_tables(storage: DuckDBStorage):
+def test_get_all_stock_codes_from_other_tables(storage: PartitionedStorage):
     """测试从其他表获取股票代码（当sys_stock_list为空时）"""
     # 确保sys_stock_list表为空，但其他表有数据
     daily_df = pd.DataFrame(
@@ -857,7 +857,7 @@ def test_get_all_stock_codes_from_other_tables(storage: DuckDBStorage):
             "close": [10.0, 20.0],
         }
     )
-    storage.save_daily_data(daily_df)
+    storage.save_daily(daily_df)
 
     financial_df = pd.DataFrame(
         {
@@ -872,7 +872,7 @@ def test_get_all_stock_codes_from_other_tables(storage: DuckDBStorage):
     fundamental_df = pd.DataFrame(
         {"ts_code": ["000004.SZ"], "trade_date": ["20230101"], "pe": [15.5]}
     )
-    storage.save_fundamental_data(fundamental_df)
+    storage.save_daily_basic_data(fundamental_df)
 
     # 使用 get_all_stock_codes 方法应该包含所有表中的股票
     stock_codes = set(storage.get_all_stock_codes())
@@ -881,7 +881,7 @@ def test_get_all_stock_codes_from_other_tables(storage: DuckDBStorage):
     assert expected_codes.issubset(stock_codes)
 
 
-def test_get_summary_exception(storage: DuckDBStorage):
+def test_get_summary_exception(storage: PartitionedStorage):
     """测试获取摘要信息异常处理"""
     from unittest.mock import Mock, patch
 
@@ -897,7 +897,7 @@ def test_get_summary_exception(storage: DuckDBStorage):
         assert len(summary) == 0
 
 
-def test_list_business_tables_from_financial_and_fundamental(storage: DuckDBStorage):
+def test_list_business_tables_from_financial_and_fundamental(storage: PartitionedStorage):
     """测试从financial_data和fundamental_data表获取股票代码"""
     # 保存财务数据
     financial_df = pd.DataFrame(
@@ -914,7 +914,7 @@ def test_list_business_tables_from_financial_and_fundamental(storage: DuckDBStor
     fundamental_df = pd.DataFrame(
         {"ts_code": ["000002.SZ"], "trade_date": ["20230101"], "pe": [15.5]}
     )
-    storage.save_fundamental_data(fundamental_df)
+    storage.save_daily_basic_data(fundamental_df)
 
     # 获取业务表列表
     tables = storage.list_business_tables()
@@ -930,7 +930,7 @@ def test_list_business_tables_from_financial_and_fundamental(storage: DuckDBStor
     assert "daily_basic" in business_types
 
 
-def test_query_daily_data_by_stock_database_exception(storage: DuckDBStorage):
+def test_query_daily_data_by_stock_database_exception(storage: PartitionedStorage):
     """测试查询日线数据时数据库异常处理"""
     from unittest.mock import patch, MagicMock
 
@@ -947,7 +947,7 @@ def test_query_daily_data_by_stock_database_exception(storage: DuckDBStorage):
         assert result.empty
 
 
-def test_query_daily_data_by_date_range_database_exception(storage: DuckDBStorage):
+def test_query_daily_data_by_date_range_database_exception(storage: PartitionedStorage):
     """测试按日期范围查询日线数据时数据库异常处理"""
     from unittest.mock import patch, MagicMock
 
@@ -964,7 +964,7 @@ def test_query_daily_data_by_date_range_database_exception(storage: DuckDBStorag
         assert result.empty
 
 
-def test_query_financial_data_by_stock_database_exception(storage: DuckDBStorage):
+def test_query_financial_data_by_stock_database_exception(storage: PartitionedStorage):
     """测试查询财务数据时数据库异常处理"""
     from unittest.mock import patch, MagicMock
 
@@ -981,7 +981,7 @@ def test_query_financial_data_by_stock_database_exception(storage: DuckDBStorage
         assert result.empty
 
 
-def test_query_daily_data_by_stocks_database_exception(storage: DuckDBStorage):
+def test_query_daily_data_by_stocks_database_exception(storage: PartitionedStorage):
     """测试查询多股票日线数据时数据库异常处理"""
     from unittest.mock import patch, MagicMock
 
@@ -998,7 +998,7 @@ def test_query_daily_data_by_stocks_database_exception(storage: DuckDBStorage):
         assert result.empty
 
 
-def test_get_latest_date_by_stock_database_exception(storage: DuckDBStorage):
+def test_get_latest_date_by_stock_database_exception(storage: PartitionedStorage):
     """测试获取股票最新日期时数据库异常处理"""
     from unittest.mock import patch, MagicMock
 
@@ -1015,7 +1015,7 @@ def test_get_latest_date_by_stock_database_exception(storage: DuckDBStorage):
         assert result is None
 
 
-def test_batch_get_latest_dates_database_exception(storage: DuckDBStorage):
+def test_batch_get_latest_dates_database_exception(storage: PartitionedStorage):
     """测试批量获取最新日期时数据库异常处理"""
     from unittest.mock import patch, MagicMock
 
@@ -1032,7 +1032,7 @@ def test_batch_get_latest_dates_database_exception(storage: DuckDBStorage):
         assert result == {}
 
 
-def test_save_stock_list_missing_required_fields(storage: DuckDBStorage):
+def test_save_stock_list_missing_required_fields(storage: PartitionedStorage):
     """测试保存股票列表时缺少必需字段"""
     # 创建缺少 ts_code 字段的 DataFrame
     invalid_df = pd.DataFrame({"symbol": ["000001"], "name": ["平安银行"]})

@@ -2,14 +2,114 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 import threading
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, runtime_checkable
 
 
-from .interfaces import IDatabaseFactory, IDatabase, IStorage
+from .interfaces import IDatabaseFactory, IDatabase, IStorageSaver, IStorageSearcher
 from .utils import get_logger
 
 
-class PartitionedStorage(IStorage):
+class TableNames:
+    """表名常量类"""
+    DAILY_DATA = "daily"
+    FINANCIAL_DATA = "financials"
+    FUNDAMENTAL_DATA = "daily_basic"
+    STOCK_LIST = "stock_list"
+
+# 建表语句常量
+CREATE_DAILY_DATA_TABLE = """
+    CREATE TABLE IF NOT EXISTS daily_data (
+        ts_code VARCHAR NOT NULL,
+        trade_date VARCHAR NOT NULL,
+        open DOUBLE,
+        high DOUBLE,
+        low DOUBLE,
+        close DOUBLE,
+        pre_close DOUBLE,
+        change DOUBLE,
+        pct_chg DOUBLE,
+        vol DOUBLE,
+        amount DOUBLE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (ts_code, trade_date)
+    )
+"""
+
+CREATE_FINANCIAL_DATA_TABLE = """
+    CREATE TABLE IF NOT EXISTS financial_data (
+        ts_code VARCHAR NOT NULL,
+        ann_date VARCHAR NOT NULL,
+        end_date VARCHAR NOT NULL,
+        report_type VARCHAR,
+        total_revenue DOUBLE,
+        revenue DOUBLE,
+        n_income DOUBLE,
+        n_income_attr_p DOUBLE,
+        total_profit DOUBLE,
+        operate_profit DOUBLE,
+        ebit DOUBLE,
+        ebitda DOUBLE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (ts_code, ann_date, end_date)
+    )
+"""
+
+CREATE_FUNDAMENTAL_DATA_TABLE = """
+    CREATE TABLE IF NOT EXISTS fundamental_data (
+        ts_code VARCHAR NOT NULL,
+        trade_date VARCHAR NOT NULL,
+        close DOUBLE,
+        turnover_rate DOUBLE,
+        turnover_rate_f DOUBLE,
+        volume_ratio DOUBLE,
+        pe DOUBLE,
+        pe_ttm DOUBLE,
+        pb DOUBLE,
+        ps DOUBLE,
+        ps_ttm DOUBLE,
+        dv_ratio DOUBLE,
+        dv_ttm DOUBLE,
+        total_share DOUBLE,
+        float_share DOUBLE,
+        free_share DOUBLE,
+        total_mv DOUBLE,
+        circ_mv DOUBLE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (ts_code, trade_date)
+    )
+"""
+
+CREATE_STOCK_LIST_TABLE = """
+    CREATE TABLE IF NOT EXISTS sys_stock_list (
+        ts_code VARCHAR PRIMARY KEY,
+        symbol VARCHAR,
+        name VARCHAR,
+        area VARCHAR,
+        industry VARCHAR,
+        market VARCHAR,
+        list_date VARCHAR,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+    )
+"""
+
+CREATE_PARTITION_METADATA_TABLE = """
+    CREATE TABLE IF NOT EXISTS _partition_metadata (
+        table_name VARCHAR NOT NULL,
+        partition_key VARCHAR NOT NULL,
+        min_date VARCHAR,
+        max_date VARCHAR,
+        record_count BIGINT,
+        last_updated TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (table_name, partition_key)
+    )
+"""
+
+
+class PartitionedStorage(IStorageSaver, IStorageSearcher):
     """
     分区表架构的数据存储层
 
@@ -27,7 +127,7 @@ class PartitionedStorage(IStorage):
         self,
         db_path: str | Path,
         db_factory: IDatabaseFactory,
-        logger = None,
+        logger=None,
     ):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -47,106 +147,23 @@ class PartitionedStorage(IStorage):
         self._init_partitioned_tables()
         # 注意：不关闭连接，因为它是共享的写连接
 
-
-
     def _init_partitioned_tables(self):
         """初始化分区表结构"""
         with self._db_factory.get_write_connection(str(self.db_path)) as conn:
             # 创建日线数据表
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS daily_data (
-                    ts_code VARCHAR NOT NULL,
-                    trade_date VARCHAR NOT NULL,
-                    open DOUBLE,
-                    high DOUBLE,
-                    low DOUBLE,
-                    close DOUBLE,
-                    pre_close DOUBLE,
-                    change DOUBLE,
-                    pct_chg DOUBLE,
-                    vol DOUBLE,
-                    amount DOUBLE,
-                    created_at TIMESTAMP DEFAULT NOW(),
-                    updated_at TIMESTAMP DEFAULT NOW(),
-                    PRIMARY KEY (ts_code, trade_date)
-                )
-            """)
+            conn.execute(CREATE_DAILY_DATA_TABLE)
 
             # 创建财务数据表（简化版，包含核心字段）
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS financial_data (
-                    ts_code VARCHAR NOT NULL,
-                    ann_date VARCHAR NOT NULL,
-                    end_date VARCHAR NOT NULL,
-                    report_type VARCHAR,
-                    total_revenue DOUBLE,
-                    revenue DOUBLE,
-                    n_income DOUBLE,
-                    n_income_attr_p DOUBLE,
-                    total_profit DOUBLE,
-                    operate_profit DOUBLE,
-                    ebit DOUBLE,
-                    ebitda DOUBLE,
-                    created_at TIMESTAMP DEFAULT NOW(),
-                    updated_at TIMESTAMP DEFAULT NOW(),
-                    PRIMARY KEY (ts_code, ann_date, end_date)
-                )
-            """)
+            conn.execute(CREATE_FINANCIAL_DATA_TABLE)
 
             # 创建基本面数据表
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS fundamental_data (
-                    ts_code VARCHAR NOT NULL,
-                    trade_date VARCHAR NOT NULL,
-                    close DOUBLE,
-                    turnover_rate DOUBLE,
-                    turnover_rate_f DOUBLE,
-                    volume_ratio DOUBLE,
-                    pe DOUBLE,
-                    pe_ttm DOUBLE,
-                    pb DOUBLE,
-                    ps DOUBLE,
-                    ps_ttm DOUBLE,
-                    dv_ratio DOUBLE,
-                    dv_ttm DOUBLE,
-                    total_share DOUBLE,
-                    float_share DOUBLE,
-                    free_share DOUBLE,
-                    total_mv DOUBLE,
-                    circ_mv DOUBLE,
-                    created_at TIMESTAMP DEFAULT NOW(),
-                    updated_at TIMESTAMP DEFAULT NOW(),
-                    PRIMARY KEY (ts_code, trade_date)
-                )
-            """)
+            conn.execute(CREATE_FUNDAMENTAL_DATA_TABLE)
 
             # 创建股票列表系统表
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS sys_stock_list (
-                    ts_code VARCHAR PRIMARY KEY,
-                    symbol VARCHAR,
-                    name VARCHAR,
-                    area VARCHAR,
-                    industry VARCHAR,
-                    market VARCHAR,
-                    list_date VARCHAR,
-                    created_at TIMESTAMP DEFAULT NOW(),
-                    updated_at TIMESTAMP DEFAULT NOW()
-                )
-            """)
+            conn.execute(CREATE_STOCK_LIST_TABLE)
 
             # 创建分区元数据表
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS _partition_metadata (
-                    table_name VARCHAR NOT NULL,
-                    partition_key VARCHAR NOT NULL,
-                    min_date VARCHAR,
-                    max_date VARCHAR,
-                    record_count BIGINT,
-                    last_updated TIMESTAMP DEFAULT NOW(),
-                    PRIMARY KEY (table_name, partition_key)
-                )
-            """)
+            conn.execute(CREATE_PARTITION_METADATA_TABLE)
 
         # 创建索引
         self._create_indexes()
@@ -195,7 +212,7 @@ class PartitionedStorage(IStorage):
             except Exception as e:
                 self._logger.warning(f"创建分区表索引失败: {e}")
 
-    def save_daily_data(self, df: pd.DataFrame) -> bool:
+    def save_daily(self, df: pd.DataFrame) -> bool:
         """保存日线数据"""
         if not isinstance(df, pd.DataFrame) or df.empty:
             self._logger.debug("日线数据为空，跳过保存")
@@ -246,9 +263,7 @@ class PartitionedStorage(IStorage):
                 self._logger.error(f"保存日线数据失败: {e}", exc_info=True)
                 return False
 
-    def save_daily_data_incremental(self, df: pd.DataFrame) -> bool:
-        """增量保存日线数据"""
-        return self.save_daily_data(df)
+
 
     def save_financial_data(self, df: pd.DataFrame) -> bool:
         """保存财务数据"""
@@ -616,22 +631,38 @@ class PartitionedStorage(IStorage):
                     return [code[0] for code in result]
 
                 # 如果系统表为空，则从各个数据表中获取股票代码作为备选
-                self._logger.warning("sys_stock_list表为空，从数据表中获取股票代码")
-                daily_codes = conn.execute(
-                    "SELECT DISTINCT ts_code FROM daily_data"
-                ).fetchall()
-                financial_codes = conn.execute(
-                    "SELECT DISTINCT ts_code FROM financial_data"
-                ).fetchall()
-                fundamental_codes = conn.execute(
-                    "SELECT DISTINCT ts_code FROM fundamental_data"
-                ).fetchall()
+                self._logger.warning("sys_stock_list表为空")
+                
+                stock_codes = set()
+                
+                # 从 daily_data 表获取股票代码
+                try:
+                    daily_codes = conn.execute(
+                        "SELECT DISTINCT ts_code FROM daily_data"
+                    ).fetchall()
+                    stock_codes.update([code[0] for code in daily_codes])
+                except Exception:
+                    pass
+                
+                # 从 financial_data 表获取股票代码
+                try:
+                    financial_codes = conn.execute(
+                        "SELECT DISTINCT ts_code FROM financial_data"
+                    ).fetchall()
+                    stock_codes.update([code[0] for code in financial_codes])
+                except Exception:
+                    pass
+                
+                # 从 fundamental_data 表获取股票代码
+                try:
+                    fundamental_codes = conn.execute(
+                        "SELECT DISTINCT ts_code FROM fundamental_data"
+                    ).fetchall()
+                    stock_codes.update([code[0] for code in fundamental_codes])
+                except Exception:
+                    pass
 
-                all_codes = set()
-                for codes in [daily_codes, financial_codes, fundamental_codes]:
-                    all_codes.update([code[0] for code in codes])
-
-                return sorted(list(all_codes))
+                return sorted(list(stock_codes))
         except Exception as e:
             self._logger.error(f"获取所有股票代码失败: {e}")
             return []
@@ -796,6 +827,6 @@ class PartitionedStorage(IStorage):
             self._logger.error(f"查询股票 {ts_code} 基本面数据失败: {e}")
             return pd.DataFrame()
 
-
-# 为了向后兼容，创建一个别名
-DuckDBStorage = PartitionedStorage
+    def save_daily_basic_data(self, df: pd.DataFrame) -> bool:
+        """保存每日基本面数据（向后兼容性方法）"""
+        return self.save_fundamental_data(df)

@@ -2,6 +2,7 @@ from datetime import datetime
 
 from downloader.tasks.daily import DailyTaskHandler
 from tests.test_implementations import MockFetcher, MockStorage
+from src.downloader.storage import TableNames
 
 
 def test_daily_task_handler_executes_correctly(mock_fetcher, mock_storage):
@@ -15,7 +16,7 @@ def test_daily_task_handler_executes_correctly(mock_fetcher, mock_storage):
     handler.execute(target_symbols=target_symbols)
 
     assert mock_fetcher.fetch_daily_history.call_count == len(target_symbols)
-    assert mock_storage.save_daily_data.call_count == len(target_symbols)
+    assert mock_storage.save_daily.call_count == len(target_symbols)
 
 
 def test_daily_handler_skips_if_no_symbols_provided(
@@ -31,7 +32,7 @@ def test_daily_handler_skips_if_no_symbols_provided(
     handler.execute(target_symbols=target_symbols)
 
     mock_fetcher.fetch_daily_history.assert_not_called()
-    mock_storage.save_daily_data.assert_not_called()
+    mock_storage.save_daily.assert_not_called()
 
 
 # --- 新增的增量逻辑专项测试 ---
@@ -117,7 +118,7 @@ def test_daily_task_handler_with_test_implementations():
 
     # 验证调用历史
     assert len([call for call in test_fetcher.call_history if "fetch_daily_history" in call]) == 2
-    assert len([call for call in test_storage.call_history if "save_daily_data" in call]) == 2
+    assert len([call for call in test_storage.call_history if "save_daily" in call]) == 2
     
     # 验证具体的调用参数
     daily_calls = [call for call in test_fetcher.call_history if "fetch_daily_history" in call]

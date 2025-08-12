@@ -6,7 +6,7 @@ import sys
 
 # 导入核心组件以进行类型提示，增强代码可读性和健壮性
 from ..fetcher import TushareFetcher
-from ..storage import DuckDBStorage
+from ..storage import PartitionedStorage
 # rate_limit装饰器已移至各个fetcher方法中使用ratelimit库
 
 # 从新的 utils 模块导入工具函数
@@ -21,7 +21,7 @@ class BaseTaskHandler(ABC):
         self,
         task_config: dict,
         fetcher: TushareFetcher,
-        storage: DuckDBStorage,
+        storage: PartitionedStorage,
         force_run: bool = False,
     ):
         self.task_config = task_config
@@ -189,11 +189,11 @@ class IncrementalTaskHandler(BaseTaskHandler):
                 elif data_type == "daily_basic" or data_type.startswith("fundamental"):
                     self.storage.save_fundamental_data(df)
                 elif data_type.startswith("daily"):
-                    self.storage.save_daily_data(df)
+                    self.storage.save_daily(df)
                 elif data_type.startswith("financials"):
                     self.storage.save_financial_data(df)
                 else:
-                    self.storage.save_daily_data(df)  # 默认
+                    self.storage.save_daily(df)  # 默认
                 return True
             elif df is not None:  # 空 DataFrame，表示没有新数据
                 return True

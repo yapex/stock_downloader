@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Set, Any
 from datetime import datetime
 
-from .storage import DuckDBStorage
+from .storage import PartitionedStorage
 from .storage_factory import get_storage
 from .models import TaskType, DownloadTask, Priority
 from .utils import get_logger
@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 class MissingSymbolsDetector:
     """缺失符号检测器"""
     
-    def __init__(self, storage: DuckDBStorage):
+    def __init__(self, storage: PartitionedStorage):
         self.storage = storage
         self.logger = get_logger(__name__)
     

@@ -16,7 +16,7 @@ import os
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.rate_limiter_native import rate_limit, reset_limiter
+from src.downloader.rate_limiter_native import rate_limit, reset_limiter
 from src.downloader.simple_retry_simplified import simple_retry
 
 

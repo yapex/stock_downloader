@@ -21,7 +21,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
 from downloader.fetcher_factory import get_fetcher
-from downloader.storage import DuckDBStorage
+from downloader.storage import PartitionedStorage
 from downloader.tasks.daily import DailyTaskHandler
 from downloader.tasks.stock_list import StockListTaskHandler
 
@@ -60,7 +60,7 @@ def main():
     try:
         # 初始化核心组件
         fetcher = get_fetcher(use_singleton=True)
-        storage = DuckDBStorage(db_path)
+        storage = PartitionedStorage(db_path)
         
         print("\n📊 步骤1: 下载股票列表")
         stock_handler = StockListTaskHandler(fetcher, storage)

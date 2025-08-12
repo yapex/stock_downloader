@@ -11,7 +11,7 @@
 import pytest
 import time
 from unittest.mock import patch, MagicMock
-from src.rate_limiter_native import rate_limit, reset_limiter
+from src.downloader.rate_limiter_native import rate_limit, reset_limiter
 from src.downloader.simple_retry_simplified import simple_retry
 
 
