@@ -9,14 +9,16 @@ from .config import (
     IGroupConfig,
     IDownloaderConfig,
     IConsumerConfig,
-    IDatabaseConfig
+    IDatabaseConfig,
 )
+
 # logger module removed
 from .database import IDatabase, IDatabaseFactory
 from .fetcher import IFetcher, FetcherProtocol
 from .storage import IStorage, StorageProtocol
-from .events import IEventListener, IEventBus, SimpleEventBus
+from .events import IEventListener, IEventBus
 from .producer import IProducer, ProducerEvents
+from .task import ITask
 
 # 向后兼容的别名
 ConfigInterface = IConfig
@@ -46,8 +48,10 @@ __all__ = [
     "IEventBus",
     "IProducer",
     "ProducerEvents",
-    # 实现类
-    "SimpleEventBus",
+    "ITaskHandler",
+    "IIncrementalTaskHandler",
+    "ITaskHandlerFactory",
+
     # "StandardLogger", # removed
     # "LoggerFactory", # removed
     # 向后兼容的别名
@@ -62,4 +66,7 @@ __all__ = [
     "FetcherProtocol",
     "StorageProtocol",
     "DatabaseConnectionFactory",
+    "TaskHandlerProtocol",
+    "IncrementalTaskHandlerProtocol",
+    "TaskHandlerFactoryProtocol",
 ]

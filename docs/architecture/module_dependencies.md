@@ -140,7 +140,7 @@ flowchart LR
 要添加新的任务处理器：
 
 1. 在 `tasks/` 目录创建新的处理器文件
-2. 继承 `BaseTaskHandler` 类
+2. 继承 `Base` 类
 3. 在 `pyproject.toml` 中注册 entry-point
 4. 在 `config.yaml` 中添加任务配置
 

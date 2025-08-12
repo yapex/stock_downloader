@@ -37,7 +37,7 @@
 ```python
 from concurrent.futures import ThreadPoolExecutor
 from src.downloader.producer_v2 import ProducerV2
-from src.downloader.interfaces.events import SimpleEventBus
+from src.downloader.event_bus import SimpleEventBus
 from src.downloader.interfaces.producer import ProducerEvents
 from src.downloader.models import DownloadTask, TaskType, Priority
 

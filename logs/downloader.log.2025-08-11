@@ -1,0 +1,1492 @@
+15:14:56 - downloader.app - INFO - [应用启动] 开始启动股票下载应用 - 配置文件: config.yaml, 任务组: default
+15:14:56 - downloader.app - INFO - [应用启动] 加载配置文件: config.yaml
+15:14:56 - downloader.app - INFO - 使用组配置: 默认组 - 核心股票的完整数据下载
+15:14:56 - downloader.app - INFO - [应用启动] 创建下载组件
+15:14:56 - downloader.fetcher_factory - INFO - 创建TushareFetcher单例实例
+15:14:56 - downloader.fetcher_factory - INFO - TushareFetcher单例实例创建完成，实例ID: 4394417664
+15:14:56 - downloader.storage_factory - DEBUG - 创建Storage单例实例: data/stock.db
+15:14:56 - downloader.storage_factory - DEBUG - 分区表DuckDB数据库已连接: /Users/yapex/workspace/stock_downloader/data/stock.db
+15:14:56 - downloader.storage_factory - DEBUG - 分区表索引创建完成
+15:14:56 - downloader.storage_factory - INFO - Storage单例实例已创建: data/stock.db
+15:14:56 - downloader.app - INFO - [应用启动] 配置信息 - 最大并发任务: 1, 强制执行: False
+15:14:56 - downloader.app - INFO - [应用启动] 创建下载引擎
+15:14:56 - downloader.engine - DEBUG - 发现了 4 个任务处理器入口点。
+15:14:56 - downloader.engine - DEBUG -   - 已注册处理器: 'daily'
+15:14:56 - downloader.engine - DEBUG -   - 已注册处理器: 'daily_basic'
+15:14:56 - downloader.engine - DEBUG -   - 已注册处理器: 'financials'
+15:14:56 - downloader.engine - DEBUG -   - 已注册处理器: 'stock_list'
+15:14:56 - downloader.app - INFO - [应用运行] 开始运行下载引擎
+15:14:56 - downloader.engine - INFO - 启动基于队列的下载引擎...
+15:14:56 - downloader.progress_events - INFO - 进度事件处理线程已启动
+15:14:56 - downloader.progress_events - INFO - 进度事件管理器已启动
+15:14:56 - downloader.engine - INFO - 发现 1 个系统表任务，6 个业务表任务
+15:14:56 - downloader.engine - INFO - 初始化队列和线程池...
+15:14:56 - downloader.engine - INFO - [引擎初始化] 开始初始化队列和线程池 - 生产者队列大小: 200, 数据队列大小: 200
+15:14:56 - downloader.engine - INFO - [引擎初始化] 队列创建完成 - 任务队列: 0/200, 数据队列: 0/200
+15:14:56 - downloader.engine - INFO - [引擎初始化] 数据库路径: data/stock.db
+15:14:56 - downloader.engine - INFO - [引擎初始化] 生产者列表已初始化
+15:14:56 - downloader.engine - INFO - [引擎初始化] 创建消费者池 - 最大消费者: 1, 批次大小: 200, 刷新间隔: 20.0s, 最大重试: 3
+15:14:56 - downloader.engine - INFO - 初始化TushareFetcher单例实例
+15:14:56 - downloader.engine - INFO - TushareFetcher实例信息: {'singleton_instance_exists': True, 'singleton_instance_id': 4394417664, 'thread_local_instance_exists': False, 'thread_local_instance_id': None}
+15:14:56 - downloader.engine - INFO - [引擎初始化] 队列初始化完成 - 最大生产者: 1, 最大消费者: 1, Fetcher ID: 4394417664
+15:14:56 - downloader.engine - INFO - === 阶段1：处理系统表任务 ===
+15:14:56 - downloader.engine - INFO - 构建了 1 个下载任务
+15:14:56 - downloader.engine - INFO -   - stock_list: 1 个任务
+15:14:56 - downloader.engine - INFO - 开始处理 1 个系统表任务
+15:14:56 - downloader.consumer_pool.worker_0 - INFO - Consumer worker 0 started
+15:14:56 - downloader.progress_events - INFO - 阶段开始: initialization
+15:14:56 - downloader.consumer_pool - INFO - Started 1 new consumers, total active: 1
+15:14:56 - downloader.consumer_pool - INFO - Consumer pool started with 1 workers, batch_size=200, flush_interval=20.0s
+15:14:56 - downloader.engine - INFO - [引擎任务提交] 开始并行提交 1 个任务到队列 - 队列当前大小: 0, 最大容量: 200
+15:14:56 - downloader.engine - INFO - [引擎任务提交] 检测到系统表任务，使用单线程处理 - Fetcher ID: 4394417664
+15:14:56 - downloader.progress_events - INFO - 阶段开始: downloading
+15:14:56 - downloader.producer - INFO - Producer使用传入的fetcher实例，ID: 4394417664
+15:14:56 - downloader.producer.processor - DEBUG - TaskProcessor初始化，使用fetcher实例ID: 4394417664
+15:14:56 - downloader.engine - INFO - [引擎任务提交] 生产者 1 已创建 - Producer Fetcher ID: 4394417664
+15:14:56 - downloader.producer - INFO - Producer worker started
+15:14:56 - downloader.producer - INFO - Producer started
+15:14:56 - downloader.engine - INFO - [引擎任务提交] 生产者 1 已启动 - 线程ID: N/A
+15:14:56 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: c5a028e2-b498-4f0a-a5b7-c643faedd20b, 股票: system, 类型: stock_list, 队列大小: 0 -> 1
+15:14:56 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: c5a028e2-b498-4f0a-a5b7-c643faedd20b, 类型: stock_list, 股票: system, 重试次数: 0/3, Producer实例: 4395012784, Fetcher实例: 4394417664
+15:14:56 - downloader.engine - INFO - [引擎任务提交] 成功提交 1/1 个任务到共享队列 - 队列大小: 0
+15:14:56 - downloader.producer.processor - DEBUG - Processing task c5a028e2-b498-4f0a-a5b7-c643faedd20b: system - stock_list
+15:14:56 - downloader.engine - INFO - [引擎任务等待] 开始等待所有任务完成 - 当前任务队列: 0, 生产者数量: 1
+15:14:56 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+15:14:56 - downloader.engine - INFO - [引擎任务等待] 所有任务已完成 - 总等待周期: 0, 最终队列大小: 0
+15:14:56 - asyncio - DEBUG - Using selector: KqueueSelector
+15:14:56 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4394417664
+15:14:56 - downloader.engine - INFO - [引擎生产者停止] 开始停止所有生产者 - 当前生产者数量: 1, 剩余任务: 0
+15:14:56 - downloader.engine - INFO - [引擎生产者停止] 正在停止生产者 1 - 状态: alive=False, running=True
+15:14:56 - downloader.producer - INFO - Stopping producer...
+15:14:56 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:14:56 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+15:14:56 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:14:56 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 None
+15:14:56 - downloader.fetcher - INFO - [API调用成功] 获取A股列表完成，共 5423 只股票
+15:14:56 - downloader.producer - INFO - [任务处理] 任务完成 - ID: c5a028e2-b498-4f0a-a5b7-c643faedd20b, 股票: system, 数据量: 5423条, 处理时间: 0.47s
+15:14:56 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 c29b1496-5ec8-4830-91ce-d2eb1a4b81e9, 类型: stock_list_system, 大小: 5423
+15:14:56 - downloader.producer - INFO - Producer worker stopped
+15:14:56 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:14:56 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 初始化DuckDB连接 -> data/stock.db
+15:14:56 - downloader.producer - INFO - Producer stopped
+15:14:56 - downloader.engine - INFO - [引擎生产者停止] 生产者 1 停止信号已发送
+15:14:56 - downloader.engine - INFO - [引擎生产者停止] 所有生产者已停止 - 最终任务队列: 0, 数据队列: 0
+15:14:56 - downloader.engine - INFO - 开始监控队列状态...
+15:14:56 - downloader.engine - DEBUG - 队列状态 - 任务队列: 0, 数据队列: 0
+15:14:56 - downloader.engine - INFO - 所有队列为空，任务处理完成
+15:14:56 - downloader.engine - INFO - 等待消费者处理完剩余数据...
+15:14:56 - downloader.consumer_pool - INFO - Force flushing all consumer caches...
+15:14:56 - downloader.consumer_pool - INFO - Force flush completed
+15:14:56 - downloader.storage_factory - DEBUG - 股票列表数据保存完成，共 5423 条记录
+15:14:56 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 5423 条记录到 stock_list_system
+15:14:58 - downloader.engine - INFO - 系统表任务处理完成
+15:14:58 - downloader.engine - INFO - 系统表任务处理完成
+15:14:58 - downloader.progress_events - INFO - 阶段开始: saving
+15:14:58 - downloader.engine - INFO - === 阶段2：处理业务表任务 ===
+15:14:58 - downloader.engine - INFO - 使用配置指定的 15 只股票
+15:14:58 - downloader.engine - INFO - 目标股票列表准备完成，共 15 只股票
+15:14:58 - downloader.engine - INFO - 开始批量构建 6 种任务类型，15 只股票的任务
+15:14:58 - downloader.engine - DEBUG - 批量获取 daily 类型最新日期: 15 个有效记录
+15:14:58 - downloader.engine - DEBUG - 批量获取 daily 类型最新日期: 15 个有效记录
+15:14:58 - downloader.engine - DEBUG - 批量获取 daily_basic 类型最新日期: 0 个有效记录
+15:14:58 - downloader.engine - DEBUG - 批量获取 income 类型最新日期: 15 个有效记录
+15:14:58 - downloader.engine - DEBUG - 批量获取 balancesheet 类型最新日期: 15 个有效记录
+15:14:58 - downloader.engine - DEBUG - 批量获取 cashflow 类型最新日期: 15 个有效记录
+15:14:58 - downloader.engine - DEBUG - 增量下载 600519.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 002023.SZ daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600276.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600612.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000333.SZ daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 002415.SZ daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000895.SZ daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 603288.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600900.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 601100.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 603568.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600636.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000651.SZ daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600570.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000858.SZ daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600519.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 002023.SZ daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600276.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600612.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000333.SZ daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 002415.SZ daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000895.SZ daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 603288.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600900.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 601100.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 603568.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600636.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000651.SZ daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600570.SH daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000858.SZ daily，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600519.SH income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 002023.SZ income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600276.SH income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600612.SH income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000333.SZ income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 002415.SZ income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000895.SZ income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 603288.SH income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600900.SH income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 601100.SH income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 603568.SH income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600636.SH income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000651.SZ income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600570.SH income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000858.SZ income，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600519.SH balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 002023.SZ balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600276.SH balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600612.SH balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000333.SZ balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 002415.SZ balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000895.SZ balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 603288.SH balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600900.SH balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 601100.SH balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 603568.SH balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600636.SH balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000651.SZ balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600570.SH balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000858.SZ balancesheet，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600519.SH cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 002023.SZ cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600276.SH cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600612.SH cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000333.SZ cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 002415.SZ cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000895.SZ cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 603288.SH cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600900.SH cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 601100.SH cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 603568.SH cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600636.SH cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000651.SZ cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 600570.SH cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - DEBUG - 增量下载 000858.SZ cashflow，从 20250809 开始（缓存最新数据: 20250808）
+15:14:58 - downloader.engine - INFO - 批量任务构建完成，耗时 0.09s
+15:14:58 - downloader.engine - INFO - 构建了 90 个下载任务
+15:14:58 - downloader.engine - INFO -   - stock_list: 1 个任务
+15:14:58 - downloader.engine - INFO -   - daily: 30 个任务
+15:14:58 - downloader.engine - INFO -   - daily_basic: 15 个任务
+15:14:58 - downloader.engine - INFO -   - income: 15 个任务
+15:14:58 - downloader.engine - INFO -   - balancesheet: 15 个任务
+15:14:58 - downloader.engine - INFO -   - cashflow: 15 个任务
+15:14:58 - downloader.engine - INFO - 开始处理 90 个业务表任务
+15:14:58 - downloader.engine - INFO - 使用配置的 1 个消费者处理业务表任务
+15:14:58 - downloader.engine - INFO - 使用配置的 1 个生产者处理 15 只股票
+15:14:58 - downloader.engine - INFO - [引擎任务提交] 开始并行提交 90 个任务到队列 - 队列当前大小: 0, 最大容量: 200
+15:14:58 - downloader.engine - INFO - [引擎任务提交] 业务表任务，创建 1 个生产者并行处理 - 最大生产者数: 1, 任务数: 90, Fetcher ID: 4394417664
+15:14:58 - downloader.producer - INFO - Producer使用传入的fetcher实例，ID: 4394417664
+15:14:58 - downloader.producer.processor - DEBUG - TaskProcessor初始化，使用fetcher实例ID: 4394417664
+15:14:58 - downloader.engine - INFO - [引擎任务提交] 生产者 1 已创建 - Producer Fetcher ID: 4394417664
+15:14:58 - downloader.producer - INFO - Producer worker started
+15:14:58 - downloader.producer - INFO - Producer started
+15:14:58 - downloader.engine - INFO - [引擎任务提交] 生产者 1 已启动 - 线程ID: N/A
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 2e6cbbe1-0e01-4825-ab1e-a8ec57a539cd, 股票: 600519.SH, 类型: daily, 队列大小: 0 -> 1
+15:14:58 - downloader.progress_events - INFO - 阶段开始: downloading
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 103819ab-58d8-47af-86b3-3a6be1462a6b, 股票: 002023.SZ, 类型: daily, 队列大小: 1 -> 2
+15:14:58 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 2e6cbbe1-0e01-4825-ab1e-a8ec57a539cd, 类型: daily, 股票: 600519.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 47afc2d1-d437-4417-ae90-a13507d2bc38, 股票: 600276.SH, 类型: daily, 队列大小: 1 -> 2
+15:14:58 - downloader.producer.processor - DEBUG - Processing task 2e6cbbe1-0e01-4825-ab1e-a8ec57a539cd: 600519.SH - daily
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: e3ba307d-387e-49ab-b301-ea08de04cf52, 股票: 600612.SH, 类型: daily, 队列大小: 2 -> 3
+15:14:58 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 600519.SH, 时间: 20250809~20250811, 复权: hfq
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 1eb17cda-1912-465e-9e4b-0c13c373621c, 股票: 000333.SZ, 类型: daily, 队列大小: 3 -> 4
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: fe9cf849-4c79-42bd-a412-0ae5a9ccd373, 股票: 002415.SZ, 类型: daily, 队列大小: 4 -> 5
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 42ef9d8b-164b-470f-bf64-f92abb3457a4, 股票: 000895.SZ, 类型: daily, 队列大小: 5 -> 6
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 33f8bb83-87d1-4ec1-aaca-4037cebe79ba, 股票: 603288.SH, 类型: daily, 队列大小: 6 -> 7
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: d982337e-889c-4f69-bc21-632bad99d760, 股票: 600900.SH, 类型: daily, 队列大小: 7 -> 8
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: ec1e62a1-b825-4868-9256-18c578464b5f, 股票: 601100.SH, 类型: daily, 队列大小: 8 -> 9
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 93e4cdef-9053-41a6-b867-717d05670584, 股票: 603568.SH, 类型: daily, 队列大小: 9 -> 10
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: d6c17deb-f502-4478-aa7f-1f17e0cb904f, 股票: 600636.SH, 类型: daily, 队列大小: 10 -> 11
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: c4cbeac9-52ed-4e8d-82ca-7f5ed2d2c9a8, 股票: 000651.SZ, 类型: daily, 队列大小: 11 -> 12
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 9cce7bf1-0242-4c40-b5c7-03b4afd7bdb9, 股票: 600570.SH, 类型: daily, 队列大小: 12 -> 13
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 65278b89-9f34-4c86-931d-ab55b543d7c0, 股票: 000858.SZ, 类型: daily, 队列大小: 13 -> 14
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 43162cbd-096b-4995-aeaa-6b94bd8007ac, 股票: 600519.SH, 类型: daily, 队列大小: 14 -> 15
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 18275750-409d-4d72-b072-4f5bf89d0ea8, 股票: 002023.SZ, 类型: daily, 队列大小: 15 -> 16
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: d256ab55-659c-4aee-8ecf-40c5a3b33f16, 股票: 600276.SH, 类型: daily, 队列大小: 16 -> 17
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 62bb618e-1813-4172-8869-61c42bd4a1a8, 股票: 600612.SH, 类型: daily, 队列大小: 17 -> 18
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 1cf918cb-0475-490f-9747-77095fb503c5, 股票: 000333.SZ, 类型: daily, 队列大小: 18 -> 19
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 1a96c378-40c2-4f6d-bccf-1f977330377f, 股票: 002415.SZ, 类型: daily, 队列大小: 19 -> 20
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 9c9833d8-82cb-4efa-b9cf-25a230c63dd0, 股票: 000895.SZ, 类型: daily, 队列大小: 20 -> 21
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 5acc3f5d-75ba-4cf8-a541-6376313210dd, 股票: 603288.SH, 类型: daily, 队列大小: 21 -> 22
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 9ef3060b-55c9-492c-b386-1ba709a08d5d, 股票: 600900.SH, 类型: daily, 队列大小: 22 -> 23
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: fbde3369-5fee-4d82-9151-b2ac49275614, 股票: 601100.SH, 类型: daily, 队列大小: 23 -> 24
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: e9f8f2dc-65d0-4b49-88bb-c4ef1b99e616, 股票: 603568.SH, 类型: daily, 队列大小: 24 -> 25
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 7610b6ad-ab20-4d90-abff-8428a6a9d2b3, 股票: 600636.SH, 类型: daily, 队列大小: 25 -> 26
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 7ab4ca83-1e01-49fe-aa76-fe5a8de95e05, 股票: 000651.SZ, 类型: daily, 队列大小: 26 -> 27
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: e74df2f6-2602-4a97-91ed-2e4ebca16ac9, 股票: 600570.SH, 类型: daily, 队列大小: 27 -> 28
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 4863fee0-5a45-4cc4-9155-571f89ec6aae, 股票: 000858.SZ, 类型: daily, 队列大小: 28 -> 29
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: af03d792-4f1f-46bd-bb4b-de7de2174d7f, 股票: 600519.SH, 类型: daily_basic, 队列大小: 29 -> 30
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 8108cbcb-9cfe-44c7-951a-45d99548555b, 股票: 002023.SZ, 类型: daily_basic, 队列大小: 30 -> 31
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: fdec2dd2-be64-48b3-8461-8b02c9ed56ba, 股票: 600276.SH, 类型: daily_basic, 队列大小: 31 -> 32
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: def03195-2687-4bfa-a0b6-81998263750d, 股票: 600612.SH, 类型: daily_basic, 队列大小: 32 -> 33
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: af4b7f2f-37fa-473b-8cc6-35b88ce3b999, 股票: 000333.SZ, 类型: daily_basic, 队列大小: 33 -> 34
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 3b1a2158-7522-4e5d-82bd-32de580b85ec, 股票: 002415.SZ, 类型: daily_basic, 队列大小: 34 -> 35
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 47686935-c5b3-4456-9858-9eadec091647, 股票: 000895.SZ, 类型: daily_basic, 队列大小: 35 -> 36
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 4de59feb-fb31-4cc2-8732-02dd785872d6, 股票: 603288.SH, 类型: daily_basic, 队列大小: 36 -> 37
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: dc429c3f-973f-4c3e-93b6-5f6b0cd5303c, 股票: 600900.SH, 类型: daily_basic, 队列大小: 37 -> 38
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 4b5f844e-8f83-43df-ae22-4b9978b17f58, 股票: 601100.SH, 类型: daily_basic, 队列大小: 38 -> 39
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: e9ac66ba-3196-4841-bf30-602e55a0ad80, 股票: 603568.SH, 类型: daily_basic, 队列大小: 39 -> 40
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: aa8a270b-cced-4acf-ac40-86c9b145b202, 股票: 600636.SH, 类型: daily_basic, 队列大小: 40 -> 41
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 31350eea-203f-4086-8784-dc1bed6eadd4, 股票: 000651.SZ, 类型: daily_basic, 队列大小: 41 -> 42
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: c47baeeb-4145-47d5-8117-d4a2ce3b51ff, 股票: 600570.SH, 类型: daily_basic, 队列大小: 42 -> 43
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 67ad9d1e-b09f-416a-91b8-9b00c2ac430f, 股票: 000858.SZ, 类型: daily_basic, 队列大小: 43 -> 44
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: bb065d61-3ef7-49c8-be15-2efa42e53c36, 股票: 600519.SH, 类型: financials, 队列大小: 44 -> 45
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 55e54b46-f5ac-485d-ae5d-538bf0ba8ca5, 股票: 002023.SZ, 类型: financials, 队列大小: 45 -> 46
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 29de9253-eb73-47b1-9443-fe686154b0f2, 股票: 600276.SH, 类型: financials, 队列大小: 46 -> 47
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 2c657e68-2100-4f7c-8a5f-cd9403edbaca, 股票: 600612.SH, 类型: financials, 队列大小: 47 -> 48
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 0e7f7a09-3f81-43d6-995c-f6f250ce8e4f, 股票: 000333.SZ, 类型: financials, 队列大小: 48 -> 49
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: a5067d87-b2ca-47df-a919-abccac2f55a5, 股票: 002415.SZ, 类型: financials, 队列大小: 49 -> 50
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: fa20c876-e103-4a41-9eec-84d2b2615ade, 股票: 000895.SZ, 类型: financials, 队列大小: 50 -> 51
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 812d7c37-d5c0-4b3f-bf94-909ab5216c6f, 股票: 603288.SH, 类型: financials, 队列大小: 51 -> 52
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 6e3784b9-7025-47ce-a962-334a9948cc23, 股票: 600900.SH, 类型: financials, 队列大小: 52 -> 53
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 30c067d5-ae2b-4894-8d81-e41fee9e03a8, 股票: 601100.SH, 类型: financials, 队列大小: 53 -> 54
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 1efaa6fd-34ee-48e9-9c4e-023b2e099bff, 股票: 603568.SH, 类型: financials, 队列大小: 54 -> 55
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: c3b43856-3dc9-49ff-9908-457f1d7c8175, 股票: 600636.SH, 类型: financials, 队列大小: 55 -> 56
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 066662f8-9de7-4ff8-93c4-b2460a5e6e9f, 股票: 000651.SZ, 类型: financials, 队列大小: 56 -> 57
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: e63a50fe-09ed-40a2-bfa6-a61ab5fbf189, 股票: 600570.SH, 类型: financials, 队列大小: 57 -> 58
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 07ed4ecc-0c5e-4e02-a851-96d14b190c2d, 股票: 000858.SZ, 类型: financials, 队列大小: 58 -> 59
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: d0a5b475-9fc2-473a-8eb6-69668f74f710, 股票: 600519.SH, 类型: financials, 队列大小: 59 -> 60
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 59591bd1-56c4-4b54-a7cc-fbcf4dd972ed, 股票: 002023.SZ, 类型: financials, 队列大小: 60 -> 61
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: bda6f40a-da6b-4a2d-9938-429fd6d790b3, 股票: 600276.SH, 类型: financials, 队列大小: 61 -> 62
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: becb6a66-1df0-4072-a9ea-c941073f1ffe, 股票: 600612.SH, 类型: financials, 队列大小: 62 -> 63
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: e2f37ef0-9291-4cff-b8e0-a85839ec8c32, 股票: 000333.SZ, 类型: financials, 队列大小: 63 -> 64
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 95bb10bd-6c04-4bab-afe0-23347479df2c, 股票: 002415.SZ, 类型: financials, 队列大小: 64 -> 65
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 470ca0bd-6827-4828-a339-cb2a9f6151b3, 股票: 000895.SZ, 类型: financials, 队列大小: 65 -> 66
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 3b561e5a-9b35-4b28-a860-322995d9813b, 股票: 603288.SH, 类型: financials, 队列大小: 66 -> 67
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: a4660165-a724-4274-8bbb-79025f890340, 股票: 600900.SH, 类型: financials, 队列大小: 67 -> 68
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: e9050a98-fcb1-48ea-bf86-6abd415a51ee, 股票: 601100.SH, 类型: financials, 队列大小: 68 -> 69
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: ce593b37-09bf-4324-ada1-85203a7d3b62, 股票: 603568.SH, 类型: financials, 队列大小: 69 -> 70
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 3afc014d-d067-468f-bf74-1b874e7ec195, 股票: 600636.SH, 类型: financials, 队列大小: 70 -> 71
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 606423c1-4203-42a2-aab4-ac65b691f4f5, 股票: 000651.SZ, 类型: financials, 队列大小: 71 -> 72
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: e41f56d9-cd09-4659-a603-d899be14c71d, 股票: 600570.SH, 类型: financials, 队列大小: 72 -> 73
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 9e2cfaf9-6008-4673-a261-7532ec9af308, 股票: 000858.SZ, 类型: financials, 队列大小: 73 -> 74
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 3fb24353-f091-4576-8897-43fec820bd38, 股票: 600519.SH, 类型: financials, 队列大小: 74 -> 75
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 78789b2b-d8e7-4e24-b660-8e18e24e43ed, 股票: 002023.SZ, 类型: financials, 队列大小: 75 -> 76
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: ee3cd0c5-6433-4cf6-a40d-2ad28b691952, 股票: 600276.SH, 类型: financials, 队列大小: 76 -> 77
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: b58d8aa8-5719-4ec7-b807-23efea5f6f36, 股票: 600612.SH, 类型: financials, 队列大小: 77 -> 78
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 0b26873b-8a3c-4845-9f5f-1d5ca668c399, 股票: 000333.SZ, 类型: financials, 队列大小: 78 -> 79
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 4682bc3e-0541-4c86-adc7-1b56d5136ee1, 股票: 002415.SZ, 类型: financials, 队列大小: 79 -> 80
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 843843f9-a050-4da7-8be4-88af732da67b, 股票: 000895.SZ, 类型: financials, 队列大小: 80 -> 81
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 30b9b0ee-7649-481a-885e-4d01b41dff6f, 股票: 603288.SH, 类型: financials, 队列大小: 81 -> 82
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: bbb0c408-c319-4572-aa98-56cabbd4dc9c, 股票: 600900.SH, 类型: financials, 队列大小: 82 -> 83
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: e95af5c1-4b69-4f0f-af21-2ae3c0a0a460, 股票: 601100.SH, 类型: financials, 队列大小: 83 -> 84
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 816ad59c-9f9d-4e02-b16d-cff151c54a89, 股票: 603568.SH, 类型: financials, 队列大小: 84 -> 85
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 48499974-6a75-4e6c-99e5-bbd0b965d4e6, 股票: 600636.SH, 类型: financials, 队列大小: 85 -> 86
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: 796413cb-4dbf-4875-9211-f17a984662c9, 股票: 000651.SZ, 类型: financials, 队列大小: 86 -> 87
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: a1e8dac2-571d-4592-bac1-a9b49be69647, 股票: 600570.SH, 类型: financials, 队列大小: 87 -> 88
+15:14:58 - downloader.engine - DEBUG - [引擎队列操作] 任务已提交到共享队列 - ID: ae5dfe8e-809f-44cd-951d-a612565d865f, 股票: 000858.SZ, 类型: financials, 队列大小: 88 -> 89
+15:14:58 - downloader.engine - INFO - [引擎任务提交] 成功提交 90/90 个任务到共享队列 - 队列大小: 89
+15:14:58 - downloader.engine - INFO - [引擎任务等待] 开始等待所有任务完成 - 当前任务队列: 89, 生产者数量: 1
+15:14:58 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 89
+15:14:58 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:14:58 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:14:58 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:14:58 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:14:58 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:14:59 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:14:59 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:14:59 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 196
+15:14:59 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 600519.SH, 数据量: 0条
+15:14:59 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 2e6cbbe1-0e01-4825-ab1e-a8ec57a539cd, 股票: 600519.SH, 数据量: 0条, 处理时间: 0.59s
+15:14:59 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 53f1d504-a2b4-4b3e-a4da-5389986d942c
+15:14:59 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 103819ab-58d8-47af-86b3-3a6be1462a6b, 类型: daily, 股票: 002023.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:14:59 - downloader.producer.processor - DEBUG - Processing task 103819ab-58d8-47af-86b3-3a6be1462a6b: 002023.SZ - daily
+15:14:59 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 002023.SZ, 时间: 20250809~20250811, 复权: hfq
+15:14:59 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:14:59 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 88
+15:14:59 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:14:59 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:14:59 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:14:59 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:14:59 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:14:59 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:14:59 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:14:59 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 002023.SZ, 数据量: 0条
+15:14:59 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 103819ab-58d8-47af-86b3-3a6be1462a6b, 股票: 002023.SZ, 数据量: 0条, 处理时间: 0.58s
+15:14:59 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 23aeaa1c-76f8-4aab-8572-6663aaae7a26
+15:14:59 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 47afc2d1-d437-4417-ae90-a13507d2bc38, 类型: daily, 股票: 600276.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:14:59 - downloader.producer.processor - DEBUG - Processing task 47afc2d1-d437-4417-ae90-a13507d2bc38: 600276.SH - daily
+15:14:59 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 600276.SH, 时间: 20250809~20250811, 复权: hfq
+15:14:59 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:14:59 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 87
+15:14:59 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:14:59 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:00 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:00 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:00 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:00 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:00 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 198
+15:15:00 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 600276.SH, 数据量: 0条
+15:15:00 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 47afc2d1-d437-4417-ae90-a13507d2bc38, 股票: 600276.SH, 数据量: 0条, 处理时间: 0.77s
+15:15:00 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: e3ba307d-387e-49ab-b301-ea08de04cf52, 类型: daily, 股票: 600612.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:00 - downloader.producer.processor - DEBUG - Processing task e3ba307d-387e-49ab-b301-ea08de04cf52: 600612.SH - daily
+15:15:00 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 600612.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:00 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 9f278039-a4f0-4de5-9445-dfdd6ffe6130
+15:15:00 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:00 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 86
+15:15:00 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:00 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:00 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:00 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:00 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:00 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:01 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 199
+15:15:01 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 600612.SH, 数据量: 0条
+15:15:01 - downloader.producer - INFO - [任务处理] 任务完成 - ID: e3ba307d-387e-49ab-b301-ea08de04cf52, 股票: 600612.SH, 数据量: 0条, 处理时间: 0.64s
+15:15:01 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 1eb17cda-1912-465e-9e4b-0c13c373621c, 类型: daily, 股票: 000333.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:01 - downloader.producer.processor - DEBUG - Processing task 1eb17cda-1912-465e-9e4b-0c13c373621c: 000333.SZ - daily
+15:15:01 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000333.SZ, 时间: 20250809~20250811, 复权: hfq
+15:15:01 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 f862e4fc-329d-4b8c-831c-f05c9b7bd7dd
+15:15:01 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:01 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 85
+15:15:01 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:01 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:01 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:01 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:01 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:01 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:01 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:01 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000333.SZ, 数据量: 0条
+15:15:01 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 1eb17cda-1912-465e-9e4b-0c13c373621c, 股票: 000333.SZ, 数据量: 0条, 处理时间: 0.58s
+15:15:01 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: fe9cf849-4c79-42bd-a412-0ae5a9ccd373, 类型: daily, 股票: 002415.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:01 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 f75ea57d-e1f3-47ad-bec9-4048238ac9be
+15:15:01 - downloader.producer.processor - DEBUG - Processing task fe9cf849-4c79-42bd-a412-0ae5a9ccd373: 002415.SZ - daily
+15:15:01 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 002415.SZ, 时间: 20250809~20250811, 复权: hfq
+15:15:01 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:01 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 84
+15:15:01 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:01 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:02 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:02 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:02 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:02 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:02 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 198
+15:15:02 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 002415.SZ, 数据量: 0条
+15:15:02 - downloader.producer - INFO - [任务处理] 任务完成 - ID: fe9cf849-4c79-42bd-a412-0ae5a9ccd373, 股票: 002415.SZ, 数据量: 0条, 处理时间: 0.59s
+15:15:02 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 697547d2-6658-4bf8-b866-2d12f52cac9c
+15:15:02 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 42ef9d8b-164b-470f-bf64-f92abb3457a4, 类型: daily, 股票: 000895.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:02 - downloader.producer.processor - DEBUG - Processing task 42ef9d8b-164b-470f-bf64-f92abb3457a4: 000895.SZ - daily
+15:15:02 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000895.SZ, 时间: 20250809~20250811, 复权: hfq
+15:15:02 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:02 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 83
+15:15:02 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:02 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:02 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:02 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:02 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:02 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:02 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 198
+15:15:02 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000895.SZ, 数据量: 0条
+15:15:02 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 42ef9d8b-164b-470f-bf64-f92abb3457a4, 股票: 000895.SZ, 数据量: 0条, 处理时间: 0.52s
+15:15:02 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 f11e2d58-c292-403b-aa8b-bfccf1732b44
+15:15:02 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 33f8bb83-87d1-4ec1-aaca-4037cebe79ba, 类型: daily, 股票: 603288.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:02 - downloader.producer.processor - DEBUG - Processing task 33f8bb83-87d1-4ec1-aaca-4037cebe79ba: 603288.SH - daily
+15:15:02 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 603288.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:02 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:02 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 82
+15:15:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:03 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:03 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:03 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:03 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 603288.SH, 数据量: 0条
+15:15:03 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 33f8bb83-87d1-4ec1-aaca-4037cebe79ba, 股票: 603288.SH, 数据量: 0条, 处理时间: 0.51s
+15:15:03 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 8b0f243b-8bd2-4e7e-8dba-083e6b534735
+15:15:03 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: d982337e-889c-4f69-bc21-632bad99d760, 类型: daily, 股票: 600900.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:03 - downloader.producer.processor - DEBUG - Processing task d982337e-889c-4f69-bc21-632bad99d760: 600900.SH - daily
+15:15:03 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 600900.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:03 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:03 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 81
+15:15:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:03 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:03 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:03 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:03 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 600900.SH, 数据量: 0条
+15:15:03 - downloader.producer - INFO - [任务处理] 任务完成 - ID: d982337e-889c-4f69-bc21-632bad99d760, 股票: 600900.SH, 数据量: 0条, 处理时间: 0.57s
+15:15:03 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 db28189c-2899-4975-9365-da754f62ba90
+15:15:03 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: ec1e62a1-b825-4868-9256-18c578464b5f, 类型: daily, 股票: 601100.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:03 - downloader.producer.processor - DEBUG - Processing task ec1e62a1-b825-4868-9256-18c578464b5f: 601100.SH - daily
+15:15:03 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 601100.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:03 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:04 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 80
+15:15:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:04 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:04 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:04 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:04 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 601100.SH, 数据量: 0条
+15:15:04 - downloader.producer - INFO - [任务处理] 任务完成 - ID: ec1e62a1-b825-4868-9256-18c578464b5f, 股票: 601100.SH, 数据量: 0条, 处理时间: 0.55s
+15:15:04 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 8394b03f-2235-47d9-9c10-89fe12956aa4
+15:15:04 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 93e4cdef-9053-41a6-b867-717d05670584, 类型: daily, 股票: 603568.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:04 - downloader.producer.processor - DEBUG - Processing task 93e4cdef-9053-41a6-b867-717d05670584: 603568.SH - daily
+15:15:04 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 603568.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:04 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:04 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 79
+15:15:04 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:04 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:04 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:05 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:05 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 603568.SH, 数据量: 0条
+15:15:05 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 93e4cdef-9053-41a6-b867-717d05670584, 股票: 603568.SH, 数据量: 0条, 处理时间: 0.54s
+15:15:05 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 cca81cab-de50-4831-97ce-ef47c2efe1d0
+15:15:05 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: d6c17deb-f502-4478-aa7f-1f17e0cb904f, 类型: daily, 股票: 600636.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:05 - downloader.producer.processor - DEBUG - Processing task d6c17deb-f502-4478-aa7f-1f17e0cb904f: 600636.SH - daily
+15:15:05 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 600636.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:05 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:05 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 78
+15:15:05 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:05 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:05 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:05 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:05 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:05 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:05 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:05 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 600636.SH, 数据量: 0条
+15:15:05 - downloader.producer - INFO - [任务处理] 任务完成 - ID: d6c17deb-f502-4478-aa7f-1f17e0cb904f, 股票: 600636.SH, 数据量: 0条, 处理时间: 0.50s
+15:15:05 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 96e761bf-9420-43ec-a254-c0db75ff7759
+15:15:05 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: c4cbeac9-52ed-4e8d-82ca-7f5ed2d2c9a8, 类型: daily, 股票: 000651.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:05 - downloader.producer.processor - DEBUG - Processing task c4cbeac9-52ed-4e8d-82ca-7f5ed2d2c9a8: 000651.SZ - daily
+15:15:05 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000651.SZ, 时间: 20250809~20250811, 复权: hfq
+15:15:05 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:05 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 77
+15:15:05 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:05 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:05 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:05 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:05 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:05 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:06 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 199
+15:15:06 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000651.SZ, 数据量: 0条
+15:15:06 - downloader.producer - INFO - [任务处理] 任务完成 - ID: c4cbeac9-52ed-4e8d-82ca-7f5ed2d2c9a8, 股票: 000651.SZ, 数据量: 0条, 处理时间: 0.57s
+15:15:06 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 2994520f-52c5-4464-bc8d-03ad51f79039
+15:15:06 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 9cce7bf1-0242-4c40-b5c7-03b4afd7bdb9, 类型: daily, 股票: 600570.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:06 - downloader.producer.processor - DEBUG - Processing task 9cce7bf1-0242-4c40-b5c7-03b4afd7bdb9: 600570.SH - daily
+15:15:06 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 600570.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:06 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:06 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 76
+15:15:06 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:06 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:06 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:06 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:06 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:06 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:06 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 198
+15:15:06 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 600570.SH, 数据量: 0条
+15:15:06 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 9cce7bf1-0242-4c40-b5c7-03b4afd7bdb9, 股票: 600570.SH, 数据量: 0条, 处理时间: 0.54s
+15:15:06 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 e2d195d6-23f7-4ffc-b765-652574870172
+15:15:06 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 65278b89-9f34-4c86-931d-ab55b543d7c0, 类型: daily, 股票: 000858.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:06 - downloader.producer.processor - DEBUG - Processing task 65278b89-9f34-4c86-931d-ab55b543d7c0: 000858.SZ - daily
+15:15:06 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000858.SZ, 时间: 20250809~20250811, 复权: hfq
+15:15:06 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:06 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 75
+15:15:06 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:06 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:06 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:06 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:07 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:07 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:07 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 198
+15:15:07 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000858.SZ, 数据量: 0条
+15:15:07 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 65278b89-9f34-4c86-931d-ab55b543d7c0, 股票: 000858.SZ, 数据量: 0条, 处理时间: 0.52s
+15:15:07 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 fc68e72c-e169-4a9f-a9a5-07cc5963f390
+15:15:07 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 43162cbd-096b-4995-aeaa-6b94bd8007ac, 类型: daily, 股票: 600519.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:07 - downloader.producer.processor - DEBUG - Processing task 43162cbd-096b-4995-aeaa-6b94bd8007ac: 600519.SH - daily
+15:15:07 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 600519.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:07 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:07 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 74
+15:15:07 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:07 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:07 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:07 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:07 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:07 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:07 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 196
+15:15:07 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 600519.SH, 数据量: 0条
+15:15:07 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 43162cbd-096b-4995-aeaa-6b94bd8007ac, 股票: 600519.SH, 数据量: 0条, 处理时间: 0.50s
+15:15:07 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 53589ce9-fcdb-40de-abb8-68a3136add30
+15:15:07 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 18275750-409d-4d72-b072-4f5bf89d0ea8, 类型: daily, 股票: 002023.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:07 - downloader.producer.processor - DEBUG - Processing task 18275750-409d-4d72-b072-4f5bf89d0ea8: 002023.SZ - daily
+15:15:07 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 002023.SZ, 时间: 20250809~20250811, 复权: hfq
+15:15:07 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:07 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 73
+15:15:07 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:07 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:07 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:07 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:08 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:08 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:08 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:08 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 002023.SZ, 数据量: 0条
+15:15:08 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 18275750-409d-4d72-b072-4f5bf89d0ea8, 股票: 002023.SZ, 数据量: 0条, 处理时间: 0.49s
+15:15:08 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 b46a0df9-e696-4eaa-8838-3e88138471e7
+15:15:08 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: d256ab55-659c-4aee-8ecf-40c5a3b33f16, 类型: daily, 股票: 600276.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:08 - downloader.producer.processor - DEBUG - Processing task d256ab55-659c-4aee-8ecf-40c5a3b33f16: 600276.SH - daily
+15:15:08 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 600276.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:08 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:08 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 72
+15:15:08 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:08 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:08 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:08 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:08 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:08 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:08 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 198
+15:15:08 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 600276.SH, 数据量: 0条
+15:15:08 - downloader.producer - INFO - [任务处理] 任务完成 - ID: d256ab55-659c-4aee-8ecf-40c5a3b33f16, 股票: 600276.SH, 数据量: 0条, 处理时间: 0.49s
+15:15:08 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 21416505-4538-4a99-93d8-31229f1b57a0
+15:15:08 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 62bb618e-1813-4172-8869-61c42bd4a1a8, 类型: daily, 股票: 600612.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:08 - downloader.producer.processor - DEBUG - Processing task 62bb618e-1813-4172-8869-61c42bd4a1a8: 600612.SH - daily
+15:15:08 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 600612.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:08 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:08 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 71
+15:15:08 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:08 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:08 - downloader.engine - INFO - [引擎任务等待] 等待状态更新 - 剩余任务: 71, 活跃生产者: 1/1
+15:15:09 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:09 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:09 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:09 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:09 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 199
+15:15:09 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 600612.SH, 数据量: 0条
+15:15:09 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 62bb618e-1813-4172-8869-61c42bd4a1a8, 股票: 600612.SH, 数据量: 0条, 处理时间: 0.57s
+15:15:09 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 9bddd4e9-31f8-4010-bdf9-19d8ba1d7b9e
+15:15:09 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 1cf918cb-0475-490f-9747-77095fb503c5, 类型: daily, 股票: 000333.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:09 - downloader.producer.processor - DEBUG - Processing task 1cf918cb-0475-490f-9747-77095fb503c5: 000333.SZ - daily
+15:15:09 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000333.SZ, 时间: 20250809~20250811, 复权: hfq
+15:15:09 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:09 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 70
+15:15:09 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:09 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:09 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:09 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:09 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:09 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:09 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:09 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000333.SZ, 数据量: 0条
+15:15:09 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 1cf918cb-0475-490f-9747-77095fb503c5, 股票: 000333.SZ, 数据量: 0条, 处理时间: 0.61s
+15:15:09 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 95fbc133-9d98-42ba-896f-5b6021650c3e
+15:15:09 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 1a96c378-40c2-4f6d-bccf-1f977330377f, 类型: daily, 股票: 002415.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:09 - downloader.producer.processor - DEBUG - Processing task 1a96c378-40c2-4f6d-bccf-1f977330377f: 002415.SZ - daily
+15:15:09 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 002415.SZ, 时间: 20250809~20250811, 复权: hfq
+15:15:09 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:09 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 69
+15:15:10 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:10 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:10 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:10 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:10 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:10 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:10 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 198
+15:15:10 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 002415.SZ, 数据量: 0条
+15:15:10 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 1a96c378-40c2-4f6d-bccf-1f977330377f, 股票: 002415.SZ, 数据量: 0条, 处理时间: 0.68s
+15:15:10 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 a1570b4f-c7f4-4cd0-b6d0-6bb8c2d6d755
+15:15:10 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 9c9833d8-82cb-4efa-b9cf-25a230c63dd0, 类型: daily, 股票: 000895.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:10 - downloader.producer.processor - DEBUG - Processing task 9c9833d8-82cb-4efa-b9cf-25a230c63dd0: 000895.SZ - daily
+15:15:10 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000895.SZ, 时间: 20250809~20250811, 复权: hfq
+15:15:10 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:10 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 68
+15:15:10 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:10 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:10 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:10 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:10 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:10 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:11 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 198
+15:15:11 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000895.SZ, 数据量: 0条
+15:15:11 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 9c9833d8-82cb-4efa-b9cf-25a230c63dd0, 股票: 000895.SZ, 数据量: 0条, 处理时间: 0.52s
+15:15:11 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 f68770f3-781e-4305-b0f4-1801626668e7
+15:15:11 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 5acc3f5d-75ba-4cf8-a541-6376313210dd, 类型: daily, 股票: 603288.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:11 - downloader.producer.processor - DEBUG - Processing task 5acc3f5d-75ba-4cf8-a541-6376313210dd: 603288.SH - daily
+15:15:11 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 603288.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:11 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:11 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 67
+15:15:11 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:11 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:11 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:11 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:11 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:11 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:11 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:11 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 603288.SH, 数据量: 0条
+15:15:11 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 5acc3f5d-75ba-4cf8-a541-6376313210dd, 股票: 603288.SH, 数据量: 0条, 处理时间: 0.40s
+15:15:11 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 0497a345-ee50-45f7-abc7-748e140c5681
+15:15:11 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 9ef3060b-55c9-492c-b386-1ba709a08d5d, 类型: daily, 股票: 600900.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:11 - downloader.producer.processor - DEBUG - Processing task 9ef3060b-55c9-492c-b386-1ba709a08d5d: 600900.SH - daily
+15:15:11 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 600900.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:11 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:11 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 66
+15:15:11 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:11 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:11 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:11 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:11 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:11 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:11 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:11 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 600900.SH, 数据量: 0条
+15:15:11 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 9ef3060b-55c9-492c-b386-1ba709a08d5d, 股票: 600900.SH, 数据量: 0条, 处理时间: 0.50s
+15:15:11 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 9e18b912-5636-4897-8572-1329041711a2
+15:15:11 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: fbde3369-5fee-4d82-9151-b2ac49275614, 类型: daily, 股票: 601100.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:11 - downloader.producer.processor - DEBUG - Processing task fbde3369-5fee-4d82-9151-b2ac49275614: 601100.SH - daily
+15:15:11 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 601100.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:11 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:12 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 65
+15:15:12 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:12 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:12 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:12 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:12 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:12 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:12 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:12 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 601100.SH, 数据量: 0条
+15:15:12 - downloader.producer - INFO - [任务处理] 任务完成 - ID: fbde3369-5fee-4d82-9151-b2ac49275614, 股票: 601100.SH, 数据量: 0条, 处理时间: 0.50s
+15:15:12 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 44341c5d-fa45-4e4a-bee0-818d0d7bee6d
+15:15:12 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: e9f8f2dc-65d0-4b49-88bb-c4ef1b99e616, 类型: daily, 股票: 603568.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:12 - downloader.producer.processor - DEBUG - Processing task e9f8f2dc-65d0-4b49-88bb-c4ef1b99e616: 603568.SH - daily
+15:15:12 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 603568.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:12 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:12 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 64
+15:15:12 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:12 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:12 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:12 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:12 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:12 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:13 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:13 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 603568.SH, 数据量: 0条
+15:15:13 - downloader.producer - INFO - [任务处理] 任务完成 - ID: e9f8f2dc-65d0-4b49-88bb-c4ef1b99e616, 股票: 603568.SH, 数据量: 0条, 处理时间: 0.58s
+15:15:13 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 5d8b7c22-6a20-44be-b76b-08314b7e39b3
+15:15:13 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 7610b6ad-ab20-4d90-abff-8428a6a9d2b3, 类型: daily, 股票: 600636.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:13 - downloader.producer.processor - DEBUG - Processing task 7610b6ad-ab20-4d90-abff-8428a6a9d2b3: 600636.SH - daily
+15:15:13 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 600636.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:13 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:13 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 63
+15:15:13 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:13 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:13 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:13 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:13 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:13 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:13 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 197
+15:15:13 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 600636.SH, 数据量: 0条
+15:15:13 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 7610b6ad-ab20-4d90-abff-8428a6a9d2b3, 股票: 600636.SH, 数据量: 0条, 处理时间: 0.66s
+15:15:13 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 7ab4ca83-1e01-49fe-aa76-fe5a8de95e05, 类型: daily, 股票: 000651.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:13 - downloader.producer.processor - DEBUG - Processing task 7ab4ca83-1e01-49fe-aa76-fe5a8de95e05: 000651.SZ - daily
+15:15:13 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000651.SZ, 时间: 20250809~20250811, 复权: hfq
+15:15:13 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 016e0ab8-f5cb-4dce-ab4d-37fb8804091e
+15:15:13 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:13 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 62
+15:15:13 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:13 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:14 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:14 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:14 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:14 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:14 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 199
+15:15:14 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000651.SZ, 数据量: 0条
+15:15:14 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 7ab4ca83-1e01-49fe-aa76-fe5a8de95e05, 股票: 000651.SZ, 数据量: 0条, 处理时间: 0.63s
+15:15:14 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 b597639d-86ca-410c-8539-668673e014cd
+15:15:14 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: e74df2f6-2602-4a97-91ed-2e4ebca16ac9, 类型: daily, 股票: 600570.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:14 - downloader.producer.processor - DEBUG - Processing task e74df2f6-2602-4a97-91ed-2e4ebca16ac9: 600570.SH - daily
+15:15:14 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 600570.SH, 时间: 20250809~20250811, 复权: hfq
+15:15:14 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:14 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:14 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:14 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 61
+15:15:14 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:14 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:14 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:14 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:14 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 198
+15:15:14 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 600570.SH, 数据量: 0条
+15:15:14 - downloader.producer - INFO - [任务处理] 任务完成 - ID: e74df2f6-2602-4a97-91ed-2e4ebca16ac9, 股票: 600570.SH, 数据量: 0条, 处理时间: 0.58s
+15:15:14 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 80d934c2-9e8a-4270-aebe-7114bc771359
+15:15:14 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 4863fee0-5a45-4cc4-9155-571f89ec6aae, 类型: daily, 股票: 000858.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:14 - downloader.producer.processor - DEBUG - Processing task 4863fee0-5a45-4cc4-9155-571f89ec6aae: 000858.SZ - daily
+15:15:14 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000858.SZ, 时间: 20250809~20250811, 复权: hfq
+15:15:14 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:14 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 60
+15:15:15 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+15:15:15 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:15 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 227
+15:15:15 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:15 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+15:15:15 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:15 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 198
+15:15:15 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000858.SZ, 数据量: 0条
+15:15:15 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 4863fee0-5a45-4cc4-9155-571f89ec6aae, 股票: 000858.SZ, 数据量: 0条, 处理时间: 0.51s
+15:15:15 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 9cda6ef2-f070-43df-9723-43cf99ad1ce1
+15:15:15 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: af03d792-4f1f-46bd-bb4b-de7de2174d7f, 类型: daily_basic, 股票: 600519.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:15 - downloader.producer.processor - DEBUG - Processing task af03d792-4f1f-46bd-bb4b-de7de2174d7f: 600519.SH - daily_basic
+15:15:15 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 600519.SH, 时间: 19901219~20250811
+15:15:15 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:15 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 59
+15:15:15 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:15 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:15 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:15 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 600519.SH, 数据量: 5737条
+15:15:15 - downloader.producer - INFO - [任务处理] 任务完成 - ID: af03d792-4f1f-46bd-bb4b-de7de2174d7f, 股票: 600519.SH, 数据量: 5737条, 处理时间: 0.49s
+15:15:15 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 8108cbcb-9cfe-44c7-951a-45d99548555b, 类型: daily_basic, 股票: 002023.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:15 - downloader.producer.processor - DEBUG - Processing task 8108cbcb-9cfe-44c7-951a-45d99548555b: 002023.SZ - daily_basic
+15:15:15 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 002023.SZ, 时间: 19901219~20250811
+15:15:15 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 8b6b28c9-4560-463e-b4e1-1adc40bdabd9, 类型: daily_basic_600519.SH, 大小: 5737
+15:15:15 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:15 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:15 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 5737 条记录
+15:15:15 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 5737 条记录到 daily_basic_600519.SH
+15:15:15 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 58
+15:15:16 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:16 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:16 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:16 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 002023.SZ, 数据量: 5058条
+15:15:16 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 8108cbcb-9cfe-44c7-951a-45d99548555b, 股票: 002023.SZ, 数据量: 5058条, 处理时间: 0.50s
+15:15:16 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: fdec2dd2-be64-48b3-8461-8b02c9ed56ba, 类型: daily_basic, 股票: 600276.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:16 - downloader.producer.processor - DEBUG - Processing task fdec2dd2-be64-48b3-8461-8b02c9ed56ba: 600276.SH - daily_basic
+15:15:16 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 600276.SH, 时间: 19901219~20250811
+15:15:16 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 9e0ebf7d-06f6-4254-a20a-9fa950f9e3d5, 类型: daily_basic_002023.SZ, 大小: 5058
+15:15:16 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:16 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:16 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 5058 条记录
+15:15:16 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 5058 条记录到 daily_basic_002023.SZ
+15:15:16 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 57
+15:15:16 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:16 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:16 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:16 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 600276.SH, 数据量: 5972条
+15:15:16 - downloader.producer - INFO - [任务处理] 任务完成 - ID: fdec2dd2-be64-48b3-8461-8b02c9ed56ba, 股票: 600276.SH, 数据量: 5972条, 处理时间: 0.58s
+15:15:16 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: def03195-2687-4bfa-a0b6-81998263750d, 类型: daily_basic, 股票: 600612.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:16 - downloader.producer.processor - DEBUG - Processing task def03195-2687-4bfa-a0b6-81998263750d: 600612.SH - daily_basic
+15:15:16 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 600612.SH, 时间: 19901219~20250811
+15:15:16 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 08bc80ac-48b3-492b-b112-e232a1d29006, 类型: daily_basic_600276.SH, 大小: 5972
+15:15:16 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:16 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:17 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 56
+15:15:17 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 5972 条记录
+15:15:17 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 5972 条记录到 daily_basic_600276.SH
+15:15:17 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:17 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:17 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:17 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 600612.SH, 数据量: 6000条
+15:15:17 - downloader.producer - INFO - [任务处理] 任务完成 - ID: def03195-2687-4bfa-a0b6-81998263750d, 股票: 600612.SH, 数据量: 6000条, 处理时间: 0.55s
+15:15:17 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 45f27d31-eb0b-4961-98c3-903b4397adba, 类型: daily_basic_600612.SH, 大小: 6000
+15:15:17 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: af4b7f2f-37fa-473b-8cc6-35b88ce3b999, 类型: daily_basic, 股票: 000333.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:17 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:17 - downloader.producer.processor - DEBUG - Processing task af4b7f2f-37fa-473b-8cc6-35b88ce3b999: 000333.SZ - daily_basic
+15:15:17 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 000333.SZ, 时间: 19901219~20250811
+15:15:17 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:17 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 55
+15:15:17 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 6000 条记录
+15:15:17 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 6000 条记录到 daily_basic_600612.SH
+15:15:17 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:17 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:17 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:17 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 000333.SZ, 数据量: 2828条
+15:15:17 - downloader.producer - INFO - [任务处理] 任务完成 - ID: af4b7f2f-37fa-473b-8cc6-35b88ce3b999, 股票: 000333.SZ, 数据量: 2828条, 处理时间: 0.44s
+15:15:17 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 d704c99a-bf09-429a-a4c9-ccc1a5d4d8d6, 类型: daily_basic_000333.SZ, 大小: 2828
+15:15:17 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 3b1a2158-7522-4e5d-82bd-32de580b85ec, 类型: daily_basic, 股票: 002415.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:17 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:17 - downloader.producer.processor - DEBUG - Processing task 3b1a2158-7522-4e5d-82bd-32de580b85ec: 002415.SZ - daily_basic
+15:15:17 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 002415.SZ, 时间: 19901219~20250811
+15:15:17 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:18 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 2828 条记录
+15:15:18 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 2828 条记录到 daily_basic_000333.SZ
+15:15:18 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 54
+15:15:18 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:18 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:18 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:18 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 002415.SZ, 数据量: 3638条
+15:15:18 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 3b1a2158-7522-4e5d-82bd-32de580b85ec, 股票: 002415.SZ, 数据量: 3638条, 处理时间: 0.54s
+15:15:18 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 2863d9eb-3e54-487f-ba82-3f0c275cd3a5, 类型: daily_basic_002415.SZ, 大小: 3638
+15:15:18 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 47686935-c5b3-4456-9858-9eadec091647, 类型: daily_basic, 股票: 000895.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:18 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:18 - downloader.producer.processor - DEBUG - Processing task 47686935-c5b3-4456-9858-9eadec091647: 000895.SZ - daily_basic
+15:15:18 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 000895.SZ, 时间: 19901219~20250811
+15:15:18 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:18 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 3638 条记录
+15:15:18 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 3638 条记录到 daily_basic_002415.SZ
+15:15:18 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 53
+15:15:18 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:18 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:18 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:19 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 000895.SZ, 数据量: 6000条
+15:15:19 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 47686935-c5b3-4456-9858-9eadec091647, 股票: 000895.SZ, 数据量: 6000条, 处理时间: 0.57s
+15:15:19 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 88fce21b-fc87-49ab-90e4-8c9523255ee5, 类型: daily_basic_000895.SZ, 大小: 6000
+15:15:19 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 4de59feb-fb31-4cc2-8732-02dd785872d6, 类型: daily_basic, 股票: 603288.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:19 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:19 - downloader.producer.processor - DEBUG - Processing task 4de59feb-fb31-4cc2-8732-02dd785872d6: 603288.SH - daily_basic
+15:15:19 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 603288.SH, 时间: 19901219~20250811
+15:15:19 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:19 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 52
+15:15:19 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 6000 条记录
+15:15:19 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 6000 条记录到 daily_basic_000895.SZ
+15:15:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:19 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:19 - downloader.engine - INFO - [引擎任务等待] 等待状态更新 - 剩余任务: 52, 活跃生产者: 1/1
+15:15:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:19 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 603288.SH, 数据量: 2799条
+15:15:19 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 4de59feb-fb31-4cc2-8732-02dd785872d6, 股票: 603288.SH, 数据量: 2799条, 处理时间: 0.47s
+15:15:19 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 5a9e4707-3f34-4d54-91d9-af41196be318, 类型: daily_basic_603288.SH, 大小: 2799
+15:15:19 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: dc429c3f-973f-4c3e-93b6-5f6b0cd5303c, 类型: daily_basic, 股票: 600900.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:19 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:19 - downloader.producer.processor - DEBUG - Processing task dc429c3f-973f-4c3e-93b6-5f6b0cd5303c: 600900.SH - daily_basic
+15:15:19 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 600900.SH, 时间: 19901219~20250811
+15:15:19 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:19 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 2799 条记录
+15:15:19 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 2799 条记录到 daily_basic_603288.SH
+15:15:19 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 51
+15:15:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:19 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:20 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 600900.SH, 数据量: 4854条
+15:15:20 - downloader.producer - INFO - [任务处理] 任务完成 - ID: dc429c3f-973f-4c3e-93b6-5f6b0cd5303c, 股票: 600900.SH, 数据量: 4854条, 处理时间: 0.53s
+15:15:20 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 80347b90-670a-4765-96c7-d379c05e467c, 类型: daily_basic_600900.SH, 大小: 4854
+15:15:20 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 4b5f844e-8f83-43df-ae22-4b9978b17f58, 类型: daily_basic, 股票: 601100.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:20 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:20 - downloader.producer.processor - DEBUG - Processing task 4b5f844e-8f83-43df-ae22-4b9978b17f58: 601100.SH - daily_basic
+15:15:20 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 601100.SH, 时间: 19901219~20250811
+15:15:20 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:20 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 4854 条记录
+15:15:20 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 4854 条记录到 daily_basic_600900.SH
+15:15:20 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 50
+15:15:20 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:20 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:20 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:20 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 601100.SH, 数据量: 3308条
+15:15:20 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 4b5f844e-8f83-43df-ae22-4b9978b17f58, 股票: 601100.SH, 数据量: 3308条, 处理时间: 0.52s
+15:15:20 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 4a3a0587-a96a-4794-85b6-f6b7bff2741c, 类型: daily_basic_601100.SH, 大小: 3308
+15:15:20 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: e9ac66ba-3196-4841-bf30-602e55a0ad80, 类型: daily_basic, 股票: 603568.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:20 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:20 - downloader.producer.processor - DEBUG - Processing task e9ac66ba-3196-4841-bf30-602e55a0ad80: 603568.SH - daily_basic
+15:15:20 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 603568.SH, 时间: 19901219~20250811
+15:15:20 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:20 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 3308 条记录
+15:15:20 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 49
+15:15:20 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 3308 条记录到 daily_basic_601100.SH
+15:15:20 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:20 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:21 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:21 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 603568.SH, 数据量: 2481条
+15:15:21 - downloader.producer - INFO - [任务处理] 任务完成 - ID: e9ac66ba-3196-4841-bf30-602e55a0ad80, 股票: 603568.SH, 数据量: 2481条, 处理时间: 0.49s
+15:15:21 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 ec08e05d-c094-4b80-a681-8f4aacbeb925, 类型: daily_basic_603568.SH, 大小: 2481
+15:15:21 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: aa8a270b-cced-4acf-ac40-86c9b145b202, 类型: daily_basic, 股票: 600636.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:21 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:21 - downloader.producer.processor - DEBUG - Processing task aa8a270b-cced-4acf-ac40-86c9b145b202: 600636.SH - daily_basic
+15:15:21 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 600636.SH, 时间: 19901219~20250811
+15:15:21 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:21 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 2481 条记录
+15:15:21 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 2481 条记录到 daily_basic_603568.SH
+15:15:21 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 48
+15:15:21 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:21 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:21 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:21 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 600636.SH, 数据量: 6000条
+15:15:21 - downloader.producer - INFO - [任务处理] 任务完成 - ID: aa8a270b-cced-4acf-ac40-86c9b145b202, 股票: 600636.SH, 数据量: 6000条, 处理时间: 0.52s
+15:15:21 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 5ce50db3-e405-47c5-874f-bdff6b5992ba, 类型: daily_basic_600636.SH, 大小: 6000
+15:15:21 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 31350eea-203f-4086-8784-dc1bed6eadd4, 类型: daily_basic, 股票: 000651.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:21 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:21 - downloader.producer.processor - DEBUG - Processing task 31350eea-203f-4086-8784-dc1bed6eadd4: 000651.SZ - daily_basic
+15:15:21 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 000651.SZ, 时间: 19901219~20250811
+15:15:21 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:21 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 6000 条记录
+15:15:21 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 6000 条记录到 daily_basic_600636.SH
+15:15:21 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 47
+15:15:21 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:21 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:22 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:22 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 000651.SZ, 数据量: 6000条
+15:15:22 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 31350eea-203f-4086-8784-dc1bed6eadd4, 股票: 000651.SZ, 数据量: 6000条, 处理时间: 0.59s
+15:15:22 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 297339c0-d5e4-4831-a5b4-e3aa6ecf5193, 类型: daily_basic_000651.SZ, 大小: 6000
+15:15:22 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: c47baeeb-4145-47d5-8117-d4a2ce3b51ff, 类型: daily_basic, 股票: 600570.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:22 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:22 - downloader.producer.processor - DEBUG - Processing task c47baeeb-4145-47d5-8117-d4a2ce3b51ff: 600570.SH - daily_basic
+15:15:22 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 600570.SH, 时间: 19901219~20250811
+15:15:22 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:22 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 46
+15:15:22 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 6000 条记录
+15:15:22 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 6000 条记录到 daily_basic_000651.SZ
+15:15:22 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:22 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:22 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:22 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 600570.SH, 数据量: 5154条
+15:15:22 - downloader.producer - INFO - [任务处理] 任务完成 - ID: c47baeeb-4145-47d5-8117-d4a2ce3b51ff, 股票: 600570.SH, 数据量: 5154条, 处理时间: 0.49s
+15:15:22 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 67ad9d1e-b09f-416a-91b8-9b00c2ac430f, 类型: daily_basic, 股票: 000858.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:22 - downloader.producer.processor - DEBUG - Processing task 67ad9d1e-b09f-416a-91b8-9b00c2ac430f: 000858.SZ - daily_basic
+15:15:22 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 000858.SZ, 时间: 19901219~20250811
+15:15:22 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 2eab9827-0b7c-435a-a3bb-3caaedab77a5, 类型: daily_basic_600570.SH, 大小: 5154
+15:15:22 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:22 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:22 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 5154 条记录
+15:15:22 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 45
+15:15:22 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 5154 条记录到 daily_basic_600570.SH
+15:15:22 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+15:15:22 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+15:15:23 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 000858.SZ, 数据量: 6000条
+15:15:23 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 67ad9d1e-b09f-416a-91b8-9b00c2ac430f, 股票: 000858.SZ, 数据量: 6000条, 处理时间: 0.54s
+15:15:23 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: bb065d61-3ef7-49c8-be15-2efa42e53c36, 类型: financials, 股票: 600519.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:23 - downloader.producer.processor - DEBUG - Processing task bb065d61-3ef7-49c8-be15-2efa42e53c36: 600519.SH - financials
+15:15:23 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 600519.SH, 时间: 20250809~20250811
+15:15:23 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 缓存数据批次 f48ed04a-105c-4f8e-a10b-1e20b47d48d4, 类型: daily_basic_000858.SZ, 大小: 6000
+15:15:23 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:23 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 开始刷新缓存，共 1 组数据
+15:15:23 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 44
+15:15:23 - downloader.storage_factory - DEBUG - 日线数据保存完成，共 6000 条记录
+15:15:23 - downloader.consumer_pool.worker_0 - INFO - Worker 0: 成功插入 6000 条记录到 daily_basic_000858.SZ
+15:15:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:23 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:23 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 600519.SH, 数据量: 0条
+15:15:23 - downloader.producer - INFO - [任务处理] 任务完成 - ID: bb065d61-3ef7-49c8-be15-2efa42e53c36, 股票: 600519.SH, 数据量: 0条, 处理时间: 0.21s
+15:15:23 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 5808a017-18a2-4782-a822-91249d4cdc9b
+15:15:23 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 55e54b46-f5ac-485d-ae5d-538bf0ba8ca5, 类型: financials, 股票: 002023.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:23 - downloader.producer.processor - DEBUG - Processing task 55e54b46-f5ac-485d-ae5d-538bf0ba8ca5: 002023.SZ - financials
+15:15:23 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 002023.SZ, 时间: 20250809~20250811
+15:15:23 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:23 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 43
+15:15:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:23 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:23 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 002023.SZ, 数据量: 0条
+15:15:23 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 55e54b46-f5ac-485d-ae5d-538bf0ba8ca5, 股票: 002023.SZ, 数据量: 0条, 处理时间: 0.34s
+15:15:23 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 002efeda-8734-4c37-b75a-a508282ccf32
+15:15:23 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 29de9253-eb73-47b1-9443-fe686154b0f2, 类型: financials, 股票: 600276.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:23 - downloader.producer.processor - DEBUG - Processing task 29de9253-eb73-47b1-9443-fe686154b0f2: 600276.SH - financials
+15:15:23 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 600276.SH, 时间: 20250809~20250811
+15:15:23 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:23 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:23 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 42
+15:15:24 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:24 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 600276.SH, 数据量: 0条
+15:15:24 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 29de9253-eb73-47b1-9443-fe686154b0f2, 股票: 600276.SH, 数据量: 0条, 处理时间: 0.25s
+15:15:24 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 dfc772d8-ac3e-4754-8790-3506a42a9f18
+15:15:24 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 2c657e68-2100-4f7c-8a5f-cd9403edbaca, 类型: financials, 股票: 600612.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:24 - downloader.producer.processor - DEBUG - Processing task 2c657e68-2100-4f7c-8a5f-cd9403edbaca: 600612.SH - financials
+15:15:24 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 600612.SH, 时间: 20250809~20250811
+15:15:24 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:24 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 41
+15:15:24 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:24 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:24 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:24 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 600612.SH, 数据量: 0条
+15:15:24 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 2c657e68-2100-4f7c-8a5f-cd9403edbaca, 股票: 600612.SH, 数据量: 0条, 处理时间: 0.37s
+15:15:24 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 2705b225-4d1e-4cc4-8850-a9f4a52d9750
+15:15:24 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 0e7f7a09-3f81-43d6-995c-f6f250ce8e4f, 类型: financials, 股票: 000333.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:24 - downloader.producer.processor - DEBUG - Processing task 0e7f7a09-3f81-43d6-995c-f6f250ce8e4f: 000333.SZ - financials
+15:15:24 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 000333.SZ, 时间: 20250809~20250811
+15:15:24 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:24 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:24 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:24 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 40
+15:15:24 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:24 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 000333.SZ, 数据量: 0条
+15:15:24 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 0e7f7a09-3f81-43d6-995c-f6f250ce8e4f, 股票: 000333.SZ, 数据量: 0条, 处理时间: 0.20s
+15:15:24 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 02b01456-d689-46a3-93ec-94ee56a3f394
+15:15:24 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: a5067d87-b2ca-47df-a919-abccac2f55a5, 类型: financials, 股票: 002415.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:24 - downloader.producer.processor - DEBUG - Processing task a5067d87-b2ca-47df-a919-abccac2f55a5: 002415.SZ - financials
+15:15:24 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 002415.SZ, 时间: 20250809~20250811
+15:15:24 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:24 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 39
+15:15:24 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:24 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:24 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:24 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 002415.SZ, 数据量: 0条
+15:15:24 - downloader.producer - INFO - [任务处理] 任务完成 - ID: a5067d87-b2ca-47df-a919-abccac2f55a5, 股票: 002415.SZ, 数据量: 0条, 处理时间: 0.28s
+15:15:24 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: fa20c876-e103-4a41-9eec-84d2b2615ade, 类型: financials, 股票: 000895.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:24 - downloader.producer.processor - DEBUG - Processing task fa20c876-e103-4a41-9eec-84d2b2615ade: 000895.SZ - financials
+15:15:24 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 000895.SZ, 时间: 20250809~20250811
+15:15:24 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 ca07c6f5-e395-4363-ab3d-94ed964ea742
+15:15:24 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:24 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 38
+15:15:25 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:25 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:25 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:25 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 000895.SZ, 数据量: 0条
+15:15:25 - downloader.producer - INFO - [任务处理] 任务完成 - ID: fa20c876-e103-4a41-9eec-84d2b2615ade, 股票: 000895.SZ, 数据量: 0条, 处理时间: 0.21s
+15:15:25 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 05d9865f-abb0-405c-91c7-4012aa33ac26
+15:15:25 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 812d7c37-d5c0-4b3f-bf94-909ab5216c6f, 类型: financials, 股票: 603288.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:25 - downloader.producer.processor - DEBUG - Processing task 812d7c37-d5c0-4b3f-bf94-909ab5216c6f: 603288.SH - financials
+15:15:25 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 603288.SH, 时间: 20250809~20250811
+15:15:25 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:25 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 37
+15:15:25 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:25 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:25 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:25 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 603288.SH, 数据量: 0条
+15:15:25 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 812d7c37-d5c0-4b3f-bf94-909ab5216c6f, 股票: 603288.SH, 数据量: 0条, 处理时间: 0.28s
+15:15:25 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 5ef55c8a-182d-4860-b5c1-df59a97a8598
+15:15:25 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 6e3784b9-7025-47ce-a962-334a9948cc23, 类型: financials, 股票: 600900.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:25 - downloader.producer.processor - DEBUG - Processing task 6e3784b9-7025-47ce-a962-334a9948cc23: 600900.SH - financials
+15:15:25 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 600900.SH, 时间: 20250809~20250811
+15:15:25 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:25 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 36
+15:15:25 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:25 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:25 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:25 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 600900.SH, 数据量: 0条
+15:15:25 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 6e3784b9-7025-47ce-a962-334a9948cc23, 股票: 600900.SH, 数据量: 0条, 处理时间: 0.20s
+15:15:25 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 f1e374d5-44e6-4636-9867-80c4b181e184
+15:15:25 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 30c067d5-ae2b-4894-8d81-e41fee9e03a8, 类型: financials, 股票: 601100.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:25 - downloader.producer.processor - DEBUG - Processing task 30c067d5-ae2b-4894-8d81-e41fee9e03a8: 601100.SH - financials
+15:15:25 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 601100.SH, 时间: 20250809~20250811
+15:15:25 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:25 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 35
+15:15:25 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:25 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:25 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:25 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 601100.SH, 数据量: 0条
+15:15:25 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 30c067d5-ae2b-4894-8d81-e41fee9e03a8, 股票: 601100.SH, 数据量: 0条, 处理时间: 0.30s
+15:15:25 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 304a549b-118f-4269-aee7-b48677b213f9
+15:15:25 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 1efaa6fd-34ee-48e9-9c4e-023b2e099bff, 类型: financials, 股票: 603568.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:25 - downloader.producer.processor - DEBUG - Processing task 1efaa6fd-34ee-48e9-9c4e-023b2e099bff: 603568.SH - financials
+15:15:25 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 603568.SH, 时间: 20250809~20250811
+15:15:25 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:25 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 34
+15:15:25 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:25 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:26 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:26 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 603568.SH, 数据量: 0条
+15:15:26 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 1efaa6fd-34ee-48e9-9c4e-023b2e099bff, 股票: 603568.SH, 数据量: 0条, 处理时间: 0.21s
+15:15:26 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: c3b43856-3dc9-49ff-9908-457f1d7c8175, 类型: financials, 股票: 600636.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:26 - downloader.producer.processor - DEBUG - Processing task c3b43856-3dc9-49ff-9908-457f1d7c8175: 600636.SH - financials
+15:15:26 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 600636.SH, 时间: 20250809~20250811
+15:15:26 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 d0d5e9db-5b98-4466-8add-b10bb9079d63
+15:15:26 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:26 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 33
+15:15:26 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:26 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:26 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:26 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 600636.SH, 数据量: 0条
+15:15:26 - downloader.producer - INFO - [任务处理] 任务完成 - ID: c3b43856-3dc9-49ff-9908-457f1d7c8175, 股票: 600636.SH, 数据量: 0条, 处理时间: 0.28s
+15:15:26 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 403d0e0a-021d-4b70-a382-44f415612f6e
+15:15:26 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 066662f8-9de7-4ff8-93c4-b2460a5e6e9f, 类型: financials, 股票: 000651.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:26 - downloader.producer.processor - DEBUG - Processing task 066662f8-9de7-4ff8-93c4-b2460a5e6e9f: 000651.SZ - financials
+15:15:26 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 000651.SZ, 时间: 20250809~20250811
+15:15:26 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:26 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 32
+15:15:26 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:26 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:26 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:26 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 000651.SZ, 数据量: 0条
+15:15:26 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 066662f8-9de7-4ff8-93c4-b2460a5e6e9f, 股票: 000651.SZ, 数据量: 0条, 处理时间: 0.19s
+15:15:26 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 06f07e4f-0d2e-4ded-a42f-89d693dbd219
+15:15:26 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: e63a50fe-09ed-40a2-bfa6-a61ab5fbf189, 类型: financials, 股票: 600570.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:26 - downloader.producer.processor - DEBUG - Processing task e63a50fe-09ed-40a2-bfa6-a61ab5fbf189: 600570.SH - financials
+15:15:26 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 600570.SH, 时间: 20250809~20250811
+15:15:26 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:26 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 31
+15:15:26 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:26 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:26 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:26 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 600570.SH, 数据量: 0条
+15:15:26 - downloader.producer - INFO - [任务处理] 任务完成 - ID: e63a50fe-09ed-40a2-bfa6-a61ab5fbf189, 股票: 600570.SH, 数据量: 0条, 处理时间: 0.29s
+15:15:26 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 83ede7ee-7073-4483-b5aa-b3dcae01cccd
+15:15:26 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 07ed4ecc-0c5e-4e02-a851-96d14b190c2d, 类型: financials, 股票: 000858.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:26 - downloader.producer.processor - DEBUG - Processing task 07ed4ecc-0c5e-4e02-a851-96d14b190c2d: 000858.SZ - financials
+15:15:26 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 000858.SZ, 时间: 20250809~20250811
+15:15:26 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:26 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 30
+15:15:26 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+15:15:27 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:27 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+15:15:27 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 000858.SZ, 数据量: 0条
+15:15:27 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 07ed4ecc-0c5e-4e02-a851-96d14b190c2d, 股票: 000858.SZ, 数据量: 0条, 处理时间: 0.24s
+15:15:27 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: d0a5b475-9fc2-473a-8eb6-69668f74f710, 类型: financials, 股票: 600519.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:27 - downloader.producer.processor - DEBUG - Processing task d0a5b475-9fc2-473a-8eb6-69668f74f710: 600519.SH - financials
+15:15:27 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 600519.SH, 时间: 20250809~20250811
+15:15:27 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 0e8b5d71-986a-4f2e-94df-07a3c80ec6ca
+15:15:27 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:27 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 29
+15:15:27 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:27 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:27 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:27 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 600519.SH, 数据量: 0条
+15:15:27 - downloader.producer - INFO - [任务处理] 任务完成 - ID: d0a5b475-9fc2-473a-8eb6-69668f74f710, 股票: 600519.SH, 数据量: 0条, 处理时间: 0.40s
+15:15:27 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 9452e11a-ce83-494b-8365-740b5c222c80
+15:15:27 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 59591bd1-56c4-4b54-a7cc-fbcf4dd972ed, 类型: financials, 股票: 002023.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:27 - downloader.producer.processor - DEBUG - Processing task 59591bd1-56c4-4b54-a7cc-fbcf4dd972ed: 002023.SZ - financials
+15:15:27 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 002023.SZ, 时间: 20250809~20250811
+15:15:27 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:27 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 28
+15:15:27 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:27 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:27 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:27 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 002023.SZ, 数据量: 0条
+15:15:27 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 59591bd1-56c4-4b54-a7cc-fbcf4dd972ed, 股票: 002023.SZ, 数据量: 0条, 处理时间: 0.25s
+15:15:27 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 d6391b69-e135-4344-be39-efca59b990c2
+15:15:27 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: bda6f40a-da6b-4a2d-9938-429fd6d790b3, 类型: financials, 股票: 600276.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:27 - downloader.producer.processor - DEBUG - Processing task bda6f40a-da6b-4a2d-9938-429fd6d790b3: 600276.SH - financials
+15:15:27 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 600276.SH, 时间: 20250809~20250811
+15:15:27 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:27 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 27
+15:15:27 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:27 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:28 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:28 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 600276.SH, 数据量: 0条
+15:15:28 - downloader.producer - INFO - [任务处理] 任务完成 - ID: bda6f40a-da6b-4a2d-9938-429fd6d790b3, 股票: 600276.SH, 数据量: 0条, 处理时间: 0.30s
+15:15:28 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 ce902bfb-e204-4ac5-be8d-f506d34d90fd
+15:15:28 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: becb6a66-1df0-4072-a9ea-c941073f1ffe, 类型: financials, 股票: 600612.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:28 - downloader.producer.processor - DEBUG - Processing task becb6a66-1df0-4072-a9ea-c941073f1ffe: 600612.SH - financials
+15:15:28 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 600612.SH, 时间: 20250809~20250811
+15:15:28 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:28 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 26
+15:15:28 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:28 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:28 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:28 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 600612.SH, 数据量: 0条
+15:15:28 - downloader.producer - INFO - [任务处理] 任务完成 - ID: becb6a66-1df0-4072-a9ea-c941073f1ffe, 股票: 600612.SH, 数据量: 0条, 处理时间: 0.18s
+15:15:28 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: e2f37ef0-9291-4cff-b8e0-a85839ec8c32, 类型: financials, 股票: 000333.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:28 - downloader.producer.processor - DEBUG - Processing task e2f37ef0-9291-4cff-b8e0-a85839ec8c32: 000333.SZ - financials
+15:15:28 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 000333.SZ, 时间: 20250809~20250811
+15:15:28 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 75c54999-1bd6-4ebd-ab34-49a42af02025
+15:15:28 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:28 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 25
+15:15:28 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:28 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:28 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:28 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 000333.SZ, 数据量: 0条
+15:15:28 - downloader.producer - INFO - [任务处理] 任务完成 - ID: e2f37ef0-9291-4cff-b8e0-a85839ec8c32, 股票: 000333.SZ, 数据量: 0条, 处理时间: 0.27s
+15:15:28 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 69944d2f-046b-420b-85bb-406aba663565
+15:15:28 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 95bb10bd-6c04-4bab-afe0-23347479df2c, 类型: financials, 股票: 002415.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:28 - downloader.producer.processor - DEBUG - Processing task 95bb10bd-6c04-4bab-afe0-23347479df2c: 002415.SZ - financials
+15:15:28 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 002415.SZ, 时间: 20250809~20250811
+15:15:28 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:28 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 24
+15:15:28 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:28 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:28 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:28 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 002415.SZ, 数据量: 0条
+15:15:28 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 95bb10bd-6c04-4bab-afe0-23347479df2c, 股票: 002415.SZ, 数据量: 0条, 处理时间: 0.22s
+15:15:28 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 fec87368-9fc8-4856-aadb-f85cd1fdb5d3
+15:15:28 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 470ca0bd-6827-4828-a339-cb2a9f6151b3, 类型: financials, 股票: 000895.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:28 - downloader.producer.processor - DEBUG - Processing task 470ca0bd-6827-4828-a339-cb2a9f6151b3: 000895.SZ - financials
+15:15:28 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 000895.SZ, 时间: 20250809~20250811
+15:15:28 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:28 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 23
+15:15:28 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:28 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:29 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:29 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 000895.SZ, 数据量: 0条
+15:15:29 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 470ca0bd-6827-4828-a339-cb2a9f6151b3, 股票: 000895.SZ, 数据量: 0条, 处理时间: 0.29s
+15:15:29 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 79013503-51c6-4a29-b1cc-53a06648ae01
+15:15:29 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 3b561e5a-9b35-4b28-a860-322995d9813b, 类型: financials, 股票: 603288.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:29 - downloader.producer.processor - DEBUG - Processing task 3b561e5a-9b35-4b28-a860-322995d9813b: 603288.SH - financials
+15:15:29 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 603288.SH, 时间: 20250809~20250811
+15:15:29 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:29 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:29 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:29 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 22
+15:15:29 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:29 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 603288.SH, 数据量: 0条
+15:15:29 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 3b561e5a-9b35-4b28-a860-322995d9813b, 股票: 603288.SH, 数据量: 0条, 处理时间: 0.25s
+15:15:29 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 20513baa-4e17-48ba-b672-8d2355b734cb
+15:15:29 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: a4660165-a724-4274-8bbb-79025f890340, 类型: financials, 股票: 600900.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:29 - downloader.producer.processor - DEBUG - Processing task a4660165-a724-4274-8bbb-79025f890340: 600900.SH - financials
+15:15:29 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 600900.SH, 时间: 20250809~20250811
+15:15:29 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:29 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 21
+15:15:29 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:29 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:29 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:29 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 600900.SH, 数据量: 0条
+15:15:29 - downloader.producer - INFO - [任务处理] 任务完成 - ID: a4660165-a724-4274-8bbb-79025f890340, 股票: 600900.SH, 数据量: 0条, 处理时间: 0.27s
+15:15:29 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 e4013970-8776-482e-84ce-cd0aca956c20
+15:15:29 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: e9050a98-fcb1-48ea-bf86-6abd415a51ee, 类型: financials, 股票: 601100.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:29 - downloader.producer.processor - DEBUG - Processing task e9050a98-fcb1-48ea-bf86-6abd415a51ee: 601100.SH - financials
+15:15:29 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 601100.SH, 时间: 20250809~20250811
+15:15:29 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:29 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:29 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:29 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 20
+15:15:29 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:29 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 601100.SH, 数据量: 0条
+15:15:29 - downloader.engine - INFO - [引擎任务等待] 等待状态更新 - 剩余任务: 20, 活跃生产者: 1/1
+15:15:29 - downloader.producer - INFO - [任务处理] 任务完成 - ID: e9050a98-fcb1-48ea-bf86-6abd415a51ee, 股票: 601100.SH, 数据量: 0条, 处理时间: 0.20s
+15:15:29 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 89b3d3e4-283c-4719-b2fb-bffa1265e07e
+15:15:29 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: ce593b37-09bf-4324-ada1-85203a7d3b62, 类型: financials, 股票: 603568.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:29 - downloader.producer.processor - DEBUG - Processing task ce593b37-09bf-4324-ada1-85203a7d3b62: 603568.SH - financials
+15:15:29 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 603568.SH, 时间: 20250809~20250811
+15:15:29 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:29 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 19
+15:15:29 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:29 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:30 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:30 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 603568.SH, 数据量: 0条
+15:15:30 - downloader.producer - INFO - [任务处理] 任务完成 - ID: ce593b37-09bf-4324-ada1-85203a7d3b62, 股票: 603568.SH, 数据量: 0条, 处理时间: 0.34s
+15:15:30 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 5ea0dec9-1766-457d-9651-8e7d3640ca5b
+15:15:30 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 3afc014d-d067-468f-bf74-1b874e7ec195, 类型: financials, 股票: 600636.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:30 - downloader.producer.processor - DEBUG - Processing task 3afc014d-d067-468f-bf74-1b874e7ec195: 600636.SH - financials
+15:15:30 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 600636.SH, 时间: 20250809~20250811
+15:15:30 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:30 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 18
+15:15:30 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:30 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:30 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:30 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 600636.SH, 数据量: 0条
+15:15:30 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 3afc014d-d067-468f-bf74-1b874e7ec195, 股票: 600636.SH, 数据量: 0条, 处理时间: 0.26s
+15:15:30 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 606423c1-4203-42a2-aab4-ac65b691f4f5, 类型: financials, 股票: 000651.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:30 - downloader.producer.processor - DEBUG - Processing task 606423c1-4203-42a2-aab4-ac65b691f4f5: 000651.SZ - financials
+15:15:30 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 000651.SZ, 时间: 20250809~20250811
+15:15:30 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 261e655e-205f-43c6-b62b-ec4f92e18d9e
+15:15:30 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:30 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 17
+15:15:30 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:30 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:30 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:30 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 000651.SZ, 数据量: 0条
+15:15:30 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 606423c1-4203-42a2-aab4-ac65b691f4f5, 股票: 000651.SZ, 数据量: 0条, 处理时间: 0.38s
+15:15:30 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 eaa4172f-d7f3-44bd-9e87-532e0bfe503d
+15:15:30 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: e41f56d9-cd09-4659-a603-d899be14c71d, 类型: financials, 股票: 600570.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:30 - downloader.producer.processor - DEBUG - Processing task e41f56d9-cd09-4659-a603-d899be14c71d: 600570.SH - financials
+15:15:30 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 600570.SH, 时间: 20250809~20250811
+15:15:30 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:30 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 16
+15:15:30 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:30 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:31 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:31 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 600570.SH, 数据量: 0条
+15:15:31 - downloader.producer - INFO - [任务处理] 任务完成 - ID: e41f56d9-cd09-4659-a603-d899be14c71d, 股票: 600570.SH, 数据量: 0条, 处理时间: 0.31s
+15:15:31 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 3ba49cdc-890b-4851-863c-da020e12a993
+15:15:31 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 9e2cfaf9-6008-4673-a261-7532ec9af308, 类型: financials, 股票: 000858.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:31 - downloader.producer.processor - DEBUG - Processing task 9e2cfaf9-6008-4673-a261-7532ec9af308: 000858.SZ - financials
+15:15:31 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 000858.SZ, 时间: 20250809~20250811
+15:15:31 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:31 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 15
+15:15:31 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+15:15:31 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:31 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+15:15:31 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 000858.SZ, 数据量: 0条
+15:15:31 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 9e2cfaf9-6008-4673-a261-7532ec9af308, 股票: 000858.SZ, 数据量: 0条, 处理时间: 0.30s
+15:15:31 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 3fb24353-f091-4576-8897-43fec820bd38, 类型: financials, 股票: 600519.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:31 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 1bb438e2-3a33-4927-9bac-4940b0b4ecbd
+15:15:31 - downloader.producer.processor - DEBUG - Processing task 3fb24353-f091-4576-8897-43fec820bd38: 600519.SH - financials
+15:15:31 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 600519.SH, 时间: 20250809~20250811
+15:15:31 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:31 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 14
+15:15:31 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:31 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:31 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:31 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 600519.SH, 数据量: 0条
+15:15:31 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 3fb24353-f091-4576-8897-43fec820bd38, 股票: 600519.SH, 数据量: 0条, 处理时间: 0.30s
+15:15:31 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 d5a0afd6-9cd6-4d9b-a125-faecb7ddb7a0
+15:15:31 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 78789b2b-d8e7-4e24-b660-8e18e24e43ed, 类型: financials, 股票: 002023.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:31 - downloader.producer.processor - DEBUG - Processing task 78789b2b-d8e7-4e24-b660-8e18e24e43ed: 002023.SZ - financials
+15:15:31 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 002023.SZ, 时间: 20250809~20250811
+15:15:31 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:31 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 13
+15:15:31 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:31 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:31 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:31 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 002023.SZ, 数据量: 0条
+15:15:31 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 78789b2b-d8e7-4e24-b660-8e18e24e43ed, 股票: 002023.SZ, 数据量: 0条, 处理时间: 0.22s
+15:15:31 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 e8e3ec0a-8fce-47ed-b8d1-cdb48b2d8598
+15:15:31 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: ee3cd0c5-6433-4cf6-a40d-2ad28b691952, 类型: financials, 股票: 600276.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:31 - downloader.producer.processor - DEBUG - Processing task ee3cd0c5-6433-4cf6-a40d-2ad28b691952: 600276.SH - financials
+15:15:31 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 600276.SH, 时间: 20250809~20250811
+15:15:31 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:31 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 12
+15:15:31 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:31 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:32 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 600276.SH, 数据量: 0条
+15:15:32 - downloader.producer - INFO - [任务处理] 任务完成 - ID: ee3cd0c5-6433-4cf6-a40d-2ad28b691952, 股票: 600276.SH, 数据量: 0条, 处理时间: 0.29s
+15:15:32 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 d65a6c42-e986-4ad1-a89f-9723640d3cbd
+15:15:32 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: b58d8aa8-5719-4ec7-b807-23efea5f6f36, 类型: financials, 股票: 600612.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:32 - downloader.producer.processor - DEBUG - Processing task b58d8aa8-5719-4ec7-b807-23efea5f6f36: 600612.SH - financials
+15:15:32 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 600612.SH, 时间: 20250809~20250811
+15:15:32 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:32 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 11
+15:15:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:32 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:32 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 600612.SH, 数据量: 0条
+15:15:32 - downloader.producer - INFO - [任务处理] 任务完成 - ID: b58d8aa8-5719-4ec7-b807-23efea5f6f36, 股票: 600612.SH, 数据量: 0条, 处理时间: 0.23s
+15:15:32 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 2248b982-9738-4273-bdb1-240872d58460
+15:15:32 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 0b26873b-8a3c-4845-9f5f-1d5ca668c399, 类型: financials, 股票: 000333.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:32 - downloader.producer.processor - DEBUG - Processing task 0b26873b-8a3c-4845-9f5f-1d5ca668c399: 000333.SZ - financials
+15:15:32 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 000333.SZ, 时间: 20250809~20250811
+15:15:32 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:32 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 10
+15:15:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:32 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:32 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 000333.SZ, 数据量: 0条
+15:15:32 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 0b26873b-8a3c-4845-9f5f-1d5ca668c399, 股票: 000333.SZ, 数据量: 0条, 处理时间: 0.28s
+15:15:32 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 dfe176e3-ede3-4af9-86e8-71aaf96b8a8c
+15:15:32 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 4682bc3e-0541-4c86-adc7-1b56d5136ee1, 类型: financials, 股票: 002415.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:32 - downloader.producer.processor - DEBUG - Processing task 4682bc3e-0541-4c86-adc7-1b56d5136ee1: 002415.SZ - financials
+15:15:32 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 002415.SZ, 时间: 20250809~20250811
+15:15:32 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 9
+15:15:32 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:32 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:32 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 002415.SZ, 数据量: 0条
+15:15:32 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 4682bc3e-0541-4c86-adc7-1b56d5136ee1, 股票: 002415.SZ, 数据量: 0条, 处理时间: 0.24s
+15:15:32 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 d7204100-bca6-458b-b941-382670e125fa
+15:15:32 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 843843f9-a050-4da7-8be4-88af732da67b, 类型: financials, 股票: 000895.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:32 - downloader.producer.processor - DEBUG - Processing task 843843f9-a050-4da7-8be4-88af732da67b: 000895.SZ - financials
+15:15:32 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 000895.SZ, 时间: 20250809~20250811
+15:15:32 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:32 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 8
+15:15:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:32 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:33 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 000895.SZ, 数据量: 0条
+15:15:33 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 843843f9-a050-4da7-8be4-88af732da67b, 股票: 000895.SZ, 数据量: 0条, 处理时间: 0.28s
+15:15:33 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 336ef21a-85fa-44fc-afab-401fd6965165
+15:15:33 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 30b9b0ee-7649-481a-885e-4d01b41dff6f, 类型: financials, 股票: 603288.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:33 - downloader.producer.processor - DEBUG - Processing task 30b9b0ee-7649-481a-885e-4d01b41dff6f: 603288.SH - financials
+15:15:33 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 603288.SH, 时间: 20250809~20250811
+15:15:33 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:33 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 7
+15:15:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:33 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:33 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 603288.SH, 数据量: 0条
+15:15:33 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 30b9b0ee-7649-481a-885e-4d01b41dff6f, 股票: 603288.SH, 数据量: 0条, 处理时间: 0.20s
+15:15:33 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 dba776c9-43ca-40e5-a07e-50ac389a138c
+15:15:33 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: bbb0c408-c319-4572-aa98-56cabbd4dc9c, 类型: financials, 股票: 600900.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:33 - downloader.producer.processor - DEBUG - Processing task bbb0c408-c319-4572-aa98-56cabbd4dc9c: 600900.SH - financials
+15:15:33 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 600900.SH, 时间: 20250809~20250811
+15:15:33 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:33 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:33 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 6
+15:15:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:33 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 600900.SH, 数据量: 0条
+15:15:33 - downloader.producer - INFO - [任务处理] 任务完成 - ID: bbb0c408-c319-4572-aa98-56cabbd4dc9c, 股票: 600900.SH, 数据量: 0条, 处理时间: 0.26s
+15:15:33 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 2c6fd0ce-e381-4a7d-8647-042183fef4d2
+15:15:33 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: e95af5c1-4b69-4f0f-af21-2ae3c0a0a460, 类型: financials, 股票: 601100.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:33 - downloader.producer.processor - DEBUG - Processing task e95af5c1-4b69-4f0f-af21-2ae3c0a0a460: 601100.SH - financials
+15:15:33 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 601100.SH, 时间: 20250809~20250811
+15:15:33 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:33 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 5
+15:15:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:33 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:33 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 601100.SH, 数据量: 0条
+15:15:33 - downloader.producer - INFO - [任务处理] 任务完成 - ID: e95af5c1-4b69-4f0f-af21-2ae3c0a0a460, 股票: 601100.SH, 数据量: 0条, 处理时间: 0.23s
+15:15:33 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 7fa1b60c-d732-4f40-86b5-521d1d81cc9c
+15:15:33 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 816ad59c-9f9d-4e02-b16d-cff151c54a89, 类型: financials, 股票: 603568.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:33 - downloader.producer.processor - DEBUG - Processing task 816ad59c-9f9d-4e02-b16d-cff151c54a89: 603568.SH - financials
+15:15:33 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 603568.SH, 时间: 20250809~20250811
+15:15:33 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:33 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 4
+15:15:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:33 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:34 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:34 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 603568.SH, 数据量: 0条
+15:15:34 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 816ad59c-9f9d-4e02-b16d-cff151c54a89, 股票: 603568.SH, 数据量: 0条, 处理时间: 0.29s
+15:15:34 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 a14ab9ae-3b2c-4f4d-a8e0-4481ca28cbf4
+15:15:34 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 48499974-6a75-4e6c-99e5-bbd0b965d4e6, 类型: financials, 股票: 600636.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:34 - downloader.producer.processor - DEBUG - Processing task 48499974-6a75-4e6c-99e5-bbd0b965d4e6: 600636.SH - financials
+15:15:34 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 600636.SH, 时间: 20250809~20250811
+15:15:34 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:34 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 3
+15:15:34 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:34 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:34 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:34 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 600636.SH, 数据量: 0条
+15:15:34 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 48499974-6a75-4e6c-99e5-bbd0b965d4e6, 股票: 600636.SH, 数据量: 0条, 处理时间: 0.24s
+15:15:34 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 252899fa-edc5-4267-b9b1-46f174683e42
+15:15:34 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: 796413cb-4dbf-4875-9211-f17a984662c9, 类型: financials, 股票: 000651.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:34 - downloader.producer.processor - DEBUG - Processing task 796413cb-4dbf-4875-9211-f17a984662c9: 000651.SZ - financials
+15:15:34 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 000651.SZ, 时间: 20250809~20250811
+15:15:34 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:34 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 2
+15:15:34 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:34 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:34 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:34 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 000651.SZ, 数据量: 0条
+15:15:34 - downloader.producer - INFO - [任务处理] 任务完成 - ID: 796413cb-4dbf-4875-9211-f17a984662c9, 股票: 000651.SZ, 数据量: 0条, 处理时间: 0.28s
+15:15:34 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 281cbfe1-bad2-4708-baa0-6d88326ecfaf
+15:15:34 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: a1e8dac2-571d-4592-bac1-a9b49be69647, 类型: financials, 股票: 600570.SH, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:34 - downloader.producer.processor - DEBUG - Processing task a1e8dac2-571d-4592-bac1-a9b49be69647: 600570.SH - financials
+15:15:34 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 600570.SH, 时间: 20250809~20250811
+15:15:34 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:34 - downloader.engine - INFO - [引擎任务等待] 任务队列处理中 - 剩余任务: 1
+15:15:34 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:34 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:34 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:34 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 600570.SH, 数据量: 0条
+15:15:34 - downloader.producer - INFO - [任务处理] 任务完成 - ID: a1e8dac2-571d-4592-bac1-a9b49be69647, 股票: 600570.SH, 数据量: 0条, 处理时间: 0.23s
+15:15:34 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 c77352fb-4284-450e-ab1f-14b59f74f444
+15:15:34 - downloader.producer - INFO - [任务处理] 开始处理任务 - ID: ae5dfe8e-809f-44cd-951d-a612565d865f, 类型: financials, 股票: 000858.SZ, 重试次数: 0/3, Producer实例: 4394999696, Fetcher实例: 4394417664
+15:15:34 - downloader.producer.processor - DEBUG - Processing task ae5dfe8e-809f-44cd-951d-a612565d865f: 000858.SZ - financials
+15:15:34 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 000858.SZ, 时间: 20250809~20250811
+15:15:34 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+15:15:34 - downloader.engine - INFO - [引擎任务等待] 所有任务已完成 - 总等待周期: 350, 最终队列大小: 0
+15:15:34 - downloader.engine - INFO - [引擎生产者停止] 开始停止所有生产者 - 当前生产者数量: 1, 剩余任务: 0
+15:15:34 - downloader.engine - INFO - [引擎生产者停止] 正在停止生产者 1 - 状态: alive=False, running=True
+15:15:34 - downloader.producer - INFO - Stopping producer...
+15:15:35 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+15:15:35 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+15:15:35 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+15:15:35 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 000858.SZ, 数据量: 0条
+15:15:35 - downloader.producer - INFO - [任务处理] 任务完成 - ID: ae5dfe8e-809f-44cd-951d-a612565d865f, 股票: 000858.SZ, 数据量: 0条, 处理时间: 0.20s
+15:15:35 - downloader.consumer_pool.worker_0 - DEBUG - Worker 0: 跳过空数据批次 3636760d-34ab-49a0-a09a-6a9e29a5d4cc
+15:15:35 - downloader.producer - INFO - Producer worker stopped
+15:15:35 - downloader.producer - INFO - Producer stopped
+15:15:35 - downloader.engine - INFO - [引擎生产者停止] 生产者 1 停止信号已发送
+15:15:35 - downloader.engine - INFO - [引擎生产者停止] 所有生产者已停止 - 最终任务队列: 0, 数据队列: 0
+15:15:35 - downloader.engine - INFO - 开始监控队列状态...
+15:15:35 - downloader.engine - DEBUG - 队列状态 - 任务队列: 0, 数据队列: 0
+15:15:35 - downloader.engine - INFO - 所有队列为空，任务处理完成
+15:15:35 - downloader.engine - INFO - 等待消费者处理完剩余数据...
+15:15:35 - downloader.consumer_pool - INFO - Force flushing all consumer caches...
+15:15:35 - downloader.consumer_pool - INFO - Force flush completed
+15:15:37 - downloader.engine - INFO - 业务表任务处理完成
+15:15:37 - downloader.engine - INFO - 业务表任务处理完成
+15:15:37 - downloader.engine - INFO - 消费者统计: 处理批次 91 个
+15:15:37 - downloader.progress_events - INFO - 阶段开始: saving
+15:15:37 - downloader.engine - INFO - 消费者统计: 刷新操作 16 次
+15:15:37 - downloader.engine - INFO - 消费者统计: 失败操作 0 次
+15:15:37 - downloader.engine - INFO - 所有任务处理完成
+15:15:37 - downloader.progress_events - INFO - 阶段结束: completed
+15:15:37 - downloader.engine - INFO - [引擎关闭] 开始关闭线程池 - 生产者数量: 0, 消费者池状态: True
+15:15:37 - downloader.engine - INFO - [引擎关闭] 没有生产者需要停止
+15:15:37 - downloader.engine - INFO - [引擎关闭] 停止消费者池
+15:15:37 - downloader.consumer_pool - INFO - Stopping consumer pool...
+15:15:37 - downloader.consumer_pool.worker_0 - INFO - Consumer worker 0 stopping...
+15:15:38 - downloader.consumer_pool.worker_0 - INFO - Consumer worker 0 stopped
+15:15:38 - downloader.consumer_pool - INFO - Consumer pool stopped
+15:15:38 - downloader.engine - INFO - [引擎关闭] 消费者池已停止
+15:15:38 - downloader.engine - INFO - [引擎关闭] 线程池已关闭 - 最终任务队列: 0, 最终数据队列: 0
+15:15:38 - downloader.progress_events - INFO - 进度事件处理线程已停止
+15:15:38 - downloader.progress_events - INFO - 进度事件管理器已停止
+15:15:38 - downloader.engine - INFO - ============================================================
+15:15:38 - downloader.engine - INFO - 下载引擎执行汇总:
+15:15:38 - downloader.engine - INFO -   总任务数: 90
+15:15:38 - downloader.engine - INFO -   成功任务数: 0
+15:15:38 - downloader.engine - INFO -   失败任务数: 0
+15:15:38 - downloader.engine - INFO -   跳过任务数: 0
+15:15:38 - downloader.engine - INFO -   按类型统计:
+15:15:38 - downloader.engine - INFO -     stock_list: 1
+15:15:38 - downloader.engine - INFO -     daily: 30
+15:15:38 - downloader.engine - INFO -     daily_basic: 15
+15:15:38 - downloader.engine - INFO -     income: 15
+15:15:38 - downloader.engine - INFO -     balancesheet: 15
+15:15:38 - downloader.engine - INFO -     cashflow: 15
+15:15:38 - downloader.engine - INFO -   处理耗时: 0:00:42.027412
+15:15:38 - downloader.engine - INFO - ============================================================
+15:15:38 - downloader.app - INFO - 执行统计: 所有任务成功完成
+15:15:38 - downloader.app - INFO - [应用完成] 股票下载应用成功完成
+15:15:38 - downloader.app - INFO - [应用完成] 全部任务已完成，耗时 42.07 秒
+19:52:00 - __main__ - INFO - 这是来自 test_get_logger 的信息
+19:52:00 - test_module - DEBUG - 这是来自 test_module 的调试信息
+19:52:00 - __main__ - WARNING - 这是一个警告

@@ -20,7 +20,8 @@ from .storage_factory import get_storage
 from .producer import Producer
 from .consumer_pool import ConsumerPool
 from .models import DownloadTask, TaskType, Priority
-from .interfaces.events import SimpleEventBus, IEventBus, IEventListener
+from .interfaces.events import IEventBus, IEventListener
+from .event_bus import SimpleEventBus
 from .interfaces.producer import ProducerEvents
 from .progress_events import (
     progress_event_manager, start_phase, end_phase, update_total, ProgressPhase

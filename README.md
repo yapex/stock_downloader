@@ -237,7 +237,7 @@ stock_downloader/
 本项目的核心优势是其插件化设计。要添加一个新的数据下载任务（例如“分析师评级”），只需：
 
 1.  在 `src/downloader/tasks/` 目录下创建一个新的 Python 文件（例如 `analyst_rating.py`）。
-2.  在该文件中，创建一个继承自 `BaseTaskHandler` 的类，并实现数据获取逻辑。
+2.  在该文件中，创建一个继承自 `Base` 的类，并实现数据获取逻辑。
 3.  在 `pyproject.toml` 的 `[project.entry-points."stock_downloader.task_handlers"]` 部分，注册您的新任务处理器。
 
 ## 更新日志

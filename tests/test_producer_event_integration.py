@@ -9,7 +9,8 @@ from queue import Queue
 from unittest.mock import Mock, patch
 
 from src.downloader.producer import Producer
-from src.downloader.interfaces.events import SimpleEventBus, IEventListener
+from src.downloader.interfaces.events import IEventListener
+from src.downloader.event_bus import SimpleEventBus
 from src.downloader.interfaces.producer import ProducerEvents
 from src.downloader.models import DownloadTask, DataBatch
 from src.downloader.fetcher import TushareFetcher
