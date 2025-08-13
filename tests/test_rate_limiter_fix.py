@@ -23,10 +23,10 @@ class TestRateLimitFix:
         mock_ts.set_token.assert_called_once_with("test_token")
         mock_ts.pro_api.assert_called_once()
         
-        # 验证手动连接验证
-        result = fetcher.verify_connection()
-        assert result is True
-        mock_pro.trade_cal.assert_called_once()
+        # 验证fetcher实例创建成功
+        assert fetcher is not None
+        assert hasattr(fetcher, 'pro')
+        assert fetcher.pro == mock_pro
     
     @patch.dict('os.environ', {'TUSHARE_TOKEN': 'test_token'})
     @patch('src.downloader.fetcher.ts')

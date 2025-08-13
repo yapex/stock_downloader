@@ -7,7 +7,6 @@ import sys
 # 导入核心组件以进行类型提示，增强代码可读性和健壮性
 from ..fetcher import TushareFetcher
 from ..storage import PartitionedStorage
-# rate_limit装饰器已移至各个fetcher方法中使用ratelimit库
 
 # 从新的 utils 模块导入工具函数
 from ..utils import record_failed_task, get_logger
@@ -100,7 +99,9 @@ class IncrementalTaskHandler(BaseTaskHandler):
             progress_bar = target_symbols
 
         # 简化执行逻辑：直接处理每只股票，不再收集网络错误进行二次重试
-        is_progress_bar_active = hasattr(progress_bar, 'close')  # 判断是否为真正的进度条
+        is_progress_bar_active = hasattr(
+            progress_bar, "close"
+        )  # 判断是否为真正的进度条
         try:
             for ts_code in progress_bar:
                 self._process_single_symbol(ts_code)
@@ -123,7 +124,7 @@ class IncrementalTaskHandler(BaseTaskHandler):
         task_name = self.task_config["name"]
         data_type = self.get_data_type()
         self.get_date_col()
-        
+
         desc_prefix = f"处理: {data_type}_{ts_code}"
         if self._current_progress_bar:
             try:
@@ -144,9 +145,9 @@ class IncrementalTaskHandler(BaseTaskHandler):
                 internal_type = "financial"
             else:
                 internal_type = "daily"  # 默认
-            
+
             latest_date = self.storage.get_latest_date_by_stock(ts_code, internal_type)
-            
+
             # 步骤2: 根据 latest_date 确定 start_date
             start_date = "19901219"  # 默认起始日期
             if latest_date:
@@ -162,7 +163,9 @@ class IncrementalTaskHandler(BaseTaskHandler):
                             pd.to_datetime(latest_date) + timedelta(days=1)
                         ).strftime("%Y%m%d")
                     except Exception as e:
-                        self._log_warning(f"无法解析日期格式 {latest_date}，使用默认起始日期: {e}")
+                        self._log_warning(
+                            f"无法解析日期格式 {latest_date}，使用默认起始日期: {e}"
+                        )
                         start_date = "19901219"
 
             end_date = datetime.now().strftime("%Y%m%d")
@@ -182,7 +185,7 @@ class IncrementalTaskHandler(BaseTaskHandler):
                 if "ts_code" not in df.columns:
                     df = df.copy()
                     df["ts_code"] = ts_code
-                
+
                 # 根据data_type调用对应的保存方法
                 if data_type.startswith("stock_list") or data_type == "system":
                     self.storage.save_stock_list(df)
@@ -203,14 +206,8 @@ class IncrementalTaskHandler(BaseTaskHandler):
         except Exception as e:
             # Task层的异常（通常是非网络相关的逻辑错误）
             self._log_error(f"❌ 处理股票 {ts_code} 时发生错误: {e}")
-            record_failed_task(
-                task_name, 
-                f"{data_type}_{ts_code}", 
-                str(e),
-                "unknown"
-            )
+            record_failed_task(task_name, f"{data_type}_{ts_code}", str(e), "unknown")
             return False
-
 
     @abstractmethod
     def get_data_type(self) -> str:
@@ -225,4 +222,3 @@ class IncrementalTaskHandler(BaseTaskHandler):
         self, ts_code: str, start_date: str, end_date: str
     ) -> pd.DataFrame | None:
         raise NotImplementedError
-

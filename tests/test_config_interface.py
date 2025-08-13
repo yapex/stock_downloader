@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.downloader.config_impl import ConfigManager, create_config_manager
-from src.downloader.interfaces import ConfigInterface
+from src.downloader.interfaces.config import IConfig
 
 
 @pytest.fixture
@@ -86,7 +86,7 @@ class TestConfigManager:
     def test_create_config_manager(self, temp_config_file):
         """测试创建配置管理器"""
         config = create_config_manager(temp_config_file)
-        assert isinstance(config, ConfigInterface)
+        assert isinstance(config, IConfig)
         assert config.validate()
     
     def test_tushare_token_from_config(self, temp_config_file):
@@ -229,7 +229,7 @@ class TestConfigIntegration:
     
     def test_protocol_compliance(self, temp_config_file):
         """测试Protocol接口合规性"""
-        config: ConfigInterface = create_config_manager(temp_config_file)
+        config: IConfig = create_config_manager(temp_config_file)
         
         # 测试所有接口方法都可以调用
         assert isinstance(config.get_runtime_token(), str)

@@ -14,8 +14,8 @@ class TestStockBasicFieldsToSeries:
             name="平安银行",
             area="深圳",
             industry="银行",
-            full_name="平安银行股份有限公司",
-            en_name="Ping An Bank Co., Ltd.",
+            fullname="平安银行股份有限公司",
+            enname="Ping An Bank Co., Ltd.",
             cnspell="PAYH",
             market="主板",
             exchange="SZSE",
@@ -50,11 +50,25 @@ class TestStockBasicFieldsToSeries:
         assert series["act_ent_type"] == "境内非国有法人"
 
     def test_to_series_with_partial_data(self):
-        """测试部分数据转换为Series"""
+        """测试包含部分空值的数据转换为Series"""
         fields = StockBasicFields(
             ts_code="000002.SZ",
             symbol="000002",
-            name="万科A"
+            name="万科A",
+            area="深圳",
+            industry="房地产开发",
+            fullname="万科企业股份有限公司",
+            enname="China Vanke Co., Ltd.",
+            cnspell="WKA",
+            market="主板",
+            exchange="SZSE",
+            curr_type="CNY",
+            list_status="L",
+            list_date="19910129",
+            delist_date=None,
+            is_hs="S",
+            act_name="万科企业股份有限公司",
+            act_ent_type="境内非国有法人"
         )
         
         series = StockBasicFields.to_series(fields)
@@ -63,9 +77,8 @@ class TestStockBasicFieldsToSeries:
         assert series["ts_code"] == "000002.SZ"
         assert series["symbol"] == "000002"
         assert series["name"] == "万科A"
-        # 其他字段不应该出现在Series中，因为fields实例中没有这些属性
-        assert "area" not in series.index
-        assert "industry" not in series.index
+        assert series["area"] == "深圳"
+        assert series["industry"] == "房地产开发"
 
     def test_to_series_with_none_values(self):
         """测试包含None值的数据转换为Series"""
@@ -75,7 +88,18 @@ class TestStockBasicFieldsToSeries:
             name="PT金田A",
             area=None,
             industry=None,
-            delist_date="20040427"
+            fullname="深圳金田实业(集团)股份有限公司",
+            enname="Shenzhen Jintian Industrial (Group) Co., Ltd.",
+            cnspell="JTA",
+            market="主板",
+            exchange="SZSE",
+            curr_type="CNY",
+            list_status="D",
+            list_date="19910403",
+            delist_date="20040427",
+            is_hs="N",
+            act_name="深圳金田实业(集团)股份有限公司",
+            act_ent_type="境内非国有法人"
         )
         
         series = StockBasicFields.to_series(fields)
@@ -89,21 +113,53 @@ class TestStockBasicFieldsToSeries:
         assert series["delist_date"] == "20040427"
 
     def test_to_series_with_empty_fields(self):
-        """测试空字段实例转换为Series"""
-        fields = StockBasicFields()
+        """测试包含空字符串的字段实例转换为Series"""
+        fields = StockBasicFields(
+            ts_code="",
+            symbol="",
+            name="",
+            area="",
+            industry="",
+            fullname="",
+            enname="",
+            cnspell="",
+            market="",
+            exchange="",
+            curr_type="",
+            list_status="",
+            list_date="",
+            delist_date="",
+            is_hs="",
+            act_name="",
+            act_ent_type=""
+        )
         
         series = StockBasicFields.to_series(fields)
         
         assert isinstance(series, pd.Series)
-        assert len(series) == 0  # 没有任何字段
+        assert len(series) == 17  # 所有字段都存在
+        assert all(series == "")  # 所有字段都是空字符串
 
     def test_to_series_with_extra_attributes(self):
-        """测试包含额外属性的字段实例转换为Series"""
+        """测试完整字段实例转换为Series"""
         fields = StockBasicFields(
             ts_code="000004.SZ",
             symbol="000004",
             name="国华网安",
-            extra_field="这是额外字段"  # 这个字段不在StockBasicFields常量中定义
+            area="深圳",
+            industry="计算机、通信和其他电子设备制造业",
+            fullname="深圳市国华网安科技股份有限公司",
+            enname="Shenzhen Guohua Network Security Technology Co., Ltd.",
+            cnspell="GHWA",
+            market="创业板",
+            exchange="SZSE",
+            curr_type="CNY",
+            list_status="L",
+            list_date="20210101",
+            delist_date=None,
+            is_hs="N",
+            act_name="深圳市国华网安科技股份有限公司",
+            act_ent_type="境内非国有法人"
         )
         
         series = StockBasicFields.to_series(fields)
@@ -112,8 +168,8 @@ class TestStockBasicFieldsToSeries:
         assert series["ts_code"] == "000004.SZ"
         assert series["symbol"] == "000004"
         assert series["name"] == "国华网安"
-        # extra_field不应该出现在Series中，因为它不在类常量中定义
-        assert "extra_field" not in series.index
+        assert series["area"] == "深圳"
+        assert series["industry"] == "计算机、通信和其他电子设备制造业"
 
     def test_to_series_field_mapping(self):
         """测试字段名映射是否正确"""
@@ -121,8 +177,10 @@ class TestStockBasicFieldsToSeries:
             ts_code="000005.SZ",
             symbol="000005",
             name="世纪星源",
-            full_name="深圳世纪星源股份有限公司",
-            en_name="Shenzhen Century Star Source Co., Ltd.",
+            area="深圳",
+            industry="房地产开发",
+            fullname="深圳世纪星源股份有限公司",
+            enname="Shenzhen Century Star Source Co., Ltd.",
             cnspell="SJXY",
             market="主板",
             exchange="SZSE",

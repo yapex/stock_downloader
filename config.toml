@@ -1,0 +1,15 @@
+# TuShare配置
+[tushare]
+token = "0a8d21a7412090d94437aa4918aa5c4afa57f5653253137f63ea653a"
+
+[tasks]
+# 任务配置
+[task.stock_basic]
+# 任务名称
+name = "获取股票列表"
+# 下载接口
+interface = "stock_basic"
+# 更新间隔小时数
+update_interval_hours = 24*7*30
+# 优先级，0 级的都会优先独立下载
+priority = 0
