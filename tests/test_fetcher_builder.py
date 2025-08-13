@@ -9,13 +9,7 @@ from src.downloader2.factories.fetcher_builder import (
     FetcherBuilder,
     TushareApiManager,
     TaskTemplate,
-    build_stock_basic,
-    build_stock_daily,
-    build_daily_bar_qfq,
-    build_daily_bar_none,
-    build_balancesheet,
-    build_income,
-    build_cashflow
+    TaskType,
 )
 
 
@@ -24,12 +18,8 @@ class TestTaskTemplate:
 
     def test_task_template_creation(self):
         """测试任务模板创建"""
-        template = TaskTemplate(
-            name="test_task", description="测试任务", api_method="test_method"
-        )
+        template = TaskTemplate(api_method="test_method")
 
-        assert template.name == "test_task"
-        assert template.description == "测试任务"
         assert template.api_method == "test_method"
         assert template.base_object == "pro"
         assert template.default_params == {}
@@ -38,8 +28,6 @@ class TestTaskTemplate:
         """测试带自定义参数的任务模板"""
         custom_params = {"param1": "value1", "param2": "value2"}
         template = TaskTemplate(
-            name="test_task",
-            description="测试任务",
             api_method="test_method",
             base_object="ts",
             default_params=custom_params,
@@ -131,7 +119,7 @@ class TestFetcherBuilder:
         mock_manager_class.get_instance.return_value = mock_manager
 
         builder = FetcherBuilder()
-        fetcher = builder.build_fetcher("stock_basic")
+        fetcher = builder.build_by_task(TaskType.STOCK_BASIC, "")
 
         # 验证返回的是函数
         assert callable(fetcher)
@@ -157,8 +145,8 @@ class TestFetcherBuilder:
         mock_manager_class.get_instance.return_value = mock_manager
 
         builder = FetcherBuilder()
-        fetcher = builder.build_fetcher(
-            "stock_basic", ts_code="000001.SZ", exchange="SZSE"
+        fetcher = builder.build_by_task(
+            TaskType.STOCK_BASIC, "", ts_code="000001.SZ", exchange="SZSE"
         )
 
         # 执行函数
@@ -168,102 +156,112 @@ class TestFetcherBuilder:
         mock_api_func.assert_called_once_with(ts_code="000001.SZ", exchange="SZSE")
 
     def test_build_fetcher_invalid_task(self):
-        """测试无效任务类型"""
+        """测试构建无效任务类型的获取器"""
         builder = FetcherBuilder()
-        
+
         with pytest.raises(ValueError, match="不支持的任务类型"):
-            builder.build_fetcher("invalid_task")
-    
-    @patch('src.downloader2.factories.fetcher_builder.TushareApiManager')
+            builder.build_by_task("invalid_task")
+
+    @patch("src.downloader2.factories.fetcher_builder.TushareApiManager")
     def test_build_stock_daily_fetcher(self, mock_manager_class):
         """测试构建股票日线行情获取器"""
         # 模拟 API 管理器
         mock_manager = Mock()
         mock_api_func = Mock()
-        mock_api_func.return_value = pd.DataFrame({
-            "ts_code": ["000001.SZ"], 
-            "trade_date": ["20240101"],
-            "close": [10.5]
-        })
+        mock_api_func.return_value = pd.DataFrame(
+            {"ts_code": ["000001.SZ"], "trade_date": ["20240101"], "close": [10.5]}
+        )
         mock_manager.get_api_function.return_value = mock_api_func
         mock_manager_class.get_instance.return_value = mock_manager
-        
+
         builder = FetcherBuilder()
-        fetcher = builder.build_fetcher("stock_daily", ts_code="000001.SZ", start_date="20240101")
-        
+        fetcher = builder.build_by_task(
+            TaskType.STOCK_DAILY, "000001.SZ", start_date="20240101"
+        )
+
         # 验证返回的是函数
         assert callable(fetcher)
-        
+
         # 执行函数并验证结果
         result = fetcher()
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 1
         assert result.iloc[0]["ts_code"] == "000001.SZ"
-        
+
         # 验证 API 调用
         mock_manager.get_api_function.assert_called_once_with("pro", "daily")
-        mock_api_func.assert_called_once_with(ts_code="000001.SZ", start_date="20240101")
-    
-    @patch('src.downloader2.factories.fetcher_builder.TushareApiManager')
+        mock_api_func.assert_called_once_with(
+            ts_code="000001.SZ", start_date="20240101"
+        )
+
+    @patch("src.downloader2.factories.fetcher_builder.TushareApiManager")
     def test_build_daily_bar_qfq_fetcher(self, mock_manager_class):
         """测试构建前复权日线行情获取器"""
         # 模拟 API 管理器
         mock_manager = Mock()
         mock_api_func = Mock()
-        mock_api_func.return_value = pd.DataFrame({
-            "ts_code": ["000001.SZ"], 
-            "trade_date": ["20240101"],
-            "close": [10.5],
-            "adj_factor": [1.0]
-        })
+        mock_api_func.return_value = pd.DataFrame(
+            {
+                "ts_code": ["000001.SZ"],
+                "trade_date": ["20240101"],
+                "close": [10.5],
+                "adj_factor": [1.0],
+            }
+        )
         mock_manager.get_api_function.return_value = mock_api_func
         mock_manager_class.get_instance.return_value = mock_manager
-        
+
         builder = FetcherBuilder()
-        fetcher = builder.build_fetcher("daily_bar_qfq", ts_code="000001.SZ", start_date="20240101")
-        
+        fetcher = builder.build_by_task(
+            TaskType.DAILY_BAR_QFQ, "000001.SZ", start_date="20240101"
+        )
+
         # 验证返回的是函数
         assert callable(fetcher)
-        
+
         # 执行函数并验证结果
         result = fetcher()
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 1
         assert result.iloc[0]["ts_code"] == "000001.SZ"
-        
+
         # 验证 API 调用
         mock_manager.get_api_function.assert_called_once_with("ts", "pro_bar")
-        mock_api_func.assert_called_once_with(ts_code="000001.SZ", start_date="20240101", adj="qfq")
-    
-    @patch('src.downloader2.factories.fetcher_builder.TushareApiManager')
+        mock_api_func.assert_called_once_with(
+            ts_code="000001.SZ", start_date="20240101", adj="qfq"
+        )
+
+    @patch("src.downloader2.factories.fetcher_builder.TushareApiManager")
     def test_build_daily_bar_none_fetcher(self, mock_manager_class):
         """测试构建不复权日线行情获取器"""
         # 模拟 API 管理器
         mock_manager = Mock()
         mock_api_func = Mock()
-        mock_api_func.return_value = pd.DataFrame({
-            "ts_code": ["000001.SZ"], 
-            "trade_date": ["20240101"],
-            "close": [10.5]
-        })
+        mock_api_func.return_value = pd.DataFrame(
+            {"ts_code": ["000001.SZ"], "trade_date": ["20240101"], "close": [10.5]}
+        )
         mock_manager.get_api_function.return_value = mock_api_func
         mock_manager_class.get_instance.return_value = mock_manager
-        
+
         builder = FetcherBuilder()
-        fetcher = builder.build_fetcher("daily_bar_none", ts_code="000001.SZ", start_date="20240101")
-        
+        fetcher = builder.build_by_task(
+            TaskType.DAILY_BAR_NONE, "000001.SZ", start_date="20240101"
+        )
+
         # 验证返回的是函数
         assert callable(fetcher)
-        
+
         # 执行函数并验证结果
         result = fetcher()
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 1
         assert result.iloc[0]["ts_code"] == "000001.SZ"
-        
+
         # 验证 API 调用
         mock_manager.get_api_function.assert_called_once_with("ts", "pro_bar")
-        mock_api_func.assert_called_once_with(ts_code="000001.SZ", start_date="20240101", adj=None)
+        mock_api_func.assert_called_once_with(
+            ts_code="000001.SZ", start_date="20240101", adj=None
+        )
 
     @patch("src.downloader2.factories.fetcher_builder.TushareApiManager")
     def test_build_by_task(self, mock_manager_class):
@@ -276,7 +274,7 @@ class TestFetcherBuilder:
         mock_manager_class.get_instance.return_value = mock_manager
 
         builder = FetcherBuilder()
-        fetcher = builder.build_by_task("stock_basic", "000001.SZ")
+        fetcher = builder.build_by_task(TaskType.STOCK_BASIC, "000001.SZ")
 
         # 执行函数
         result = fetcher()
@@ -284,22 +282,26 @@ class TestFetcherBuilder:
         # 验证 API 调用参数包含 ts_code
         mock_api_func.assert_called_once_with(ts_code="000001.SZ")
 
-    @patch('src.downloader2.factories.fetcher_builder.TushareApiManager')
+    @patch("src.downloader2.factories.fetcher_builder.TushareApiManager")
     def test_build_balancesheet_fetcher(self, mock_manager_class):
         """测试构建资产负债表获取器"""
         # 模拟 API 管理器和返回数据
         mock_manager = Mock()
         mock_api_func = Mock()
-        mock_api_func.return_value = pd.DataFrame({
-            "ts_code": ["000001.SZ"],
-            "ann_date": ["20240331"],
-            "total_assets": [1000000]
-        })
+        mock_api_func.return_value = pd.DataFrame(
+            {
+                "ts_code": ["000001.SZ"],
+                "ann_date": ["20240331"],
+                "total_assets": [1000000],
+            }
+        )
         mock_manager.get_api_function.return_value = mock_api_func
         mock_manager_class.get_instance.return_value = mock_manager
 
         builder = FetcherBuilder()
-        fetcher = builder.build_fetcher("balancesheet", ts_code="000001.SZ", period="20240331")
+        fetcher = builder.build_by_task(
+            TaskType.BALANCESHEET, "000001.SZ", period="20240331"
+        )
 
         # 执行函数
         result = fetcher()
@@ -308,27 +310,31 @@ class TestFetcherBuilder:
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 1
         assert result.iloc[0]["ts_code"] == "000001.SZ"
-        
+
         # 验证 API 调用
         mock_manager.get_api_function.assert_called_once_with("pro", "balancesheet")
         mock_api_func.assert_called_once_with(ts_code="000001.SZ", period="20240331")
 
-    @patch('src.downloader2.factories.fetcher_builder.TushareApiManager')
+    @patch("src.downloader2.factories.fetcher_builder.TushareApiManager")
     def test_build_income_fetcher(self, mock_manager_class):
         """测试构建利润表获取器"""
         # 模拟 API 管理器和返回数据
         mock_manager = Mock()
         mock_api_func = Mock()
-        mock_api_func.return_value = pd.DataFrame({
-            "ts_code": ["000001.SZ"],
-            "ann_date": ["20240331"],
-            "total_revenue": [500000]
-        })
+        mock_api_func.return_value = pd.DataFrame(
+            {
+                "ts_code": ["000001.SZ"],
+                "ann_date": ["20240331"],
+                "total_revenue": [500000],
+            }
+        )
         mock_manager.get_api_function.return_value = mock_api_func
         mock_manager_class.get_instance.return_value = mock_manager
 
         builder = FetcherBuilder()
-        fetcher = builder.build_fetcher("income", ts_code="000001.SZ", period="20240331")
+        fetcher = builder.build_by_task(
+            TaskType.INCOME, "000001.SZ", period="20240331"
+        )
 
         # 执行函数
         result = fetcher()
@@ -337,27 +343,31 @@ class TestFetcherBuilder:
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 1
         assert result.iloc[0]["ts_code"] == "000001.SZ"
-        
+
         # 验证 API 调用
         mock_manager.get_api_function.assert_called_once_with("pro", "income")
         mock_api_func.assert_called_once_with(ts_code="000001.SZ", period="20240331")
 
-    @patch('src.downloader2.factories.fetcher_builder.TushareApiManager')
+    @patch("src.downloader2.factories.fetcher_builder.TushareApiManager")
     def test_build_cashflow_fetcher(self, mock_manager_class):
         """测试构建现金流量表获取器"""
         # 模拟 API 管理器和返回数据
         mock_manager = Mock()
         mock_api_func = Mock()
-        mock_api_func.return_value = pd.DataFrame({
-            "ts_code": ["000001.SZ"],
-            "ann_date": ["20240331"],
-            "n_cashflow_act": [200000]
-        })
+        mock_api_func.return_value = pd.DataFrame(
+            {
+                "ts_code": ["000001.SZ"],
+                "ann_date": ["20240331"],
+                "n_cashflow_act": [200000],
+            }
+        )
         mock_manager.get_api_function.return_value = mock_api_func
         mock_manager_class.get_instance.return_value = mock_manager
 
         builder = FetcherBuilder()
-        fetcher = builder.build_fetcher("cashflow", ts_code="000001.SZ", period="20240331")
+        fetcher = builder.build_by_task(
+            TaskType.CASHFLOW, "000001.SZ", period="20240331"
+        )
 
         # 执行函数
         result = fetcher()
@@ -366,124 +376,11 @@ class TestFetcherBuilder:
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 1
         assert result.iloc[0]["ts_code"] == "000001.SZ"
-        
+
         # 验证 API 调用
         mock_manager.get_api_function.assert_called_once_with("pro", "cashflow")
         mock_api_func.assert_called_once_with(ts_code="000001.SZ", period="20240331")
 
-
-class TestConvenienceFunctions:
-    """测试便利函数"""
-
-    def setup_method(self):
-        """每个测试方法前的设置"""
-        # 重置单例实例
-        TushareApiManager._instance = None
-
-    @patch("src.downloader2.factories.fetcher_builder.FetcherBuilder")
-    def test_build_stock_basic(self, mock_builder_class):
-        """测试构建股票基本信息获取器"""
-        mock_builder = Mock()
-        mock_fetcher = Mock()
-        mock_builder.build_fetcher.return_value = mock_fetcher
-        mock_builder_class.return_value = mock_builder
-
-        result = build_stock_basic(param1="value1")
-
-        assert result is mock_fetcher
-        mock_builder.build_fetcher.assert_called_once_with(
-            "stock_basic", param1="value1"
-        )
-    
-    @patch("src.downloader2.factories.fetcher_builder.FetcherBuilder")
-    def test_build_stock_daily(self, mock_builder_class):
-        """测试构建股票日线行情获取器"""
-        mock_builder = Mock()
-        mock_fetcher = Mock()
-        mock_builder.build_fetcher.return_value = mock_fetcher
-        mock_builder_class.return_value = mock_builder
-
-        result = build_stock_daily(ts_code="000001.SZ", start_date="20240101")
-
-        assert result is mock_fetcher
-        mock_builder.build_fetcher.assert_called_once_with(
-            "stock_daily", ts_code="000001.SZ", start_date="20240101"
-        )
-    
-    @patch("src.downloader2.factories.fetcher_builder.FetcherBuilder")
-    def test_build_daily_bar_qfq(self, mock_builder_class):
-        """测试构建前复权日线行情获取器"""
-        mock_builder = Mock()
-        mock_fetcher = Mock()
-        mock_builder.build_fetcher.return_value = mock_fetcher
-        mock_builder_class.return_value = mock_builder
-
-        result = build_daily_bar_qfq(ts_code="000001.SZ", start_date="20240101")
-
-        assert result is mock_fetcher
-        mock_builder.build_fetcher.assert_called_once_with(
-            "daily_bar_qfq", ts_code="000001.SZ", start_date="20240101"
-        )
-    
-    @patch("src.downloader2.factories.fetcher_builder.FetcherBuilder")
-    def test_build_daily_bar_none(self, mock_builder_class):
-        """测试构建不复权日线行情获取器"""
-        mock_builder = Mock()
-        mock_fetcher = Mock()
-        mock_builder.build_fetcher.return_value = mock_fetcher
-        mock_builder_class.return_value = mock_builder
-
-        result = build_daily_bar_none(ts_code="000001.SZ", start_date="20240101")
-
-        assert result is mock_fetcher
-        mock_builder.build_fetcher.assert_called_once_with(
-            "daily_bar_none", ts_code="000001.SZ", start_date="20240101"
-        )
-
-    @patch("src.downloader2.factories.fetcher_builder.FetcherBuilder")
-    def test_build_balancesheet(self, mock_builder_class):
-        """测试构建资产负债表获取器"""
-        mock_builder = Mock()
-        mock_fetcher = Mock()
-        mock_builder.build_fetcher.return_value = mock_fetcher
-        mock_builder_class.return_value = mock_builder
-
-        result = build_balancesheet(ts_code="000001.SZ", period="20240331")
-
-        assert result is mock_fetcher
-        mock_builder.build_fetcher.assert_called_once_with(
-            "balancesheet", ts_code="000001.SZ", period="20240331"
-        )
-
-    @patch("src.downloader2.factories.fetcher_builder.FetcherBuilder")
-    def test_build_income(self, mock_builder_class):
-        """测试构建利润表获取器"""
-        mock_builder = Mock()
-        mock_fetcher = Mock()
-        mock_builder.build_fetcher.return_value = mock_fetcher
-        mock_builder_class.return_value = mock_builder
-
-        result = build_income(ts_code="000001.SZ", period="20240331")
-
-        assert result is mock_fetcher
-        mock_builder.build_fetcher.assert_called_once_with(
-            "income", ts_code="000001.SZ", period="20240331"
-        )
-
-    @patch("src.downloader2.factories.fetcher_builder.FetcherBuilder")
-    def test_build_cashflow(self, mock_builder_class):
-        """测试构建现金流量表获取器"""
-        mock_builder = Mock()
-        mock_fetcher = Mock()
-        mock_builder.build_fetcher.return_value = mock_fetcher
-        mock_builder_class.return_value = mock_builder
-
-        result = build_cashflow(ts_code="000001.SZ", period="20240331")
-
-        assert result is mock_fetcher
-        mock_builder.build_fetcher.assert_called_once_with(
-            "cashflow", ts_code="000001.SZ", period="20240331"
-        )
 
 
 class TestIntegration:
@@ -507,7 +404,7 @@ class TestIntegration:
 
             # 构建并执行获取器
             builder = FetcherBuilder()
-            fetcher = builder.build_by_task("stock_basic", "000001.SZ")
+            fetcher = builder.build_by_task(TaskType.STOCK_BASIC, "000001.SZ")
             result = fetcher()
 
             # 验证结果

@@ -12,11 +12,11 @@ with _config_path.open("rb") as f:
 _config = Box(_config_data)
 
 
-def get():
+def get_config():
     return _config
 
 
 if __name__ == "__main__":
-    print(get().tushare.token)
-    print(get().database.path)
-    print(get().database.type)
+    print(get_config().tushare.token)
+    print(get_config().database.path)
+    print(get_config().database.type)
