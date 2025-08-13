@@ -2,7 +2,7 @@
 
 import pandas as pd
 import pytest
-from src.downloader2.models.stock_basic import StockBasicFields
+from src.downloader2.models.stock_basic import StockBasic
 
 
 class TestStockBasicFieldsFromSeries:
@@ -33,10 +33,10 @@ class TestStockBasicFieldsFromSeries:
         series = pd.Series(data)
 
         # 调用from_series方法
-        result = StockBasicFields.from_series(series)
+        result = StockBasic.from_series(series)
 
         # 验证结果
-        assert isinstance(result, StockBasicFields)
+        assert isinstance(result, StockBasic)
         assert result.ts_code == "000001.SZ"
         assert result.symbol == "000001"
         assert result.name == "平安银行"
@@ -69,7 +69,7 @@ class TestStockBasicFieldsFromSeries:
 
         # 由于dataclass的所有字段都是必需的，部分数据应该引发TypeError
         with pytest.raises(TypeError):
-            StockBasicFields.from_series(series)
+            StockBasic.from_series(series)
 
     def test_from_series_with_empty_values(self):
         """测试包含空值的Series"""
@@ -95,10 +95,10 @@ class TestStockBasicFieldsFromSeries:
         series = pd.Series(data)
 
         # 调用from_series方法
-        result = StockBasicFields.from_series(series)
+        result = StockBasic.from_series(series)
 
         # 验证结果
-        assert isinstance(result, StockBasicFields)
+        assert isinstance(result, StockBasic)
         assert result.ts_code == "000003.SZ"
         assert result.symbol == "000003"
         assert result.name == "PT金田A"
@@ -125,7 +125,7 @@ class TestStockBasicFieldsFromSeries:
 
         # 由于dataclass的所有字段都是必需的，缺少字段应该引发TypeError
         with pytest.raises(TypeError):
-            StockBasicFields.from_series(series)
+            StockBasic.from_series(series)
 
     def test_from_series_with_extra_fields(self):
         """测试Series包含额外字段时的行为"""
@@ -154,10 +154,10 @@ class TestStockBasicFieldsFromSeries:
         series = pd.Series(data)
 
         # 调用from_series方法
-        result = StockBasicFields.from_series(series)
+        result = StockBasic.from_series(series)
 
         # 验证结果 - 额外字段应该被忽略
-        assert isinstance(result, StockBasicFields)
+        assert isinstance(result, StockBasic)
         assert result.ts_code == "000001.SZ"
         assert result.symbol == "000001"
         assert result.name == "平安银行"
@@ -171,7 +171,7 @@ class TestStockBasicFieldsFromSeries:
 
         # 由于dataclass的所有字段都是必需的，空Series应该引发TypeError
         with pytest.raises(TypeError):
-            StockBasicFields.from_series(series)
+            StockBasic.from_series(series)
 
     def test_from_series_field_mapping(self):
         """测试字段映射是否正确"""
@@ -198,7 +198,7 @@ class TestStockBasicFieldsFromSeries:
         series = pd.Series(data)
 
         # 调用from_series方法
-        result = StockBasicFields.from_series(series)
+        result = StockBasic.from_series(series)
 
         # 验证所有字段都正确映射
         assert result.ts_code == "test_ts_code"

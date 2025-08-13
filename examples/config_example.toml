@@ -1,0 +1,22 @@
+[[tasks]]
+# 模板：下载日线行情
+name = "daily_kline"
+api_name = "daily"
+description = "下载指定股票列表的日线行情数据"
+[tasks.params]
+start_date = "20250101"
+
+[[tasks]]
+# 模板：下载资产负债表
+name = "balance_sheet"
+api_name = "balancesheet"
+description = "下载指定股票在特定报告期的资产负债表"
+
+[[tasks]]
+# 模板：一个特殊的 pro_bar 接口模板
+name = "daily_bar_qfq"
+api_name = "pro_bar"
+base_object = "ts"
+description = "下载指定股票列表的日线复权行情"
+[tasks.params]
+adj = "qfq"

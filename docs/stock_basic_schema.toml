@@ -1,0 +1,14 @@
+[stock_basic]
+description = "股票基本信息表字段"
+columns = [
+    "ts_code",
+    "symbol",
+    "name",
+    "area",
+    "industry",
+    "cnspell",
+    "market",
+    "list_date",
+    "act_name",
+    "act_ent_type"
+]

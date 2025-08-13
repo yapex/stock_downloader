@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from src.downloader2.models.stock_basic import StockBasicFields
+from src.downloader2.models.stock_basic import StockBasic
 
 
 class TestStockBasicFieldsToSeries:
@@ -8,7 +8,7 @@ class TestStockBasicFieldsToSeries:
 
     def test_to_series_with_complete_data(self):
         """测试完整数据转换为Series"""
-        fields = StockBasicFields(
+        fields = StockBasic(
             ts_code="000001.SZ",
             symbol="000001",
             name="平安银行",
@@ -25,11 +25,11 @@ class TestStockBasicFieldsToSeries:
             delist_date=None,
             is_hs="S",
             act_name="平安银行股份有限公司",
-            act_ent_type="境内非国有法人"
+            act_ent_type="境内非国有法人",
         )
-        
-        series = StockBasicFields.to_series(fields)
-        
+
+        series = StockBasic.to_series(fields)
+
         assert isinstance(series, pd.Series)
         assert series["ts_code"] == "000001.SZ"
         assert series["symbol"] == "000001"
@@ -51,7 +51,7 @@ class TestStockBasicFieldsToSeries:
 
     def test_to_series_with_partial_data(self):
         """测试包含部分空值的数据转换为Series"""
-        fields = StockBasicFields(
+        fields = StockBasic(
             ts_code="000002.SZ",
             symbol="000002",
             name="万科A",
@@ -68,11 +68,11 @@ class TestStockBasicFieldsToSeries:
             delist_date=None,
             is_hs="S",
             act_name="万科企业股份有限公司",
-            act_ent_type="境内非国有法人"
+            act_ent_type="境内非国有法人",
         )
-        
-        series = StockBasicFields.to_series(fields)
-        
+
+        series = StockBasic.to_series(fields)
+
         assert isinstance(series, pd.Series)
         assert series["ts_code"] == "000002.SZ"
         assert series["symbol"] == "000002"
@@ -82,7 +82,7 @@ class TestStockBasicFieldsToSeries:
 
     def test_to_series_with_none_values(self):
         """测试包含None值的数据转换为Series"""
-        fields = StockBasicFields(
+        fields = StockBasic(
             ts_code="000003.SZ",
             symbol="000003",
             name="PT金田A",
@@ -99,11 +99,11 @@ class TestStockBasicFieldsToSeries:
             delist_date="20040427",
             is_hs="N",
             act_name="深圳金田实业(集团)股份有限公司",
-            act_ent_type="境内非国有法人"
+            act_ent_type="境内非国有法人",
         )
-        
-        series = StockBasicFields.to_series(fields)
-        
+
+        series = StockBasic.to_series(fields)
+
         assert isinstance(series, pd.Series)
         assert series["ts_code"] == "000003.SZ"
         assert series["symbol"] == "000003"
@@ -114,7 +114,7 @@ class TestStockBasicFieldsToSeries:
 
     def test_to_series_with_empty_fields(self):
         """测试包含空字符串的字段实例转换为Series"""
-        fields = StockBasicFields(
+        fields = StockBasic(
             ts_code="",
             symbol="",
             name="",
@@ -131,18 +131,18 @@ class TestStockBasicFieldsToSeries:
             delist_date="",
             is_hs="",
             act_name="",
-            act_ent_type=""
+            act_ent_type="",
         )
-        
-        series = StockBasicFields.to_series(fields)
-        
+
+        series = StockBasic.to_series(fields)
+
         assert isinstance(series, pd.Series)
         assert len(series) == 17  # 所有字段都存在
         assert all(series == "")  # 所有字段都是空字符串
 
     def test_to_series_with_extra_attributes(self):
         """测试完整字段实例转换为Series"""
-        fields = StockBasicFields(
+        fields = StockBasic(
             ts_code="000004.SZ",
             symbol="000004",
             name="国华网安",
@@ -159,11 +159,11 @@ class TestStockBasicFieldsToSeries:
             delist_date=None,
             is_hs="N",
             act_name="深圳市国华网安科技股份有限公司",
-            act_ent_type="境内非国有法人"
+            act_ent_type="境内非国有法人",
         )
-        
-        series = StockBasicFields.to_series(fields)
-        
+
+        series = StockBasic.to_series(fields)
+
         assert isinstance(series, pd.Series)
         assert series["ts_code"] == "000004.SZ"
         assert series["symbol"] == "000004"
@@ -173,7 +173,7 @@ class TestStockBasicFieldsToSeries:
 
     def test_to_series_field_mapping(self):
         """测试字段名映射是否正确"""
-        fields = StockBasicFields(
+        fields = StockBasic(
             ts_code="000005.SZ",
             symbol="000005",
             name="世纪星源",
@@ -190,14 +190,14 @@ class TestStockBasicFieldsToSeries:
             delist_date=None,
             is_hs="S",
             act_name="深圳世纪星源股份有限公司",
-            act_ent_type="境内非国有法人"
+            act_ent_type="境内非国有法人",
         )
-        
-        series = StockBasicFields.to_series(fields)
-        
+
+        series = StockBasic.to_series(fields)
+
         # 验证字段名映射
         assert "fullname" in series.index  # full_name -> fullname
-        assert "enname" in series.index    # en_name -> enname
+        assert "enname" in series.index  # en_name -> enname
         assert series["fullname"] == "深圳世纪星源股份有限公司"
         assert series["enname"] == "Shenzhen Century Star Source Co., Ltd."
 
@@ -221,14 +221,14 @@ class TestStockBasicFieldsToSeries:
             "delist_date": None,
             "is_hs": "S",
             "act_name": "深圳市振业(集团)股份有限公司",
-            "act_ent_type": "境内非国有法人"
+            "act_ent_type": "境内非国有法人",
         }
         original_series = pd.Series(original_data)
-        
+
         # from_series -> to_series
-        fields = StockBasicFields.from_series(original_series)
-        result_series = StockBasicFields.to_series(fields)
-        
+        fields = StockBasic.from_series(original_series)
+        result_series = StockBasic.to_series(fields)
+
         # 验证往返转换的一致性
         for key in original_data.keys():
             if pd.isna(original_data[key]):

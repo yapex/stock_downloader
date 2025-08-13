@@ -1,7 +1,8 @@
 """股票数据模型包"""
 
-from .stock_basic import StockBasicFields
+from .stock_basic import StockBasic, StockBasicFetcher
 
 __all__ = [
-    "StockBasicFields",
+    "StockBasic",
+    "StockBasicFetcher",
 ]
