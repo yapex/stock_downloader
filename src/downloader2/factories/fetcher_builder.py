@@ -13,8 +13,21 @@ from dataclasses import dataclass
 from threading import Lock
 
 from downloader2.config import get as get_config
+from enum import Enum, auto
 
 logger = logging.getLogger(__name__)
+
+
+class TaskType(str, Enum):
+    """任务类型常量定义"""
+
+    STOCK_BASIC = "stock_basic"
+    STOCK_DAILY = "stock_daily"
+    DAILY_BAR_QFQ = "daily_bar_qfq"
+    DAILY_BAR_NONE = "daily_bar_none"
+    BALANCESHEET = "balancesheet"
+    INCOME = "income"
+    CASHFLOW = "cashflow"
 
 
 @dataclass(frozen=True)
@@ -74,50 +87,50 @@ class FetcherBuilder:
 
     # 预定义的任务模板
     TASK_TEMPLATES = {
-        "stock_basic": TaskTemplate(
-            name="stock_basic",
+        TaskType.STOCK_BASIC: TaskTemplate(
+            name=TaskType.STOCK_BASIC,
             description="股票基本信息",
             api_method="stock_basic",
             base_object="pro",
             default_params={},
         ),
-        "stock_daily": TaskTemplate(
-            name="stock_daily",
+        TaskType.STOCK_DAILY: TaskTemplate(
+            name=TaskType.STOCK_DAILY,
             description="股票日线行情",
             api_method="daily",
             base_object="pro",
             default_params={},
         ),
-        "daily_bar_qfq": TaskTemplate(
-            name="daily_bar_qfq",
+        TaskType.DAILY_BAR_QFQ: TaskTemplate(
+            name=TaskType.DAILY_BAR_QFQ,
             description="股票前复权日线行情",
             api_method="pro_bar",
             base_object="ts",
             default_params={"adj": "qfq"},
         ),
-        "daily_bar_none": TaskTemplate(
-            name="daily_bar_none",
+        TaskType.DAILY_BAR_NONE: TaskTemplate(
+            name=TaskType.DAILY_BAR_NONE,
             description="股票不复权日线行情",
             api_method="pro_bar",
             base_object="ts",
             default_params={"adj": None},
         ),
-        "balancesheet": TaskTemplate(
-            name="balancesheet",
+        TaskType.BALANCESHEET: TaskTemplate(
+            name=TaskType.BALANCESHEET,
             description="资产负债表",
             api_method="balancesheet",
             base_object="pro",
             default_params={},
         ),
-        "income": TaskTemplate(
-            name="income",
+        TaskType.INCOME: TaskTemplate(
+            name=TaskType.INCOME,
             description="利润表",
             api_method="income",
             base_object="pro",
             default_params={},
         ),
-        "cashflow": TaskTemplate(
-            name="cashflow",
+        TaskType.CASHFLOW: TaskTemplate(
+            name=TaskType.CASHFLOW,
             description="现金流量表",
             api_method="cashflow",
             base_object="pro",
@@ -191,151 +204,49 @@ class FetcherBuilder:
 def build_stock_basic(**overrides) -> Callable[[], pd.DataFrame]:
     """构建股票基本信息获取器"""
     builder = FetcherBuilder()
-    return builder.build_fetcher("stock_basic", **overrides)
+    return builder.build_fetcher(TaskType.STOCK_BASIC, **overrides)
 
 
 def build_stock_daily(**overrides) -> Callable[[], pd.DataFrame]:
     """构建股票日线行情获取器"""
     builder = FetcherBuilder()
-    return builder.build_fetcher("stock_daily", **overrides)
+    return builder.build_fetcher(TaskType.STOCK_DAILY, **overrides)
 
 
 def build_daily_bar_qfq(**overrides) -> Callable[[], pd.DataFrame]:
     """构建股票前复权日线行情获取器"""
     builder = FetcherBuilder()
-    return builder.build_fetcher("daily_bar_qfq", **overrides)
+    return builder.build_fetcher(TaskType.DAILY_BAR_QFQ, **overrides)
 
 
 def build_daily_bar_none(**overrides) -> Callable[[], pd.DataFrame]:
     """构建股票不复权日线行情获取器"""
     builder = FetcherBuilder()
-    return builder.build_fetcher("daily_bar_none", **overrides)
+    return builder.build_fetcher(TaskType.DAILY_BAR_NONE, **overrides)
 
 
 def build_balancesheet(**overrides) -> Callable[[], pd.DataFrame]:
     """构建资产负债表获取器"""
     builder = FetcherBuilder()
-    return builder.build_fetcher("balancesheet", **overrides)
+    return builder.build_fetcher(TaskType.BALANCESHEET, **overrides)
 
 
 def build_income(**overrides) -> Callable[[], pd.DataFrame]:
     """构建利润表获取器"""
     builder = FetcherBuilder()
-    return builder.build_fetcher("income", **overrides)
+    return builder.build_fetcher(TaskType.INCOME, **overrides)
 
 
 def build_cashflow(**overrides) -> Callable[[], pd.DataFrame]:
     """构建现金流量表获取器"""
     builder = FetcherBuilder()
-    return builder.build_fetcher("cashflow", **overrides)
+    return builder.build_fetcher(TaskType.CASHFLOW, **overrides)
 
 
 if __name__ == "__main__":
     # 最精简的用法示例
-    ts_code = "600519.SH"
-    basic_fetcher = build_stock_basic()
-    daily_fetcher = build_stock_daily(ts_code=ts_code)
-
-    # 执行获取数据
-    basic_data = basic_fetcher()
-    daily_data = daily_fetcher()
-
-    print("\n==== 股票基本信息 ====")
-    if not basic_data.empty:
-        print(basic_data.head(1))
-
-    print("\n==== 日线行情数据 ====")
-    if not daily_data.empty:
-        print(daily_data.head(1))
-
-    # 构建获取前复权日线行情的函数
-    qfq_fetcher = build_daily_bar_qfq(
-        ts_code=ts_code, start_date="20240101", end_date="20240131"
-    )
-    qfq_data = qfq_fetcher()
-    print(f"\n==== 前复权日线行情 ({ts_code}) ====")
-    print(f"数据形状: {qfq_data.shape}")
-    print(f"列名: {list(qfq_data.columns)}")
-    if not qfq_data.empty:
-        print(qfq_data.head(1))
-
-    # 构建获取不复权日线行情的函数
-    none_fetcher = build_daily_bar_none(
-        ts_code=ts_code, start_date="20240101", end_date="20240131"
-    )
-    none_data = none_fetcher()
-    print(f"\n==== 不复权日线行情 ({ts_code}) ====")
-    print(f"数据形状: {none_data.shape}")
-    print(f"列名: {list(none_data.columns)}")
-    if not none_data.empty:
-        print(none_data.head(1))
-
-    # 构建获取财务数据的函数
-    period = "20231231"  # 2023年年报
-
-    # 资产负债表
-    balance_fetcher = build_balancesheet(ts_code=ts_code, period=period)
-    balance_data = balance_fetcher()
-    print(f"\n==== 资产负债表 ({ts_code}, {period}) ====")
-    print(f"数据形状: {balance_data.shape}")
-    if not balance_data.empty:
-        print(f"列数: {len(balance_data.columns)}")
-        # 显示关键财务指标
-        key_cols = [
-            "ts_code",
-            "ann_date",
-            "f_ann_date",
-            "end_date",
-            "total_assets",
-            "total_liab",
-            "total_hldr_eqy_exc_min_int",
-        ]
-        available_cols = [col for col in key_cols if col in balance_data.columns]
-        if available_cols:
-            print(f"关键指标: {available_cols}")
-            print(balance_data[available_cols].head(1))
-
-    # 利润表
-    income_fetcher = build_income(ts_code=ts_code, period=period)
-    income_data = income_fetcher()
-    print(f"\n==== 利润表 ({ts_code}, {period}) ====")
-    print(f"数据形状: {income_data.shape}")
-    if not income_data.empty:
-        print(f"列数: {len(income_data.columns)}")
-        # 显示关键财务指标
-        key_cols = [
-            "ts_code",
-            "ann_date",
-            "f_ann_date",
-            "end_date",
-            "total_revenue",
-            "revenue",
-            "n_income",
-            "n_income_attr_p",
-        ]
-        available_cols = [col for col in key_cols if col in income_data.columns]
-        if available_cols:
-            print(f"关键指标: {available_cols}")
-            print(income_data[available_cols].head(1))
-
-    # 现金流量表
-    cashflow_fetcher = build_cashflow(ts_code=ts_code, period=period)
-    cashflow_data = cashflow_fetcher()
-    print(f"\n==== 现金流量表 ({ts_code}, {period}) ====")
-    print(f"数据形状: {cashflow_data.shape}")
-    if not cashflow_data.empty:
-        print(f"列数: {len(cashflow_data.columns)}")
-        # 显示关键财务指标
-        key_cols = [
-            "ts_code",
-            "ann_date",
-            "f_ann_date",
-            "end_date",
-            "n_cashflow_act",
-            "n_cashflow_inv_act",
-            "n_cashflow_fin_act",
-        ]
-        available_cols = [col for col in key_cols if col in cashflow_data.columns]
-        if available_cols:
-            print(f"关键指标: {available_cols}")
-            print(cashflow_data[available_cols].head(1))
+    task_type = TaskType.STOCK_BASIC
+    # print(task_type)
+    fetcher = FetcherBuilder().build_fetcher(task_type)
+    df = fetcher()
+    print(df.head(1))

@@ -1,5 +1,1 @@
-from .fetchingable import Fetchingable
-
-__all__ = [
-    "Fetchingable",
-]
+__all__ = []
