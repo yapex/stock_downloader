@@ -18,7 +18,7 @@ from enum import Enum
 logger = logging.getLogger(__name__)
 
 
-class TaskType(str, Enum):
+class TaskType(Enum):
     """任务类型常量定义"""
 
     STOCK_BASIC = "stock_basic"
@@ -116,22 +116,22 @@ class FetcherBuilder:
         self.api_manager = TushareApiManager.get_instance()
 
     def build_by_task(
-        self, task_name: str, symbol: str = "", **overrides: Any
+        self, task_type: TaskType, symbol: str = "", **overrides: Any
     ) -> Callable[[], pd.DataFrame]:
         """构建指定股票代码的数据获取器
 
         Args:
-            task_name: 任务名称
+            task_type: 任务类型
             symbol: 股票代码
             **overrides: 运行时参数覆盖
 
         Returns:
             可执行的数据获取函数
         """
-        if task_name not in self.TASK_TEMPLATES:
-            raise ValueError(f"不支持的任务类型: {task_name}")
+        if task_type not in self.TASK_TEMPLATES:
+            raise ValueError(f"不支持的任务类型: {task_type}")
 
-        template = self.TASK_TEMPLATES[task_name]
+        template = self.TASK_TEMPLATES[task_type]
 
         # 标准化股票代码
         if symbol:
