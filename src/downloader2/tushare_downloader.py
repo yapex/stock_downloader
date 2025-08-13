@@ -63,44 +63,62 @@ class TushareDownloader:
                 self.task_queue.task_done()
                 break
 
-            should_retry = False  # 初始化重试标志
-            try:
-                logger.debug(f"Rate limiting check for symbol: {symbol}")
-                self.rate_limiter.try_acquire(
-                    self.task_type.value, 1
-                )  # 使用task_type作为identity，权重为1
+            should_retry = self._process_symbol(symbol)
+            if not should_retry:
+                self.task_queue.task_done()
 
-                df = self._fetching_by_symbol(symbol)
-                if not df.empty:
-                    # 将数据包装后放入数据队列等待消费
-                    task = Box(
-                        {
-                            "task_type": self.task_type.value,
-                            "data": df,
-                        }
-                    )
-                    self.data_queue.put(task)
-                    # 成功处理后清理重试计数
-                    self.retry_counts.pop(symbol, None)
-            except Exception as e:
-                # 获取当前symbol的重试次数
-                current_retries = self.retry_counts.get(symbol, 0)
-                
-                if current_retries < self.max_retries:
-                    # 增加重试次数并重新加入队列
-                    self.retry_counts[symbol] = current_retries + 1
-                    logger.warning(f"处理 symbol {symbol} 时发生错误: {e}，第 {current_retries + 1} 次重试")
-                    self.task_queue.put(symbol)  # 重新加入队列尾部
-                    should_retry = True
-                else:
-                    # 超过最大重试次数，记录错误并放弃
-                    logger.error(f"处理 symbol {symbol} 时发生错误: {e}，已达到最大重试次数 {self.max_retries}，放弃处理")
-                    # 清理重试计数
-                    self.retry_counts.pop(symbol, None)
-            finally:
-                # 只有在不重试的情况下才调用 task_done
-                if not should_retry:
-                    self.task_queue.task_done()
+    def _process_symbol(self, symbol: str) -> bool:
+        """处理单个symbol，返回是否需要重试"""
+        try:
+            self._apply_rate_limiting(symbol)
+            df = self._fetching_by_symbol(symbol)
+            self._handle_successful_fetch(symbol, df)
+            return False
+        except Exception as e:
+            return self._handle_fetch_error(symbol, e)
+
+    def _apply_rate_limiting(self, symbol: str) -> None:
+        """应用速率限制"""
+        logger.debug(f"Rate limiting check for symbol: {symbol}")
+        self.rate_limiter.try_acquire(
+            self.task_type.value, 1
+        )  # 使用task_type作为identity，权重为1
+
+    def _handle_successful_fetch(self, symbol: str, df: pd.DataFrame) -> None:
+        """处理成功获取的数据"""
+        if not df.empty:
+            task = Box(
+                {
+                    "task_type": self.task_type.value,
+                    "data": df,
+                }
+            )
+            self.data_queue.put(task)
+            # 成功处理后清理重试计数
+            self.retry_counts.pop(symbol, None)
+
+    def _handle_fetch_error(self, symbol: str, error: Exception) -> bool:
+        """处理获取数据时的错误，返回是否需要重试"""
+        current_retries = self.retry_counts.get(symbol, 0)
+        
+        if current_retries < self.max_retries:
+            return self._schedule_retry(symbol, error, current_retries)
+        else:
+            self._abandon_symbol(symbol, error)
+            return False
+
+    def _schedule_retry(self, symbol: str, error: Exception, current_retries: int) -> bool:
+        """安排重试"""
+        self.retry_counts[symbol] = current_retries + 1
+        logger.warning(f"处理 symbol {symbol} 时发生错误: {error}，第 {current_retries + 1} 次重试")
+        self.task_queue.put(symbol)  # 重新加入队列尾部
+        return True
+
+    def _abandon_symbol(self, symbol: str, error: Exception) -> None:
+        """放弃处理symbol"""
+        logger.error(f"处理 symbol {symbol} 时发生错误: {error}，已达到最大重试次数 {self.max_retries}，放弃处理")
+        # 清理重试计数
+        self.retry_counts.pop(symbol, None)
 
     def _populate_symbol_queue(self):
         """将symbols数据放入内部队列"""
@@ -121,15 +139,30 @@ class TushareDownloader:
             bool: 如果所有线程在超时时间内完成则返回True，否则返回False
         """
         logger.debug(f"开始关闭 {len(self.worker_threads)} 个工作线程...")
+        
+        start_time = self._wait_for_tasks_completion(timeout)
+        all_finished = self._wait_for_workers_to_finish(timeout, start_time)
+        
+        self._log_shutdown_result(all_finished)
+        return all_finished
 
-        # 如果有工作线程在运行，则等待队列任务完成
+    def _wait_for_tasks_completion(self, timeout: float) -> float:
+        """等待队列任务完成
+        
+        Args:
+            timeout: 超时时间
+            
+        Returns:
+            float: 开始时间
+        """
+        import time
+        start_time = time.time()
+        
         if self.worker_threads:
             try:
                 # 使用带超时的 join 等待队列中的所有任务完成
                 import threading
-                import time
 
-                start_time = time.time()
                 queue_join_thread = threading.Thread(target=self.task_queue.join)
                 queue_join_thread.daemon = True  # 设置为守护线程
                 queue_join_thread.start()
@@ -144,7 +177,21 @@ class TushareDownloader:
             except Exception as e:
                 logger.error(f"等待队列任务完成时发生错误: {e}")
                 # 不返回 False，继续尝试关闭线程
+        
+        return start_time
 
+    def _wait_for_workers_to_finish(self, timeout: float, start_time: float) -> bool:
+        """等待所有工作线程完成
+        
+        Args:
+            timeout: 超时时间
+            start_time: 开始时间
+            
+        Returns:
+            bool: 是否所有线程都完成
+        """
+        import time
+        
         # 等待所有工作线程完成
         all_finished = True
         remaining_timeout = max(
@@ -165,13 +212,19 @@ class TushareDownloader:
                 all_finished = False
             else:
                 logger.debug(f"线程 {thread.name} 已完成")
+        
+        return all_finished
 
+    def _log_shutdown_result(self, all_finished: bool) -> None:
+        """记录关闭结果
+        
+        Args:
+            all_finished: 是否所有线程都完成
+        """
         if all_finished:
             logger.debug("所有工作线程已优雅关闭")
         else:
             logger.warning("部分工作线程未能在超时时间内完成")
-
-        return all_finished
 
     def _fetching_by_symbol(self, symbol: str) -> pd.DataFrame:
         fetcher = self.fetcher_builder.build_by_task(self.task_type, symbol)
