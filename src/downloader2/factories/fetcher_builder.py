@@ -18,16 +18,42 @@ from enum import Enum
 logger = logging.getLogger(__name__)
 
 
-class TaskType(Enum):
-    """任务类型常量定义"""
+@dataclass(frozen=True)
+class TaskTemplate:
+    """任务模板配置"""
 
-    STOCK_BASIC = "stock_basic"
-    STOCK_DAILY = "stock_daily"
-    DAILY_BAR_QFQ = "daily_bar_qfq"
-    DAILY_BAR_NONE = "daily_bar_none"
-    BALANCESHEET = "balancesheet"
-    INCOME = "income"
-    CASHFLOW = "cashflow"
+    api_method: str
+    base_object: str = "pro"
+    default_params: Dict[str, Any] = None
+
+    def __post_init__(self):
+        if self.default_params is None:
+            object.__setattr__(self, "default_params", {})
+
+
+class TaskType(Enum):
+    """任务类型常量定义，包含模板配置"""
+
+    STOCK_BASIC = TaskTemplate(api_method="stock_basic")
+    STOCK_DAILY = TaskTemplate(api_method="daily")
+    DAILY_BAR_QFQ = TaskTemplate(
+        api_method="pro_bar",
+        base_object="ts",
+        default_params={"adj": "qfq"}
+    )
+    DAILY_BAR_NONE = TaskTemplate(
+        api_method="pro_bar",
+        base_object="ts",
+        default_params={"adj": None}
+    )
+    BALANCESHEET = TaskTemplate(api_method="balancesheet")
+    INCOME = TaskTemplate(api_method="income")
+    CASHFLOW = TaskTemplate(api_method="cashflow")
+
+    @property
+    def template(self) -> "TaskTemplate":
+        """获取任务模板"""
+        return self.value
 
 
 @dataclass(frozen=True)
@@ -83,35 +109,6 @@ class TushareApiManager:
 class FetcherBuilder:
     """数据获取器构建器"""
 
-    # 预定义的任务模板
-    TASK_TEMPLATES = {
-        TaskType.STOCK_BASIC: TaskTemplate(
-            api_method="stock_basic",
-        ),
-        TaskType.STOCK_DAILY: TaskTemplate(
-            api_method="daily",
-        ),
-        TaskType.DAILY_BAR_QFQ: TaskTemplate(
-            api_method="pro_bar",
-            base_object="ts",
-            default_params={"adj": "qfq"},
-        ),
-        TaskType.DAILY_BAR_NONE: TaskTemplate(
-            api_method="pro_bar",
-            base_object="ts",
-            default_params={"adj": None},
-        ),
-        TaskType.BALANCESHEET: TaskTemplate(
-            api_method="balancesheet",
-        ),
-        TaskType.INCOME: TaskTemplate(
-            api_method="income",
-        ),
-        TaskType.CASHFLOW: TaskTemplate(
-            api_method="cashflow",
-        ),
-    }
-
     def __init__(self):
         self.api_manager = TushareApiManager.get_instance()
 
@@ -128,10 +125,12 @@ class FetcherBuilder:
         Returns:
             可执行的数据获取函数
         """
-        if task_type not in self.TASK_TEMPLATES:
+        # 检查任务类型是否有效
+        if not isinstance(task_type, TaskType):
             raise ValueError(f"不支持的任务类型: {task_type}")
-
-        template = self.TASK_TEMPLATES[task_type]
+        
+        # 直接从枚举获取模板
+        template = task_type.template
 
         # 标准化股票代码
         if symbol:
