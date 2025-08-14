@@ -51,6 +51,25 @@ class SchemaTableCreator:
         self.conn = duckdb.connect(self.db_path)
         return self.conn
         
+    def _map_schema_type_to_duckdb(self, schema_type: str) -> str:
+        """
+        将schema中的类型映射到DuckDB类型
+        
+        Args:
+            schema_type: schema中定义的类型（TEXT, REAL, INTEGER, DATE, BOOLEAN）
+            
+        Returns:
+            DuckDB对应的数据类型
+        """
+        type_mapping = {
+            'TEXT': 'VARCHAR',
+            'REAL': 'DOUBLE',
+            'INTEGER': 'INTEGER',
+            'DATE': 'DATE',
+            'BOOLEAN': 'BOOLEAN'
+        }
+        return type_mapping.get(schema_type.upper(), 'VARCHAR')
+        
     def generate_create_table_sql(self, table_config: Box) -> str:
         """
         根据表配置生成CREATE TABLE SQL语句
@@ -65,10 +84,19 @@ class SchemaTableCreator:
         columns = table_config.columns
         primary_key = table_config.get('primary_key', [])
         
-        # 生成列定义（简化版本，所有列都设为VARCHAR）
+        # 生成列定义，使用schema中的类型信息
         column_definitions = []
         for col in columns:
-            column_definitions.append(f"{col} VARCHAR")
+            if isinstance(col, dict) and 'name' in col and 'type' in col:
+                # 新格式：{name: "字段名", type: "类型"}
+                col_name = col['name']
+                col_type = col['type']
+                # 将schema类型映射到DuckDB类型
+                duckdb_type = self._map_schema_type_to_duckdb(col_type)
+                column_definitions.append(f"{col_name} {duckdb_type}")
+            else:
+                # 兼容旧格式：直接是字符串
+                column_definitions.append(f"{col} VARCHAR")
             
         columns_sql = ",\n    ".join(column_definitions)
         

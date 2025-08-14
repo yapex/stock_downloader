@@ -12,21 +12,6 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-# 导入测试实现类
-from tests.test_implementations import MockFetcher, MockStorage
-
-
-@pytest.fixture
-def test_fetcher():
-    """测试专用的Fetcher实现，替代mock_fetcher"""
-    return MockFetcher()
-
-
-@pytest.fixture
-def test_storage():
-    """测试专用的Storage实现，替代mock_storage"""
-    return MockStorage()
-
 
 # 保留原有的mock fixtures以保持向后兼容
 @pytest.fixture

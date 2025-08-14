@@ -16,6 +16,26 @@ class SchemaDataOperator:
         self.creator = SchemaTableCreator(schema_file_path, db_path)
         self.conn = None
         
+    def _extract_column_names(self, columns) -> list:
+        """
+        从columns配置中提取字段名列表
+        
+        Args:
+            columns: 字段配置，可能是字符串列表或包含name/type的字典列表
+            
+        Returns:
+            字段名列表
+        """
+        column_names = []
+        for col in columns:
+            if isinstance(col, dict) and 'name' in col:
+                # 新格式：{name: "字段名", type: "类型"}
+                column_names.append(col['name'])
+            else:
+                # 兼容旧格式：直接是字符串
+                column_names.append(col)
+        return column_names
+        
     def initialize(self):
         """初始化：加载schema、连接数据库、创建表"""
         print("🚀 初始化数据操作器...")
@@ -118,7 +138,7 @@ class SchemaDataOperator:
         table_config = self.creator.schema_config[table_key]
         table_name = table_config.table_name
         primary_keys = table_config.primary_key
-        columns = table_config.columns
+        columns = self._extract_column_names(table_config.columns)
         
         if not primary_keys:
             raise ValueError(f"表 '{table_name}' 未定义主键，无法执行 upsert 操作。")

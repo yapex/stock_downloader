@@ -5,4 +5,4 @@ token = "0a8d21a7412090d94437aa4918aa5c4afa57f5653253137f63ea653a"
 [database]
 type = "duckdb"
 path = "data/stock.db"
-schema_file = "stock_schema.toml"
+schema_file_path = "stock_schema.toml" # 相对于项目根目录
