@@ -1,4 +1,8 @@
 [stock_basic]
+table_name = "stock_basic"
+primary_key = [
+    "ts_code",
+]
 description = "股票基本信息表字段"
 columns = [
     "ts_code",
@@ -12,11 +16,12 @@ columns = [
     "act_name",
     "act_ent_type",
 ]
+
+[stock_daily]
+table_name = "stock_daily"
 primary_key = [
     "ts_code",
 ]
-
-[stock_daily]
 description = "股票日线数据字段"
 columns = [
     "ts_code",
@@ -31,11 +36,12 @@ columns = [
     "vol",
     "amount",
 ]
+
+[stock_adj_qfq]
+table_name = "stock_adj_qfq"
 primary_key = [
     "ts_code",
 ]
-
-[stock_adj]
 description = "复权行情数据字段"
 columns = [
     "ts_code",
@@ -50,11 +56,32 @@ columns = [
     "vol",
     "amount",
 ]
+
+[stock_adj_raw]
+table_name = "stock_adj_raw"
 primary_key = [
     "ts_code",
 ]
+description = "复权行情数据字段"
+columns = [
+    "ts_code",
+    "trade_date",
+    "open",
+    "high",
+    "low",
+    "close",
+    "pre_close",
+    "change",
+    "pct_chg",
+    "vol",
+    "amount",
+]
 
 [income_statement]
+table_name = "income_statement"
+primary_key = [
+    "ts_code",
+]
 description = "利润表字段"
 columns = [
     "ts_code",
@@ -145,6 +172,10 @@ columns = [
 ]
 
 [balance_sheet]
+table_name = "balance_sheet"
+primary_key = [
+    "ts_code",
+]
 description = "资产负债表字段"
 columns = [
     "ts_code",
@@ -302,6 +333,10 @@ columns = [
 ]
 
 [cash_flow]
+table_name = "cash_flow"
+primary_key = [
+    "ts_code",
+]
 description = "现金流量表字段"
 columns = [
     "ts_code",

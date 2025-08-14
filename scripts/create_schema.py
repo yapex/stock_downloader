@@ -75,20 +75,20 @@ def generate_combined_schema_toml(
     for table_name, schema_data in all_schemas.items():
         # 创建有序字典，确保 table_name 和 primary_key 在最上面
         table_config = {}
-        
+
         # 首先添加 table_name
         table_config["table_name"] = table_name
-        
+
         # 然后添加 primary_key（如果存在）
         if table_name in TABLE_CONFIGS:
             config = TABLE_CONFIGS[table_name]
-            if hasattr(config, 'primary_key') and config.primary_key:
+            if hasattr(config, "primary_key") and config.primary_key:
                 table_config["primary_key"] = config.primary_key
-        
+
         # 最后添加其他字段
         table_config["description"] = schema_data["description"]
         table_config["columns"] = schema_data["columns"]
-        
+
         toml_data[table_name] = table_config
 
     # 使用 tomli_w 写入 TOML 文件
@@ -101,64 +101,83 @@ def generate_combined_schema_toml(
 
 
 # 表配置字典，使用 Box 包装以便简化访问
-TABLE_CONFIGS = Box({
-    "stock_basic": {
-        "table_name": "stock_basic",
-        "primary_key": ["ts_code"],
-        "description": "股票基本信息表字段",
-        "api_method": "stock_basic",
-        "sample_params": {"ts_code": "600519.SH"},
-        "fields": [],
-        "output_file": "src/stock_schema.toml",
-    },
-    "stock_daily": {
-        "table_name": "stock_daily",
-        "primary_key": ["ts_code"],
-        "description": "股票日线数据字段",
-        "api_method": "daily",
-        "sample_params": {"ts_code": "600519.SH"},
-        "fields": [],
-        "output_file": "src/stock_schema.toml",
-    },
-    "stock_adj": {
-        "table_name": "stock_adj",
-        "primary_key": ["ts_code"],
-        "description": "复权行情数据字段",
-        "api_method": "pro_bar",
-        "sample_params": {
-            "ts_code": "600519.SH",
-            "adj": "qfq",
-            "start_date": "20240101",
-            "end_date": "20240131",
+TABLE_CONFIGS = Box(
+    {
+        "stock_basic": {
+            "table_name": "stock_basic",
+            "primary_key": ["ts_code"],
+            "description": "股票基本信息表字段",
+            "api_method": "stock_basic",
+            "sample_params": {"ts_code": "600519.SH"},
+            "fields": [],
+            "output_file": "src/stock_schema.toml",
         },
-        "fields": [],
-        "output_file": "src/stock_schema.toml",
-    },
-    "income_statement": {
-        "table_name": "income_statement",
-        "description": "利润表字段",
-        "api_method": "income",
-        "sample_params": {"ts_code": "000001.SZ", "period": "20231231"},
-        "fields": [],
-        "output_file": "src/stock_schema.toml",
-    },
-    "balance_sheet": {
-        "table_name": "balance_sheet",
-        "description": "资产负债表字段",
-        "api_method": "balancesheet",
-        "sample_params": {"ts_code": "000001.SZ", "period": "20231231"},
-        "fields": [],
-        "output_file": "src/stock_schema.toml",
-    },
-    "cash_flow": {
-        "table_name": "cash_flow",
-        "description": "现金流量表字段",
-        "api_method": "cashflow",
-        "sample_params": {"ts_code": "000001.SZ", "period": "20231231"},
-        "fields": [],
-        "output_file": "src/stock_schema.toml",
-    },
-})
+        "stock_daily": {
+            "table_name": "stock_daily",
+            "primary_key": ["ts_code"],
+            "description": "股票日线数据字段",
+            "api_method": "daily",
+            "sample_params": {"ts_code": "600519.SH"},
+            "fields": [],
+            "output_file": "src/stock_schema.toml",
+        },
+        "stock_adj_qfq": {
+            "table_name": "stock_adj_qfq",
+            "primary_key": ["ts_code"],
+            "description": "复权行情数据字段",
+            "api_method": "pro_bar",
+            "sample_params": {
+                "ts_code": "600519.SH",
+                "adj": "qfq",
+                "start_date": "20240101",
+                "end_date": "20240131",
+            },
+            "fields": [],
+            "output_file": "src/stock_schema.toml",
+        },
+        "stock_adj_raw": {
+            "table_name": "stock_adj_raw",
+            "primary_key": ["ts_code"],
+            "description": "复权行情数据字段",
+            "api_method": "pro_bar",
+            "sample_params": {
+                "ts_code": "600519.SH",
+                "adj": "",
+                "start_date": "20240101",
+                "end_date": "20240131",
+            },
+            "fields": [],
+            "output_file": "src/stock_schema.toml",
+        },
+        "income_statement": {
+            "table_name": "income_statement",
+            "primary_key": ["ts_code"],
+            "description": "利润表字段",
+            "api_method": "income",
+            "sample_params": {"ts_code": "000001.SZ", "period": "20231231"},
+            "fields": [],
+            "output_file": "src/stock_schema.toml",
+        },
+        "balance_sheet": {
+            "table_name": "balance_sheet",
+            "primary_key": ["ts_code"],
+            "description": "资产负债表字段",
+            "api_method": "balancesheet",
+            "sample_params": {"ts_code": "000001.SZ", "period": "20231231"},
+            "fields": [],
+            "output_file": "src/stock_schema.toml",
+        },
+        "cash_flow": {
+            "table_name": "cash_flow",
+            "primary_key": ["ts_code"],
+            "description": "现金流量表字段",
+            "api_method": "cashflow",
+            "sample_params": {"ts_code": "000001.SZ", "period": "20231231"},
+            "fields": [],
+            "output_file": "src/stock_schema.toml",
+        },
+    }
+)
 
 
 def get_tushare_api():
@@ -169,9 +188,7 @@ def get_tushare_api():
     return tushare.pro_api()
 
 
-def get_table_schema_data(
-    pro, table_name: str, config: Box
-) -> Dict[str, Any]:
+def get_table_schema_data(pro, table_name: str, config: Box) -> Dict[str, Any]:
     """获取单个表的 schema 数据
 
     Args:
