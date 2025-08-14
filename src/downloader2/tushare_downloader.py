@@ -1,13 +1,17 @@
 # filename: downloader2/tushare_downloader.py
 
-from downloader2.factories.fetcher_builder import FetcherBuilder, TaskType
-from queue import Queue, Empty
-import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
-import threading
-from pyrate_limiter import Duration, Rate, Limiter, InMemoryBucket
 import logging
+from queue import Empty, Queue
+import threading
+
 from box import Box
+import pandas as pd
+from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate
+
+from downloader2.factories.fetcher_builder import FetcherBuilder, TaskType
+from downloader2.interfaces.event_bus import IEventBus
+from downloader2.interfaces.event_handler import EventType
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +25,16 @@ class TushareDownloader:
         task_type: TaskType,
         data_queue: Queue,
         executor: ThreadPoolExecutor,
+        event_bus: IEventBus,
     ):
         self.symbols = symbols
         self.task_type = task_type
         self.fetcher_builder = FetcherBuilder()
         self.data_queue = data_queue
         self.executor = executor
+
+        self.event_bus = event_bus
+
         self.task_queue: Queue = Queue()
         self.worker_count = executor._max_workers
         self.retry_counts: dict[str, int] = {}
@@ -75,12 +83,37 @@ class TushareDownloader:
 
         # 关键修正：在任务成功时，调用简化的进度更新方法。
         self._update_progress("success")
+
+        # 发布任务成功事件
+        self.event_bus.publish(
+            EventType.TASK_SUCCEEDED.value,
+            self,
+            symbol=symbol,
+            total_task_count=len(self.symbols),
+            processed_task_count=self.processed_symbols,
+            successful_task_count=self.successful_symbols,
+            failed_task_count=self.failed_symbols,
+            task_left_count=self.task_queue.qsize(),
+            task_type=self.task_type.value,
+        )
+
         self.retry_counts.pop(symbol, None)
 
     def _abandon_symbol(self, symbol: str, error: Exception) -> None:
         """放弃处理symbol"""
         # 关键修正：在任务被放弃时，调用简化的进度更新方法。
         self._update_progress("failed")
+
+        # 发布任务失败事件
+        self.event_bus.publish(
+            EventType.TASK_FAILED.value,
+            self,
+            symbol=symbol,
+            error=str(error),
+            task_queue_size=self.task_queue.qsize(),
+            task_type=self.task_type.value,
+        )
+
         logger.error(
             f"处理 symbol {symbol} 时发生错误: {error}，已达到最大重试次数 {self.max_retries}，放弃处理"
         )
@@ -93,12 +126,28 @@ class TushareDownloader:
     def start(self):
         """启动下载器，将任务提交给线程池"""
         self._populate_symbol_queue()
+        # 发布任务开始事件
+        self.event_bus.publish(
+            EventType.TASK_STARTED.value,
+            self,
+            total_task_count=len(self.symbols),
+            task_type=self.task_type.value,
+        )
         for _ in range(self.worker_count):
             self.executor.submit(self._worker)
 
     def stop(self):
         """停止下载器，发送结束信号给所有工作线程"""
         self._shutdown()
+        self.event_bus.publish(
+            EventType.TASK_FINISHED.value,
+            self,
+            total_task_count=len(self.symbols),
+            processed_task_count=self.processed_symbols,
+            successful_task_count=self.successful_symbols,
+            failed_task_count=self.failed_symbols,
+            task_type=self.task_type.value,
+        )
 
     def _worker(self):
         """工作线程主循环"""
@@ -172,62 +221,4 @@ class TushareDownloader:
 
 
 if __name__ == "__main__":
-    from concurrent.futures import ThreadPoolExecutor
-    from queue import Queue
-    from downloader2.factories.fetcher_builder import TaskType
-
-    # 设置日志
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-
-    # 示例股票代码
-    symbols = ["000001.SZ", "000002.SZ", "600519.SH"]
-
-    # 创建队列和线程池
-    data_queue = Queue()
-    executor = ThreadPoolExecutor(max_workers=4)
-
-    try:
-        # 创建下载器实例
-        downloader = TushareDownloader(
-            symbols=symbols,
-            task_type=TaskType.STOCK_DAILY,
-            data_queue=data_queue,
-            executor=executor,
-        )
-
-        # 启动下载
-        logger.info(f"开始下载 {len(symbols)} 个股票的数据...")
-        downloader.start()
-
-        # 处理下载的数据
-        downloaded_count = 0
-        while downloaded_count < len(symbols):
-            try:
-                task = data_queue.get(timeout=60)  # 60秒超时
-                if task is not None:
-                    symbol = task.symbol
-                    df = task.data
-                    if df is not None and not df.empty:
-                        logger.info(f"成功下载 {symbol} 的数据，共 {len(df)} 条记录")
-                    else:
-                        logger.warning(f"股票 {symbol} 没有数据")
-                downloaded_count += 1
-                data_queue.task_done()
-            except Exception as e:
-                logger.error(f"处理数据时出错: {e}")
-                break
-
-        logger.info("数据下载完成")
-
-    except KeyboardInterrupt:
-        logger.error("用户中断下载")
-    except Exception as e:
-        logger.error(f"下载过程中出错: {e}")
-    finally:
-        # 清理资源
-        if "downloader" in locals():
-            downloader.stop()
-        executor.shutdown(wait=True)
+    pass
