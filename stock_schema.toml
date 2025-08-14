@@ -12,6 +12,9 @@ columns = [
     "act_name",
     "act_ent_type",
 ]
+primary_key = [
+    "ts_code",
+]
 
 [stock_daily]
 description = "股票日线数据字段"
@@ -28,6 +31,9 @@ columns = [
     "vol",
     "amount",
 ]
+primary_key = [
+    "ts_code",
+]
 
 [stock_adj]
 description = "复权行情数据字段"
@@ -43,6 +49,9 @@ columns = [
     "pct_chg",
     "vol",
     "amount",
+]
+primary_key = [
+    "ts_code",
 ]
 
 [income_statement]
@@ -393,4 +402,3 @@ columns = [
     "beg_bal_cash_equ",
     "update_flag",
 ]
-

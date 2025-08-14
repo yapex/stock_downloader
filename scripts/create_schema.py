@@ -1,10 +1,11 @@
 import downloader2.config
 import tushare
 from pathlib import Path
-from typing import List, Union, Dict, Any, Callable
+from typing import List, Union, Dict, Any
 import pandas as pd
 import argparse
-import sys
+from box import Box
+import tomli_w
 
 
 def generate_schema_toml(
@@ -68,47 +69,40 @@ def generate_combined_schema_toml(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 生成 TOML 内容
-    toml_content = ""
+    # 构建 TOML 数据结构
+    toml_data = {}
 
     for table_name, schema_data in all_schemas.items():
-        toml_content += f"[{table_name}]\n"
-        toml_content += f'description = "{schema_data["description"]}"\n'
-        toml_content += "columns = [\n"
-
-        # 添加列名
-        for column in schema_data["columns"]:
-            toml_content += f'    "{column}",\n'
-
-        toml_content += "]\n"
-
+        table_config = {
+            "description": schema_data["description"],
+            "columns": schema_data["columns"]
+        }
+        
         # 添加主键配置（如果存在）
         if table_name in TABLE_CONFIGS:
             config = TABLE_CONFIGS[table_name]
-            if "primary_key" in config and config["primary_key"]:
-                toml_content += "primary_key = [\n"
-                for key in config["primary_key"]:
-                    toml_content += f'    "{key}",\n'
-                toml_content += "]\n"
+            if hasattr(config, 'primary_key') and config.primary_key:
+                table_config["primary_key"] = config.primary_key
+        
+        toml_data[table_name] = table_config
 
-        toml_content += "\n"
-
-    # 写入文件
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(toml_content)
+    # 使用 tomli_w 写入 TOML 文件
+    with open(output_path, "wb") as f:
+        tomli_w.dump(toml_data, f)
 
     print(f"已生成合并的 schema 文件: {output_path}")
     total_columns = sum(len(schema["columns"]) for schema in all_schemas.values())
     print(f"包含 {len(all_schemas)} 个表，共 {total_columns} 个字段")
 
 
-# 表配置字典
-TABLE_CONFIGS = {
+# 表配置字典，使用 Box 包装以便简化访问
+TABLE_CONFIGS = Box({
     "stock_basic": {
         "description": "股票基本信息表字段",
         "api_method": "stock_basic",
         "sample_params": {"ts_code": "600519.SH"},
         "primary_key": ["ts_code"],
+        "table_name": "stock_basic",
         "fields": [],
         "output_file": "src/stock_schema.toml",
     },
@@ -116,6 +110,7 @@ TABLE_CONFIGS = {
         "description": "股票日线数据字段",
         "api_method": "daily",
         "sample_params": {"ts_code": "600519.SH"},
+        "primary_key": ["ts_code"],
         "fields": [],
         "output_file": "src/stock_schema.toml",
     },
@@ -128,6 +123,7 @@ TABLE_CONFIGS = {
             "start_date": "20240101",
             "end_date": "20240131",
         },
+        "primary_key": ["ts_code"],
         "fields": [],
         "output_file": "src/stock_schema.toml",
     },
@@ -152,7 +148,7 @@ TABLE_CONFIGS = {
         "fields": [],
         "output_file": "src/stock_schema.toml",
     },
-}
+})
 
 
 def get_tushare_api():
@@ -164,14 +160,14 @@ def get_tushare_api():
 
 
 def get_table_schema_data(
-    pro, table_name: str, config: Dict[str, Any]
+    pro, table_name: str, config: Box
 ) -> Dict[str, Any]:
     """获取单个表的 schema 数据
 
     Args:
         pro: tushare API 实例
         table_name: 表名
-        config: 表配置字典
+        config: 表配置 Box 对象
 
     Returns:
         包含表名、描述和列名的字典
@@ -180,7 +176,7 @@ def get_table_schema_data(
         print(f"正在获取 {table_name} 表的 schema...")
 
         # 获取 API 方法
-        api_method_name = config["api_method"]
+        api_method_name = config.api_method
 
         # 特殊处理 pro_bar，它是 tushare 模块的方法，不是 pro 实例的方法
         if api_method_name == "pro_bar":
@@ -191,12 +187,12 @@ def get_table_schema_data(
             api_method = getattr(pro, api_method_name)
 
         # 调用 API 获取数据
-        if config["fields"]:
+        if config.fields:
             # 如果配置中指定了字段，使用指定字段
-            df = api_method(**config["sample_params"], fields=config["fields"])
+            df = api_method(**config.sample_params, fields=config.fields)
         else:
             # 如果没有指定字段，获取所有字段
-            df = api_method(**config["sample_params"])
+            df = api_method(**config.sample_params)
 
         # 获取列名
         columns = df.columns.tolist()
@@ -205,7 +201,7 @@ def get_table_schema_data(
 
         return {
             "table_name": table_name,
-            "description": config["description"],
+            "description": config.description,
             "columns": columns,
         }
 
