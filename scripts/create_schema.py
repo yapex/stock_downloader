@@ -73,16 +73,21 @@ def generate_combined_schema_toml(
     toml_data = {}
 
     for table_name, schema_data in all_schemas.items():
-        table_config = {
-            "description": schema_data["description"],
-            "columns": schema_data["columns"]
-        }
+        # 创建有序字典，确保 table_name 和 primary_key 在最上面
+        table_config = {}
         
-        # 添加主键配置（如果存在）
+        # 首先添加 table_name
+        table_config["table_name"] = table_name
+        
+        # 然后添加 primary_key（如果存在）
         if table_name in TABLE_CONFIGS:
             config = TABLE_CONFIGS[table_name]
             if hasattr(config, 'primary_key') and config.primary_key:
                 table_config["primary_key"] = config.primary_key
+        
+        # 最后添加其他字段
+        table_config["description"] = schema_data["description"]
+        table_config["columns"] = schema_data["columns"]
         
         toml_data[table_name] = table_config
 
