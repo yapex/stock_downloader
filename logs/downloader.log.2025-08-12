@@ -1,0 +1,392 @@
+12:54:18 - src.downloader.producer_v2 - INFO - Producer worker loop started
+12:54:18 - src.downloader.producer_v2 - INFO - Producer started
+12:54:18 - src.downloader.producer_v2 - DEBUG - Processing task: , type: stock_list
+12:54:18 - src.downloader.producer_v2 - DEBUG - Task completed: 
+12:54:18 - src.downloader.producer_v2 - DEBUG - Processing task: 000001.SZ, type: daily
+12:54:18 - src.downloader.producer_v2 - DEBUG - Task completed: 000001.SZ
+12:54:18 - src.downloader.producer_v2 - DEBUG - Processing task: 000001.SZ, type: daily_basic
+12:54:18 - src.downloader.producer_v2 - DEBUG - Task completed: 000001.SZ
+12:54:18 - src.downloader.producer_v2 - DEBUG - Processing task: 000001.SZ, type: financials
+12:54:18 - src.downloader.producer_v2 - DEBUG - Task completed: 000001.SZ
+12:54:20 - src.downloader.producer_v2 - INFO - Producer worker loop ended
+12:54:20 - src.downloader.producer_v2 - INFO - Producer stopped
+12:54:20 - src.downloader.producer_v2 - INFO - Producer worker loop started
+12:54:20 - src.downloader.producer_v2 - INFO - Producer started
+12:54:20 - src.downloader.producer_v2 - DEBUG - Processing task: 000001.SZ, type: daily
+12:54:20 - src.downloader.producer_v2 - ERROR - Failed to process task 000001.SZ: 网络错误
+12:54:21 - src.downloader.producer_v2 - INFO - Producer worker loop ended
+12:54:21 - src.downloader.producer_v2 - INFO - Producer stopped
+16:07:07 - __main__ - ERROR - 验证程序执行失败: 请设置环境变量 TUSHARE_TOKEN
+16:08:23 - __main__ - ERROR - 验证程序执行失败: 无法初始化fetcher: 错误：未配置 TUSHARE_TOKEN
+16:08:43 - downloader.fetcher_factory - INFO - 使用配置接口创建TushareFetcher单例实例
+16:08:43 - downloader.fetcher_factory - INFO - TushareFetcher单例实例创建完成，实例ID: 4458784688
+16:08:43 - __main__ - INFO - 开始运行字段完整性验证...
+16:08:43 - __main__ - INFO - 开始验证股票基础信息表字段...
+16:08:43 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+16:08:43 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4458784688
+16:08:43 - asyncio - DEBUG - Using selector: KqueueSelector
+16:08:43 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:08:43 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:08:43 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:08:43 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 None
+16:08:43 - downloader.fetcher - INFO - [API调用成功] 获取A股列表完成，共 5424 只股票
+16:08:43 - __main__ - INFO - 股票基础信息表验证完成: incomplete
+16:08:43 - __main__ - INFO - 开始验证日线历史数据表字段，使用样本股票: 000001.SZ
+16:08:43 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000001.SZ, 时间: 20250713~20250812, 复权: none
+16:08:43 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:08:44 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+16:08:44 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:08:44 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 None
+16:08:44 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000001.SZ, 数据量: 22条
+16:08:44 - __main__ - INFO - 日线历史数据表验证完成: success
+16:08:44 - __main__ - INFO - 字段验证完成，总体结果: 通过
+16:11:31 - downloader.fetcher_factory - INFO - 使用配置接口创建TushareFetcher单例实例
+16:11:31 - downloader.fetcher_factory - INFO - TushareFetcher单例实例创建完成，实例ID: 4392527792
+16:11:31 - __main__ - INFO - 开始运行字段完整性验证...
+16:11:31 - __main__ - INFO - 开始验证股票基础信息表字段...
+16:11:31 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+16:11:31 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4392527792
+16:11:31 - asyncio - DEBUG - Using selector: KqueueSelector
+16:11:31 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:11:31 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:11:31 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:11:31 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 None
+16:11:31 - downloader.fetcher - INFO - [API调用成功] 获取A股列表完成，共 5424 只股票
+16:11:31 - __main__ - INFO - 股票基础信息表验证完成: incomplete
+16:11:31 - __main__ - INFO - 开始验证日线历史数据表字段，使用样本股票: 000001.SZ
+16:11:31 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000001.SZ, 时间: 20250713~20250812, 复权: none
+16:11:31 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:11:31 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+16:11:31 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:11:31 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 None
+16:11:31 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000001.SZ, 数据量: 22条
+16:11:31 - __main__ - INFO - 日线历史数据表验证完成: success
+16:11:31 - __main__ - INFO - 字段验证完成，总体结果: 通过
+16:13:32 - downloader.fetcher_factory - INFO - 使用配置接口创建TushareFetcher单例实例
+16:13:32 - downloader.fetcher_factory - INFO - TushareFetcher单例实例创建完成，实例ID: 4510148528
+16:13:32 - __main__ - INFO - 开始运行字段完整性验证...
+16:13:32 - __main__ - INFO - 开始验证股票基础信息表字段...
+16:13:32 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+16:13:32 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4510148528
+16:13:32 - asyncio - DEBUG - Using selector: KqueueSelector
+16:13:32 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:13:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:13:32 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:13:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 None
+16:13:32 - downloader.fetcher - INFO - [API调用成功] 获取A股列表完成，共 5424 只股票
+16:13:32 - __main__ - INFO - 股票基础信息表验证完成: incomplete
+16:13:32 - __main__ - INFO - 开始验证日线历史数据表字段，使用样本股票: 000001.SZ
+16:13:32 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000001.SZ, 时间: 20250713~20250812, 复权: none
+16:13:32 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:13:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+16:13:32 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:13:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 None
+16:13:32 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000001.SZ, 数据量: 22条
+16:13:32 - __main__ - INFO - 日线历史数据表验证完成: success
+16:13:32 - __main__ - INFO - 字段验证完成，总体结果: 通过
+16:13:32 - __main__ - INFO - 开始生成table_fields.yaml配置文件...
+16:13:32 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000001.SZ, 时间: 20250713~20250812, 复权: none
+16:13:32 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:13:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+16:13:33 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:13:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 None
+16:13:33 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000001.SZ, 数据量: 22条
+16:13:33 - __main__ - INFO - 为表 daily_history 生成了 11 个字段
+16:13:33 - __main__ - INFO - 成功生成配置文件: table_fields.yaml
+16:14:03 - downloader.fetcher_factory - INFO - 使用配置接口创建TushareFetcher单例实例
+16:14:03 - downloader.fetcher_factory - INFO - TushareFetcher单例实例创建完成，实例ID: 4421609392
+16:14:03 - __main__ - INFO - 开始运行字段完整性验证...
+16:14:03 - __main__ - INFO - 开始验证股票基础信息表字段...
+16:14:03 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+16:14:03 - asyncio - DEBUG - Using selector: KqueueSelector
+16:14:03 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4421609392
+16:14:03 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:14:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:14:03 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:14:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 None
+16:14:04 - downloader.fetcher - INFO - [API调用成功] 获取A股列表完成，共 5424 只股票
+16:14:04 - __main__ - INFO - 股票基础信息表验证完成: error
+16:14:04 - __main__ - INFO - 开始验证日线历史数据表字段，使用样本股票: 000001.SZ
+16:14:04 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000001.SZ, 时间: 20250713~20250812, 复权: none
+16:14:04 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:14:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+16:14:04 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:14:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 None
+16:14:04 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000001.SZ, 数据量: 22条
+16:14:04 - __main__ - INFO - 日线历史数据表验证完成: success
+16:14:04 - __main__ - INFO - 字段验证完成，总体结果: 通过
+16:14:04 - __main__ - INFO - 开始生成table_fields.yaml配置文件...
+16:14:04 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000001.SZ, 时间: 20250713~20250812, 复权: none
+16:14:04 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:14:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+16:14:04 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:14:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 None
+16:14:04 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000001.SZ, 数据量: 22条
+16:14:04 - __main__ - INFO - 为表 daily_history 生成了 11 个字段
+16:14:04 - __main__ - INFO - 成功生成配置文件: table_fields.yaml
+16:14:33 - downloader.fetcher_factory - INFO - 使用配置接口创建TushareFetcher单例实例
+16:14:33 - downloader.fetcher_factory - INFO - TushareFetcher单例实例创建完成，实例ID: 4452181936
+16:14:33 - __main__ - INFO - 开始运行字段完整性验证...
+16:14:33 - __main__ - INFO - 开始验证股票基础信息表字段...
+16:14:33 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+16:14:33 - asyncio - DEBUG - Using selector: KqueueSelector
+16:14:33 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4452181936
+16:14:33 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:14:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:14:33 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:14:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 None
+16:14:33 - downloader.fetcher - INFO - [API调用成功] 获取A股列表完成，共 5424 只股票
+16:14:33 - __main__ - INFO - 股票基础信息表验证完成: error
+16:14:33 - __main__ - INFO - 开始验证日线历史数据表字段，使用样本股票: 000001.SZ
+16:14:33 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000001.SZ, 时间: 20250713~20250812, 复权: none
+16:14:33 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:14:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+16:14:33 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:14:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 None
+16:14:33 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000001.SZ, 数据量: 22条
+16:14:33 - __main__ - INFO - 日线历史数据表验证完成: success
+16:14:33 - __main__ - INFO - 字段验证完成，总体结果: 通过
+16:14:33 - __main__ - INFO - 开始生成table_fields.yaml配置文件...
+16:14:33 - __main__ - INFO - 获取sys_stock_basic表字段...
+16:14:33 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4452181936
+16:14:33 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:14:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:14:33 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:14:34 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 None
+16:14:34 - downloader.fetcher - INFO - [API调用成功] 获取A股列表完成，共 5424 只股票
+16:14:34 - __main__ - INFO - 为表 sys_stock_basic 生成了 7 个字段
+16:14:34 - __main__ - INFO - 获取daily_history表字段...
+16:14:34 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000001.SZ, 时间: 20250713~20250812, 复权: none
+16:14:34 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:14:34 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+16:14:34 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:14:34 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 None
+16:14:34 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000001.SZ, 数据量: 22条
+16:14:34 - __main__ - INFO - 为表 daily_history 生成了 11 个字段
+16:14:34 - __main__ - INFO - 成功生成配置文件: table_fields.yaml
+16:18:58 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+16:18:58 - asyncio - DEBUG - Using selector: KqueueSelector
+16:18:58 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4311384144
+16:18:58 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:18:59 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:18:59 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:18:59 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:18:59 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:18:59 - downloader.simple_retry - WARNING - [重试] 获取A股列表 第1次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x100fa8050>, 错误: 您的token不对，请确认。
+16:19:00 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4311384144
+16:19:00 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:19:00 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:19:00 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:19:00 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:19:00 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:19:00 - downloader.simple_retry - WARNING - [重试] 获取A股列表 第2次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x100fa8050>, 错误: 您的token不对，请确认。
+16:19:01 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4311384144
+16:19:01 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:19:01 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:19:01 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:19:01 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:19:01 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:19:01 - downloader.simple_retry - WARNING - [重试] 获取A股列表 第3次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x100fa8050>, 错误: 您的token不对，请确认。
+16:19:02 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4311384144
+16:19:02 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:19:02 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:19:02 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:19:02 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:19:02 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:19:02 - downloader.simple_retry - ERROR - [重试失败] 获取A股列表 超过最大重试次数 - 实体: <downloader.fetcher.TushareFetcher object at 0x100fa8050>, 最后错误: 您的token不对，请确认。
+16:19:02 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:19:02 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:19:02 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:19:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:20:01 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+16:20:01 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4379951184
+16:20:01 - asyncio - DEBUG - Using selector: KqueueSelector
+16:20:01 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:20:02 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:20:02 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:20:02 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:20:02 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:20:02 - downloader.simple_retry - WARNING - [重试] 获取A股列表 第1次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x10510c050>, 错误: 您的token不对，请确认。
+16:20:03 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4379951184
+16:20:03 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:20:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:20:03 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:20:03 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:20:03 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:20:03 - downloader.simple_retry - WARNING - [重试] 获取A股列表 第2次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x10510c050>, 错误: 您的token不对，请确认。
+16:20:04 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4379951184
+16:20:04 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:20:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:20:04 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:20:04 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:20:04 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:20:04 - downloader.simple_retry - WARNING - [重试] 获取A股列表 第3次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x10510c050>, 错误: 您的token不对，请确认。
+16:20:05 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4379951184
+16:20:05 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:20:05 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:20:05 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:20:05 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:20:05 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:20:05 - downloader.simple_retry - ERROR - [重试失败] 获取A股列表 超过最大重试次数 - 实体: <downloader.fetcher.TushareFetcher object at 0x10510c050>, 最后错误: 您的token不对，请确认。
+16:20:05 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:20:05 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:20:05 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:20:05 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:22:46 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+16:22:46 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4588953216
+16:22:46 - asyncio - DEBUG - Using selector: KqueueSelector
+16:22:46 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:22:46 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:22:46 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:22:46 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:22:46 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:22:46 - downloader.simple_retry - WARNING - [重试] 获取A股列表 第1次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x11185de80>, 错误: 您的token不对，请确认。
+16:22:47 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4588953216
+16:22:47 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:22:47 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:22:47 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:22:47 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:22:47 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:22:47 - downloader.simple_retry - WARNING - [重试] 获取A股列表 第2次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x11185de80>, 错误: 您的token不对，请确认。
+16:22:48 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4588953216
+16:22:48 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:22:48 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:22:48 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:22:48 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:22:48 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:22:48 - downloader.simple_retry - WARNING - [重试] 获取A股列表 第3次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x11185de80>, 错误: 您的token不对，请确认。
+16:22:49 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4588953216
+16:22:49 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:22:50 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:22:50 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:22:50 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:22:50 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:22:50 - downloader.simple_retry - ERROR - [重试失败] 获取A股列表 超过最大重试次数 - 实体: <downloader.fetcher.TushareFetcher object at 0x11185de80>, 最后错误: 您的token不对，请确认。
+16:22:50 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:22:50 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:22:50 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:22:50 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:48:31 - downloader.fetcher_factory - INFO - 使用配置接口创建TushareFetcher单例实例
+16:48:31 - downloader.fetcher_factory - INFO - TushareFetcher单例实例创建完成，实例ID: 4460716320
+16:48:31 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+16:48:31 - asyncio - DEBUG - Using selector: KqueueSelector
+16:48:31 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4460716320
+16:48:31 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:48:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:48:32 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:48:32 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:48:32 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:48:32 - downloader.simple_retry - WARNING - [重试] 获取A股列表 第1次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x109e12120>, 错误: 您的token不对，请确认。
+16:48:33 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4460716320
+16:48:33 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:48:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:48:33 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:48:33 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:48:33 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:48:33 - downloader.simple_retry - WARNING - [重试] 获取A股列表 第2次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x109e12120>, 错误: 您的token不对，请确认。
+16:48:34 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4460716320
+16:48:34 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:48:34 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:48:34 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:48:34 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:48:34 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:48:34 - downloader.simple_retry - WARNING - [重试] 获取A股列表 第3次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x109e12120>, 错误: 您的token不对，请确认。
+16:48:35 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4460716320
+16:48:35 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:48:35 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:48:35 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:48:35 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 83
+16:48:35 - downloader.fetcher - WARNING - [API调用失败] 获取A股列表失败: 您的token不对，请确认。
+16:48:35 - downloader.simple_retry - ERROR - [重试失败] 获取A股列表 超过最大重试次数 - 实体: <downloader.fetcher.TushareFetcher object at 0x109e12120>, 最后错误: 您的token不对，请确认。
+16:57:50 - downloader.fetcher_factory - INFO - 从环境变量创建TushareFetcher单例实例
+16:57:50 - downloader.fetcher_factory - INFO - TushareFetcher单例实例创建完成，实例ID: 4458669328
+16:57:50 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+16:57:50 - asyncio - DEBUG - Using selector: KqueueSelector
+16:57:50 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4458669328
+16:57:50 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+16:57:50 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+16:57:50 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+16:57:50 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 None
+16:57:50 - downloader.fetcher - INFO - [API调用成功] 获取A股列表完成，共 5424 只股票
+17:02:19 - downloader.fetcher_factory - INFO - 从环境变量创建TushareFetcher单例实例
+17:02:19 - downloader.fetcher_factory - INFO - TushareFetcher单例实例创建完成，实例ID: 4379469408
+17:02:19 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+17:02:19 - asyncio - DEBUG - Using selector: KqueueSelector
+17:02:19 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4379469408
+17:02:19 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+17:02:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+17:02:19 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+17:02:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 None
+17:02:19 - downloader.fetcher - INFO - [API调用成功] 获取A股列表完成，共 5424 只股票
+17:02:19 - downloader.simple_retry - WARNING - [重试] 日K线数据 第1次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x105096660>, 错误: TushareFetcher.fetch_daily_history() missing 1 required positional argument: 'adjust'
+17:02:20 - downloader.simple_retry - WARNING - [重试] 日K线数据 第2次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x105096660>, 错误: TushareFetcher.fetch_daily_history() missing 1 required positional argument: 'adjust'
+17:02:21 - downloader.simple_retry - WARNING - [重试] 日K线数据 第3次失败，准备重试 - 实体: <downloader.fetcher.TushareFetcher object at 0x105096660>, 错误: TushareFetcher.fetch_daily_history() missing 1 required positional argument: 'adjust'
+17:02:22 - downloader.simple_retry - ERROR - [重试失败] 日K线数据 超过最大重试次数 - 实体: <downloader.fetcher.TushareFetcher object at 0x105096660>, 最后错误: TushareFetcher.fetch_daily_history() missing 1 required positional argument: 'adjust'
+17:02:22 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 000001.SZ, 时间: 20240101~20240131
+17:02:22 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+17:02:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+17:02:23 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+17:02:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+17:02:23 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 000001.SZ, 数据量: 22条
+17:02:23 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 000001.SZ, 时间: 20240101~20240131
+17:02:23 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+17:02:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+17:02:23 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+17:02:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+17:02:23 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 000001.SZ, 数据量: 0条
+17:02:23 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 000001.SZ, 时间: 20240101~20240131
+17:02:23 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+17:02:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+17:02:23 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+17:02:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+17:02:23 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 000001.SZ, 数据量: 0条
+17:02:23 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 000001.SZ, 时间: 20240101~20240131
+17:02:23 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+17:02:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+17:02:23 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+17:02:23 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+17:02:23 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 000001.SZ, 数据量: 0条
+17:03:18 - downloader.fetcher_factory - INFO - 从环境变量创建TushareFetcher单例实例
+17:03:18 - downloader.fetcher_factory - INFO - TushareFetcher单例实例创建完成，实例ID: 4420642400
+17:03:18 - pyrate_limiter - INFO - Initializing default bucket(InMemoryBucket) with rates: [limit=190/60000]
+17:03:18 - downloader.fetcher - INFO - [API调用] 开始获取A股列表 - Fetcher实例ID: 4420642400
+17:03:18 - asyncio - DEBUG - Using selector: KqueueSelector
+17:03:18 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+17:03:18 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic HTTP/1.1" 307 0
+17:03:18 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+17:03:18 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/stock_basic/ HTTP/1.1" 200 None
+17:03:18 - downloader.fetcher - INFO - [API调用成功] 获取A股列表完成，共 5424 只股票
+17:03:18 - downloader.fetcher - INFO - [API调用] 获取日K线数据 - 股票: 000001.SZ, 时间: 20240101~20240131, 复权: qfq
+17:03:18 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+17:03:18 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily HTTP/1.1" 307 0
+17:03:18 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+17:03:18 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily/ HTTP/1.1" 200 None
+17:03:18 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+17:03:18 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor HTTP/1.1" 307 0
+17:03:18 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+17:03:18 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/adj_factor/ HTTP/1.1" 200 891
+17:03:18 - downloader.fetcher - INFO - [API调用成功] 日K线数据获取完成 - 股票: 000001.SZ, 数据量: 22条
+17:03:18 - downloader.fetcher - INFO - [API调用] 获取每日指标 - 股票: 000001.SZ, 时间: 20240101~20240131
+17:03:18 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+17:03:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic HTTP/1.1" 307 0
+17:03:19 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+17:03:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/daily_basic/ HTTP/1.1" 200 None
+17:03:19 - downloader.fetcher - INFO - [API调用成功] 每日指标获取完成 - 股票: 000001.SZ, 数据量: 22条
+17:03:19 - downloader.fetcher - INFO - [API调用] 获取利润表 - 股票: 000001.SZ, 时间: 20230101~20241231
+17:03:19 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+17:03:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income HTTP/1.1" 307 0
+17:03:19 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+17:03:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/income/ HTTP/1.1" 200 None
+17:03:19 - downloader.fetcher - INFO - [API调用成功] 利润表获取完成 - 股票: 000001.SZ, 数据量: 10条
+17:03:19 - downloader.fetcher - INFO - [API调用] 获取资产负债表 - 股票: 000001.SZ, 时间: 20230101~20241231
+17:03:19 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+17:03:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet HTTP/1.1" 307 0
+17:03:19 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+17:03:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/balancesheet/ HTTP/1.1" 200 None
+17:03:19 - downloader.fetcher - INFO - [API调用成功] 资产负债表获取完成 - 股票: 000001.SZ, 数据量: 12条
+17:03:19 - downloader.fetcher - INFO - [API调用] 获取现金流量表 - 股票: 000001.SZ, 时间: 20230101~20241231
+17:03:19 - urllib3.connectionpool - DEBUG - Starting new HTTP connection (1): 127.0.0.1:8118
+17:03:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow HTTP/1.1" 307 0
+17:03:19 - urllib3.connectionpool - DEBUG - Resetting dropped connection: 127.0.0.1
+17:03:19 - urllib3.connectionpool - DEBUG - http://127.0.0.1:8118 "POST http://api.waditu.com/dataapi/cashflow/ HTTP/1.1" 200 None
+17:03:19 - downloader.fetcher - INFO - [API调用成功] 现金流量表获取完成 - 股票: 000001.SZ, 数据量: 10条

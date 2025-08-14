@@ -1,21 +1,20 @@
 """生产者接口定义
 
-定义生产者组件的核心接口，遵循KISS原则，使用事件通知机制。
+定义生产者组件的核心接口，遵循KISS原则。
 """
 
 from typing import Protocol, Optional, runtime_checkable
 from queue import Queue
 
 from ..models import DownloadTask, DataBatch
-from .events import IEventBus, IEventListener
+
 
 
 @runtime_checkable
 class IProducer(Protocol):
     """生产者接口
     
-    负责从任务队列获取任务，处理后通过事件通知结果。
-    使用事件机制替代轮询，由engine负责处理数据。
+    负责从任务队列获取任务并处理。
     """
     
     def start(self) -> None:
@@ -52,12 +51,3 @@ class IProducer(Protocol):
     def is_running(self) -> bool:
         """检查是否正在运行"""
         ...
-
-
-# 事件类型常量
-class ProducerEvents:
-    """Producer事件类型定义"""
-    
-    DATA_READY = "producer.data_ready"  # 数据准备完成
-    TASK_FAILED = "producer.task_failed"  # 任务失败
-    TASK_COMPLETED = "producer.task_completed"  # 任务完成

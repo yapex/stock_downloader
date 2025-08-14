@@ -19,7 +19,7 @@ from .storage import PartitionedStorage
 from .storage_factory import get_storage
 from .simple_retry import simple_retry
 from .utils import record_failed_task, get_logger
-from .progress_events import batch_completed
+
 
 logger = get_logger(__name__)
 
@@ -246,11 +246,7 @@ class ConsumerWorker:
         if not success:
             raise Exception(f"保存数据失败: {data_type}")
         
-        # 发送批次完成事件
-        batch_completed(
-            count=len(batches),
-            message=f"Worker {self.worker_id}: 成功插入 {len(combined_df)} 条记录到 {cache_key}"
-        )
+
         
         self.logger.info(f"Worker {self.worker_id}: 成功插入 {len(combined_df)} 条记录到 {cache_key}")
     

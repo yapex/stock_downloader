@@ -20,12 +20,7 @@ from .storage_factory import get_storage
 from .producer import Producer
 from .consumer_pool import ConsumerPool
 from .models import DownloadTask, TaskType, Priority
-from .interfaces.events import IEventBus, IEventListener
-from .event_bus import SimpleEventBus
-from .interfaces.producer import ProducerEvents
-from .progress_events import (
-    progress_event_manager, start_phase, end_phase, update_total, ProgressPhase
-)
+
 from .utils import get_logger
 
 logger = get_logger(__name__)
@@ -41,27 +36,7 @@ class DownloadEngine:
     4. 进度监控与统计
     """
     
-    class DataEventListener(IEventListener):
-        """数据事件监听器 - 将Producer的数据事件转发到data_queue"""
-        
-        def __init__(self, data_queue: Queue):
-            self.data_queue = data_queue
-            self.logger = get_logger(f"{__name__}.DataEventListener")
-        
-        def on_event(self, event_type: str, event_data: any) -> None:
-            """处理事件"""
-            if event_type == ProducerEvents.DATA_READY:
-                data_batch = event_data.get('data_batch')
-                if data_batch:
-                    try:
-                        self.data_queue.put(data_batch, block=True)
-                        self.logger.debug(f"Data batch forwarded to queue: {event_data.get('task_id')}")
-                    except Exception as e:
-                        self.logger.error(f"Failed to forward data batch: {e}")
-            elif event_type == ProducerEvents.TASK_FAILED:
-                self.logger.warning(f"Task failed: {event_data.get('task_id')} - {event_data.get('error')}")
-            elif event_type == ProducerEvents.TASK_COMPLETED:
-                self.logger.debug(f"Task completed: {event_data.get('task_id')}")
+
     
     def __init__(
         self,
@@ -100,7 +75,7 @@ class DownloadEngine:
         self.data_queue: Optional[Queue] = None
         self.consumer_pool: Optional[ConsumerPool] = None
         self.producers: List[Producer] = []
-        self.event_bus: Optional[IEventBus] = None
+
         
         # 配置参数
         self._load_configuration()
@@ -173,15 +148,13 @@ class DownloadEngine:
         self.execution_stats["processing_start_time"] = datetime.now()
         
         try:
-            # 启动进度管理器
-            progress_event_manager.start()
-            start_phase(ProgressPhase.INITIALIZATION)
+
             
             # 1. 解析和验证配置
             enabled_tasks = self._parse_and_validate_config()
             if not enabled_tasks:
                 logger.warning("没有启用的任务")
-                end_phase(ProgressPhase.COMPLETED)
+    
                 return
             
             # 2. 分离任务类型
@@ -201,7 +174,7 @@ class DownloadEngine:
             
             # 6. 收集最终统计
             self._collect_final_statistics()
-            end_phase(ProgressPhase.COMPLETED)
+            
             
             logger.info("所有任务处理完成")
             
@@ -214,7 +187,6 @@ class DownloadEngine:
         finally:
             self._cleanup_resources()
             self.execution_stats["processing_end_time"] = datetime.now()
-            progress_event_manager.stop()
             self._print_final_summary()
     
     def _parse_and_validate_config(self) -> List[Dict[str, Any]]:
@@ -261,14 +233,7 @@ class DownloadEngine:
         # 创建数据队列
         self.data_queue = Queue(maxsize=self.data_queue_size)
         
-        # 创建事件总线
-        self.event_bus = SimpleEventBus()
-        
-        # 创建并注册数据事件监听器
-        data_listener = self.DataEventListener(self.data_queue)
-        self.event_bus.subscribe(ProducerEvents.DATA_READY, data_listener)
-        self.event_bus.subscribe(ProducerEvents.TASK_FAILED, data_listener)
-        self.event_bus.subscribe(ProducerEvents.TASK_COMPLETED, data_listener)
+
         
         # 创建消费者池
         consumer_config = self.config.get("consumer", {})
@@ -297,9 +262,7 @@ class DownloadEngine:
         
         logger.info(f"开始处理 {len(download_tasks)} 个系统表任务")
         
-        # 更新进度并开始下载阶段
-        update_total(len(download_tasks), ProgressPhase.DOWNLOADING)
-        start_phase(ProgressPhase.DOWNLOADING, len(download_tasks))
+
         
         # 启动消费者池
         if not self.consumer_pool.running:
@@ -330,9 +293,7 @@ class DownloadEngine:
         
         logger.info(f"开始处理 {len(download_tasks)} 个业务表任务")
         
-        # 更新进度
-        update_total(len(download_tasks), ProgressPhase.DOWNLOADING)
-        start_phase(ProgressPhase.DOWNLOADING, len(download_tasks))
+
         
         # 确保消费者池已启动
         if not self.consumer_pool.running:
@@ -545,8 +506,7 @@ class DownloadEngine:
             for i in range(num_producers):
                 producer = Producer(
                     fetcher=self.fetcher,
-                    thread_pool_executor=thread_pool_executor,
-                    event_bus=self.event_bus
+                    thread_pool_executor=thread_pool_executor
                 )
                 self.producers.append(producer)
             

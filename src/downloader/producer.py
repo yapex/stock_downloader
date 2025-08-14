@@ -13,12 +13,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 from .fetcher import TushareFetcher
 from .models import DownloadTask, DataBatch, TaskType
-from .interfaces import IConfig, IEventBus
-from .interfaces.producer import ProducerEvents
+from .interfaces import IConfig
 
 # 移除复杂的错误处理依赖
 from .utils import record_failed_task, get_logger
-from .progress_events import task_started, task_completed, task_failed
+
 
 logger = get_logger(__name__)
 
@@ -168,17 +167,16 @@ class Producer:
         self,
         fetcher: TushareFetcher,
         thread_pool_executor: ThreadPoolExecutor,
-        event_bus: IEventBus,
+
         config: Optional["IConfig"] = None,
     ):
         """初始化生产者"""
         self.fetcher = fetcher
         self.thread_pool_executor = thread_pool_executor
-        self.event_bus = event_bus
+
         self.config = config
 
-        if self.event_bus is None:
-            raise ValueError("event_bus is required")
+
         if self.fetcher is None:
             raise ValueError("fetcher is required")
         if self.thread_pool_executor is None:
@@ -295,10 +293,7 @@ class Producer:
             f"Producer实例: {id(self)}, Fetcher实例: {id(self.fetcher)}"
         )
 
-        # 发送任务开始事件
-        task_started(
-            task_id=task.task_id, symbol=task.symbol, message=f"{task.task_type.value}"
-        )
+
 
         start_time = time.time()
 
@@ -309,16 +304,7 @@ class Producer:
             # 计算处理时间
             processing_time = time.time() - start_time
 
-            # 通过事件总线发送数据
-            self.event_bus.publish(
-                ProducerEvents.DATA_READY,
-                {
-                    "data_batch": data_batch,
-                    "task_id": task.task_id,
-                    "symbol": task.symbol,
-                    "processing_time": processing_time,
-                },
-            )
+
 
             # 更新统计
             self.stats.increment_processed()
@@ -333,8 +319,7 @@ class Producer:
                 f"处理时间: {processing_time:.2f}s"
             )
 
-            # 发送任务完成事件
-            task_completed(task_id=task.task_id, symbol=task.symbol)
+
 
         except Exception as e:
             # 计算处理时间
@@ -380,19 +365,7 @@ class Producer:
             error_category="unknown",
         )
 
-        # 通过事件总线发送任务失败事件
-        self.event_bus.publish(
-            ProducerEvents.TASK_FAILED,
-            {
-                "task_id": task.task_id,
-                "symbol": task.symbol,
-                "error": str(error),
-                "task_type": task.task_type.value,
-            },
-        )
 
-        # 发送任务失败事件（保持兼容性）
-        task_failed(task_id=task.task_id, symbol=task.symbol, message=str(error))
 
     @property
     def is_running(self) -> bool:

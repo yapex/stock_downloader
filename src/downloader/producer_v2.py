@@ -10,9 +10,8 @@ from queue import Queue, Empty, Full
 from typing import Optional
 import pandas as pd
 
-from .interfaces.producer import IProducer, ProducerEvents
+from .interfaces.producer import IProducer
 from .interfaces.fetcher import IFetcher
-from .interfaces.events import IEventBus
 from .models import DownloadTask, DataBatch, TaskType
 from .utils import get_logger
 
@@ -23,9 +22,8 @@ class ProducerV2(IProducer):
     """生产者V2实现
     
     特点：
-    - 依赖注入：IFetcher、ThreadPoolExecutor、IEventBus
+    - 依赖注入：IFetcher、ThreadPoolExecutor
     - 自管理队列：内部维护任务队列
-    - 事件驱动：通过事件通知处理结果
     - 无线程管理：使用外部提供的线程池
     """
     
@@ -33,7 +31,7 @@ class ProducerV2(IProducer):
         self,
         fetcher: IFetcher,
         executor: ThreadPoolExecutor,
-        event_bus: IEventBus,
+
         queue_size: int = 100
     ):
         """初始化生产者
@@ -41,12 +39,12 @@ class ProducerV2(IProducer):
         Args:
             fetcher: 数据获取器
             executor: 线程池执行器
-            event_bus: 事件总线
+
             queue_size: 任务队列大小
         """
         self._fetcher = fetcher
         self._executor = executor
-        self._event_bus = event_bus
+
         self._task_queue: Queue[DownloadTask] = Queue(maxsize=queue_size)
         self._running = False
         self._worker_future: Optional[Future] = None
@@ -158,20 +156,16 @@ class ProducerV2(IProducer):
                     symbol=task.symbol
                 )
                 
-                # 通过事件通知数据准备完成
-                self._event_bus.publish(ProducerEvents.DATA_READY, batch)
-                
-                # 通知任务完成
-                self._event_bus.publish(ProducerEvents.TASK_COMPLETED, task)
+
                 
                 logger.debug(f"Task completed: {task.symbol}")
             else:
                 logger.warning(f"No data fetched for task: {task.symbol}")
-                self._event_bus.publish(ProducerEvents.TASK_FAILED, task)
+
                 
         except Exception as e:
             logger.error(f"Failed to process task {task.symbol}: {e}")
-            self._event_bus.publish(ProducerEvents.TASK_FAILED, task)
+
     
     def _fetch_data_by_type(self, task: DownloadTask) -> pd.DataFrame | None:
         """根据任务类型获取数据

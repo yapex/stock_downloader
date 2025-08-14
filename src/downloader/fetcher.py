@@ -3,7 +3,7 @@ import tushare as ts
 import pandas as pd
 from .utils import normalize_stock_code, is_interval_greater_than_7_days, get_logger
 from .simple_retry import simple_retry
-from .rate_limiter import rate_limit
+from .rate_limiter_native import rate_limit
 from .interfaces.fetcher import IFetcher
 
 logger = get_logger(__name__)
