@@ -98,23 +98,26 @@ def generate_combined_schema_toml(
 # 表配置字典，使用 Box 包装以便简化访问
 TABLE_CONFIGS = Box({
     "stock_basic": {
+        "table_name": "stock_basic",
+        "primary_key": ["ts_code"],
         "description": "股票基本信息表字段",
         "api_method": "stock_basic",
         "sample_params": {"ts_code": "600519.SH"},
-        "primary_key": ["ts_code"],
-        "table_name": "stock_basic",
         "fields": [],
         "output_file": "src/stock_schema.toml",
     },
     "stock_daily": {
+        "table_name": "stock_daily",
+        "primary_key": ["ts_code"],
         "description": "股票日线数据字段",
         "api_method": "daily",
         "sample_params": {"ts_code": "600519.SH"},
-        "primary_key": ["ts_code"],
         "fields": [],
         "output_file": "src/stock_schema.toml",
     },
     "stock_adj": {
+        "table_name": "stock_adj",
+        "primary_key": ["ts_code"],
         "description": "复权行情数据字段",
         "api_method": "pro_bar",
         "sample_params": {
@@ -123,11 +126,11 @@ TABLE_CONFIGS = Box({
             "start_date": "20240101",
             "end_date": "20240131",
         },
-        "primary_key": ["ts_code"],
         "fields": [],
         "output_file": "src/stock_schema.toml",
     },
     "income_statement": {
+        "table_name": "income_statement",
         "description": "利润表字段",
         "api_method": "income",
         "sample_params": {"ts_code": "000001.SZ", "period": "20231231"},
@@ -135,6 +138,7 @@ TABLE_CONFIGS = Box({
         "output_file": "src/stock_schema.toml",
     },
     "balance_sheet": {
+        "table_name": "balance_sheet",
         "description": "资产负债表字段",
         "api_method": "balancesheet",
         "sample_params": {"ts_code": "000001.SZ", "period": "20231231"},
@@ -142,6 +146,7 @@ TABLE_CONFIGS = Box({
         "output_file": "src/stock_schema.toml",
     },
     "cash_flow": {
+        "table_name": "cash_flow",
         "description": "现金流量表字段",
         "api_method": "cashflow",
         "sample_params": {"ts_code": "000001.SZ", "period": "20231231"},
