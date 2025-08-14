@@ -52,7 +52,7 @@
 
 **5.0 输入与输出规范 (Input/Output Specification)**
 
-**5.1 输入 1: Schema 配置文件 (`schema.toml`)**
+**5.1 输入 1: Schema 配置文件 (`stock_schema.toml`)**
 *   文件格式为 TOML。
 *   每个表是一个独立的 TOML table (e.g., `[products]`)。
 *   每个表的配置必须包含以下键：
@@ -60,27 +60,49 @@
     *   `primary_key` (list of strings): 用于匹配记录的一个或多个主键字段名。
     *   `columns` (list of strings): 表中所有字段的完整列表，顺序无关。
 
-*   **示例 `schema.toml`**:
+*   **示例 `stock_schema.toml`**:
     ```toml
-    [products]
-    table_name = "products"
-    primary_key = ["product_id"]
+    [stock_basic]
+    table_name = "stock_basic"
+    primary_key = [
+        "ts_code",
+    ]
+    description = "股票基本信息表字段"
     columns = [
-      "product_id", "product_name", "category", "price", "last_updated"
+        "ts_code",
+        "symbol",
+        "name",
+        "area",
+        "industry",
+        "cnspell",
+        "market",
+        "list_date",
+        "act_name",
+        "act_ent_type",
     ]
 
-    [sales_records]
-    table_name = "sales_records"
-    primary_key = ["record_id"]
+    [stock_daily]
+    table_name = "stock_daily"
+    primary_key = [
+        "ts_code",
+        "trade_date",
+    ]
+    description = "股票日线数据表字段"
     columns = [
-      "record_id", "product_id", "sale_date", "quantity", "total_amount" 
-      # ... and 65+ other columns
+        "ts_code",
+        "trade_date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "vol",
+        "amount",
     ]
     ```
 
 **5.2 输入 2: 源数据 (Source Pandas DataFrame)**
 *   一个 Pandas DataFrame 对象。
-*   DataFrame 的列名必须与 `schema.toml` 中对应表的 `columns` 列表中的字段名完全匹配。
+*   DataFrame 的列名必须与 `stock_schema.toml` 中对应表的 `columns` 列表中的字段名完全匹配。
 
 **5.3 输出: 更新后的 DuckDB 表**
 *   操作的最终结果是 DuckDB 中目标表的数据被正确地更新和插入。无直接文件或对象返回，副作用发生在数据库中。
@@ -88,7 +110,7 @@
 **6.0 系统核心逻辑流程 (Core System Logic Flow)**
 
 1.  **初始化**: 建立到 DuckDB 的连接。
-2.  **加载配置**: 读取 `schema.toml` 文件，使用 `toml` 库解析，并使用 `python-box` 将其转换为 `Box` 对象以便于访问。
+2.  **加载配置**: 读取 `stock_schema.toml` 文件，使用 `toml` 库解析，并使用 `python-box` 将其转换为 `Box` 对象以便于访问。
 3.  **准备数据**: 接收一个 Pandas DataFrame，并使用 `duckdb.register()` 方法将其注册为一个唯一的临时视图。
 4.  **构建 MERGE 语句**:
     *   从 `Box` 对象中提取 `table_name`, `primary_key`, 和 `columns`。
@@ -102,12 +124,12 @@
 **7.0 非功能性需求 (Non-Functional Requirements)**
 
 *   **性能 (Performance)**: 必须将所有数据密集型操作（连接、比较、更新、插入）委托给 DuckDB 数据库引擎执行。严禁在 Python 中对数据进行行级循环处理。
-*   **灵活性与可维护性 (Flexibility & Maintainability)**: 系统的设计必须确保在添加新表或修改现有表结构时，开发者只需修改 `schema.toml` 文件，而无需触碰 Python 业务逻辑代码。
+*   **灵活性与可维护性 (Flexibility & Maintainability)**: 系统的设计必须确保在添加新表或修改现有表结构时，开发者只需修改 `stock_schema.toml` 文件，而无需触碰 Python 业务逻辑代码。
 
 **8.0 验收标准 (Acceptance Criteria)**
 
 1.  **记录更新**: 当源 DataFrame 中的一条记录（基于主键）已存在于目标表中时，该记录在目标表中的所有非主键字段被成功更新为 DataFrame 中的值。
 2.  **记录插入**: 当源 DataFrame 中的一条记录（基于主键）不存在于目标表中时，该记录被成功插入到目标表中。
 3.  **记录保留**: 目标表中存在但源 DataFrame 中不存在的记录，保持原样，不受影响。
-4.  **通用性验证**: 编写的通用函数可以成功地对 `schema.toml` 中定义的任意一个表（例如，先对 `products` 表，再对 `sales_records` 表）执行增量加载，而无需任何代码修改。
+4.  **通用性验证**: 编写的通用函数可以成功地对 `stock_schema.toml` 中定义的任意一个表（例如，先对 `products` 表，再对 `sales_records` 表）执行增量加载，而无需任何代码修改。
 5.  **复合主键支持**: 如果一个表的 `primary_key` 包含多个字段，合并逻辑依然能正确工作。

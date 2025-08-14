@@ -79,11 +79,17 @@ def generate_combined_schema_toml(
         # 首先添加 table_name
         table_config["table_name"] = table_name
 
-        # 然后添加 primary_key（如果存在）
+        # 然后添加其他配置字段（黑名单机制：排除 api_method、sample_params、fields、output_file）
         if table_name in TABLE_CONFIGS:
             config = TABLE_CONFIGS[table_name]
-            if hasattr(config, "primary_key") and config.primary_key:
-                table_config["primary_key"] = config.primary_key
+            blacklist_fields = {"api_method", "sample_params", "fields", "output_file"}
+
+            for key, value in config.items():
+                # 跳过 table_name（已添加）和黑名单字段
+                if key != "table_name" and key not in blacklist_fields:
+                    # 只添加非空值
+                    if value:
+                        table_config[key] = value
 
         # 最后添加其他字段
         table_config["description"] = schema_data["description"]
@@ -114,7 +120,8 @@ TABLE_CONFIGS = Box(
         },
         "stock_daily": {
             "table_name": "stock_daily",
-            "primary_key": ["ts_code"],
+            "primary_key": ["ts_code", "trade_date"],
+            "date_col": "trade_date",
             "description": "股票日线数据字段",
             "api_method": "daily",
             "sample_params": {"ts_code": "600519.SH"},
@@ -123,7 +130,8 @@ TABLE_CONFIGS = Box(
         },
         "stock_adj_qfq": {
             "table_name": "stock_adj_qfq",
-            "primary_key": ["ts_code"],
+            "primary_key": ["ts_code", "trade_date"],
+            "date_col": "trade_date",
             "description": "复权行情数据字段",
             "api_method": "pro_bar",
             "sample_params": {
@@ -137,7 +145,8 @@ TABLE_CONFIGS = Box(
         },
         "stock_adj_raw": {
             "table_name": "stock_adj_raw",
-            "primary_key": ["ts_code"],
+            "primary_key": ["ts_code", "trade_date"],
+            "date_col": "trade_date",
             "description": "复权行情数据字段",
             "api_method": "pro_bar",
             "sample_params": {
@@ -151,7 +160,8 @@ TABLE_CONFIGS = Box(
         },
         "income_statement": {
             "table_name": "income_statement",
-            "primary_key": ["ts_code"],
+            "primary_key": ["ts_code", "ann_date"],
+            "date_col": "ann_date",
             "description": "利润表字段",
             "api_method": "income",
             "sample_params": {"ts_code": "000001.SZ", "period": "20231231"},
@@ -160,7 +170,8 @@ TABLE_CONFIGS = Box(
         },
         "balance_sheet": {
             "table_name": "balance_sheet",
-            "primary_key": ["ts_code"],
+            "primary_key": ["ts_code", "ann_date"],
+            "date_col": "ann_date",
             "description": "资产负债表字段",
             "api_method": "balancesheet",
             "sample_params": {"ts_code": "000001.SZ", "period": "20231231"},
@@ -169,7 +180,8 @@ TABLE_CONFIGS = Box(
         },
         "cash_flow": {
             "table_name": "cash_flow",
-            "primary_key": ["ts_code"],
+            "primary_key": ["ts_code", "ann_date"],
+            "date_col": "ann_date",
             "description": "现金流量表字段",
             "api_method": "cashflow",
             "sample_params": {"ts_code": "000001.SZ", "period": "20231231"},
