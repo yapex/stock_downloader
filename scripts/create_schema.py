@@ -93,7 +93,18 @@ def generate_combined_schema_toml(
 
         # 最后添加其他字段
         table_config["description"] = schema_data["description"]
-        table_config["columns"] = schema_data["columns"]
+        
+        # 合并字段名和类型信息
+        if "column_types" in schema_data:
+            # 创建包含字段名和类型的字典列表
+            columns_with_types = []
+            for col_name in schema_data["columns"]:
+                col_type = schema_data["column_types"].get(col_name, "TEXT")
+                columns_with_types.append({"name": col_name, "type": col_type})
+            table_config["columns"] = columns_with_types
+        else:
+            # 如果没有类型信息，保持原有格式
+            table_config["columns"] = schema_data["columns"]
 
         toml_data[table_name] = table_config
 
@@ -233,15 +244,33 @@ def get_table_schema_data(pro, table_name: str, config: Box) -> Dict[str, Any]:
             # 如果没有指定字段，获取所有字段
             df = api_method(**config.sample_params)
 
-        # 获取列名
+        # 获取列名和类型
         columns = df.columns.tolist()
+        
+        # 推断字段类型
+        column_types = {}
+        for col in columns:
+            dtype = df[col].dtype
+            if pd.api.types.is_integer_dtype(dtype):
+                column_types[col] = "INTEGER"
+            elif pd.api.types.is_float_dtype(dtype):
+                column_types[col] = "REAL"
+            elif pd.api.types.is_datetime64_any_dtype(dtype):
+                column_types[col] = "DATE"
+            elif pd.api.types.is_bool_dtype(dtype):
+                column_types[col] = "BOOLEAN"
+            else:
+                # 默认为字符串类型
+                column_types[col] = "TEXT"
 
         print(f"{table_name} 表包含 {len(columns)} 个字段: {columns}")
+        print(f"字段类型: {column_types}")
 
         return {
             "table_name": table_name,
             "description": config.description,
             "columns": columns,
+            "column_types": column_types,
         }
 
     except Exception as e:
@@ -273,10 +302,15 @@ def create_schemas(table_names: List[str] = None) -> None:
         config = TABLE_CONFIGS[table_name]
         schema_data = get_table_schema_data(pro, table_name, config)
         if schema_data:
-            all_schemas[table_name] = {
+            schema_dict = {
                 "description": schema_data["description"],
                 "columns": schema_data["columns"],
             }
+            # 添加字段类型信息（如果存在）
+            if "column_types" in schema_data:
+                schema_dict["column_types"] = schema_data["column_types"]
+            
+            all_schemas[table_name] = schema_dict
             success_count += 1
 
     # 生成统一的 schema 文件
