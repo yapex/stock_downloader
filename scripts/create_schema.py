@@ -80,7 +80,18 @@ def generate_combined_schema_toml(
         for column in schema_data["columns"]:
             toml_content += f'    "{column}",\n'
 
-        toml_content += "]\n\n"
+        toml_content += "]\n"
+
+        # 添加主键配置（如果存在）
+        if table_name in TABLE_CONFIGS:
+            config = TABLE_CONFIGS[table_name]
+            if "primary_key" in config and config["primary_key"]:
+                toml_content += "primary_key = [\n"
+                for key in config["primary_key"]:
+                    toml_content += f'    "{key}",\n'
+                toml_content += "]\n"
+
+        toml_content += "\n"
 
     # 写入文件
     with open(output_path, "w", encoding="utf-8") as f:
@@ -97,6 +108,7 @@ TABLE_CONFIGS = {
         "description": "股票基本信息表字段",
         "api_method": "stock_basic",
         "sample_params": {"ts_code": "600519.SH"},
+        "primary_key": ["ts_code"],
         "fields": [],
         "output_file": "src/stock_schema.toml",
     },
