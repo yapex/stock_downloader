@@ -263,3 +263,32 @@ class TestDBOperator:
         # stock_daily 在 schema 中存在但数据库中未创建
         with pytest.raises(Exception):  # 应该抛出数据库相关异常
             db_operator.get_max_date("stock_daily")
+
+    def test_get_all_symbols_with_data(self, db_operator, sample_stock_basic_data):
+        """测试有数据的 stock_basic 表查询所有 symbol"""
+        # 创建 stock_basic 表并插入测试数据
+        db_operator.create_table("stock_basic")
+        db_operator.upsert("stock_basic", sample_stock_basic_data)
+
+        # 查询所有 symbol
+        symbols = db_operator.get_all_symbols()
+
+        expected_codes = ["000001.SZ", "000002.SZ"]
+        assert len(symbols) == 2
+        assert set(symbols) == set(expected_codes)
+
+    def test_get_all_symbols_empty_table(self, db_operator):
+        """测试空的 stock_basic 表查询所有 symbol"""
+        # 创建 stock_basic 表但不插入数据
+        db_operator.create_table("stock_basic")
+
+        # 查询所有 symbol
+        symbols = db_operator.get_all_symbols()
+
+        assert symbols == []
+
+    def test_get_all_symbols_table_not_exists(self, db_operator):
+        """测试表在数据库中不存在的情况"""
+        # stock_basic 表未创建
+        with pytest.raises(Exception):  # 应该抛出数据库相关异常
+            db_operator.get_all_symbols()

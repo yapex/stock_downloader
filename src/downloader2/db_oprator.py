@@ -209,3 +209,35 @@ class DBOperator(SchemaTableCreator):
         except Exception as e:
             logger.error(f"查询表 '{table_name}' 最大日期失败: {e}")
             raise
+
+    def get_all_symbols(self) -> list[str]:
+        """
+        查询 stock_basic 表，返回所有的 symbol。
+
+        Returns:
+            list[str]: 所有股票代码的列表
+        """
+        table_key = "stock_basic"
+
+        if table_key not in self.stock_schema:
+            raise ValueError(f"表配置 '{table_key}' 不存在于 schema 中")
+
+        table_config = self.stock_schema[table_key]
+        table_name = table_config.table_name
+        sql = f"SELECT ts_code FROM {table_name}"
+
+        try:
+            if callable(self.conn):
+                with self.conn() as conn:
+                    result = conn.execute(sql).fetchall()
+            else:
+                result = self.conn.execute(sql).fetchall()
+
+            # 提取 ts_code 列表
+            ts_codes = [row[0] for row in result if row[0] is not None]
+            logger.debug(f"从表 '{table_name}' 查询到 {len(ts_codes)} 个股票代码")
+            return ts_codes
+
+        except Exception as e:
+            logger.error(f"查询表 '{table_name}' 的 ts_code 失败: {e}")
+            raise
