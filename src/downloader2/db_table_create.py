@@ -11,6 +11,7 @@ from enum import Enum
 
 class TableName(Enum):
     """数据库表名枚举"""
+
     STOCK_BASIC = "stock_basic"
     STOCK_DAILY = "stock_daily"
     STOCK_ADJ_QFQ = "stock_adj_qfq"
@@ -18,6 +19,7 @@ class TableName(Enum):
     INCOME_STATEMENT = "income_statement"
     BALANCE_SHEET = "balance_sheet"
     CASH_FLOW = "cash_flow"
+
 
 config = get_config()
 logger = logging.getLogger(__name__)
@@ -34,7 +36,7 @@ class SchemaTableCreator:
 
     def _get_table_schema(self, table_name: str) -> Box:
         """获取表的schema"""
-        return self.stock_schema.tables[table_name]
+        return self.stock_schema[table_name]
 
     def _map_schema_type_to_duckdb(self, schema_type: str) -> str:
         """
@@ -103,6 +105,34 @@ class SchemaTableCreator:
         pk_columns = ", ".join(primary_key)
         return f",\n    PRIMARY KEY ({pk_columns})"
 
+    def extract_column_names(self, columns) -> list:
+        """
+        从schema配置中提取列名
+        
+        Args:
+            columns: 列配置，可以是字典或列表格式
+            
+        Returns:
+            列名列表
+        """
+        if isinstance(columns, dict):
+            return list(columns.keys())
+        elif isinstance(columns, list):
+            column_names = []
+            for col in columns:
+                if isinstance(col, dict):
+                    if 'name' in col:
+                        # 新格式：{name: "字段名", type: "类型"}
+                        column_names.append(col['name'])
+                    else:
+                        # 旧格式：{"字段名": {"type": "类型"}}
+                        column_names.extend(col.keys())
+                elif isinstance(col, str):
+                    column_names.append(col)
+            return column_names
+        else:
+            raise ValueError(f"不支持的列配置格式: {type(columns)}")
+
     def _generate_create_table_sql(self, table_config: Box) -> str:
         """
         根据表配置生成CREATE TABLE SQL语句
@@ -142,22 +172,55 @@ class SchemaTableCreator:
         try:
             table_enum = TableName(table_name)
         except ValueError:
-            logger.error(f"无效的表名: {table_name}，有效的表名: {[t.value for t in TableName]}")
+            logger.error(
+                f"无效的表名: {table_name}，有效的表名: {[t.value for t in TableName]}"
+            )
             return False
-            
-        if table_enum.value not in self.stock_schema.tables:
+
+        if table_enum.value not in self.stock_schema:
             logger.error(f"表配置不存在: {table_name}")
             return False
 
-        table_config = self.stock_schema.tables[table_enum.value]
+        table_config = self.stock_schema[table_enum.value]
         sql = self._generate_create_table_sql(table_config)
 
         try:
-            with self.conn() as conn:
-                conn.execute(sql)
-                logger.info(f"表 {table_config.table_name} 创建成功")
-                logger.debug(f"SQL: {sql}")
-                return True
+            # 如果 self.conn 是函数，则调用它；如果是连接对象，则直接使用
+            if callable(self.conn):
+                with self.conn() as conn:
+                    conn.execute(sql)
+            else:
+                self.conn.execute(sql)
+            logger.info(f"表 {table_config.table_name} 创建成功")
+            logger.debug(f"SQL: {sql}")
+            return True
         except Exception as e:
             logger.error(f"表 {table_config.table_name} 创建失败: {e}")
             return False
+
+    def create_all_tables(self) -> Dict[str, bool]:
+        """
+        创建所有表
+
+        Returns:
+            Dict[str, bool]: 每个表的创建结果，键为表名，值为创建是否成功
+        """
+        results = {}
+
+        for table_enum in TableName:
+            table_name = table_enum.value
+            # 只创建在schema中存在配置的表
+            if table_name in self.stock_schema:
+                success = self.create_table(table_name)
+                results[table_name] = success
+                if not success:
+                    logger.warning(f"表 {table_name} 创建失败")
+            else:
+                logger.warning(f"跳过表 {table_name}：在schema中未找到配置")
+                results[table_name] = False
+
+        successful_count = sum(1 for success in results.values() if success)
+        total_count = len(results)
+        logger.info(f"表创建完成：成功 {successful_count}/{total_count} 个表")
+
+        return results

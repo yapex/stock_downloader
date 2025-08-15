@@ -265,3 +265,69 @@ columns = [
         # 验证都可以成功创建表
         result1 = creator_memory.create_table(TableName.STOCK_BASIC.value)
         assert result1 is True
+
+    def test_create_all_tables(self, schema_file):
+        """测试创建所有表的功能"""
+        from downloader2.db_connection import get_memory_conn
+        
+        creator = SchemaTableCreator(schema_file_path=schema_file, conn=get_memory_conn)
+        
+        # 调用创建所有表的方法
+        results = creator.create_all_tables()
+        
+        # 验证返回结果是字典
+        assert isinstance(results, dict)
+        
+        # 验证包含了schema中定义的表
+        assert "stock_basic" in results
+        assert "stock_daily" in results
+        
+        # 验证这些表都创建成功
+        assert results["stock_basic"] is True
+        assert results["stock_daily"] is True
+        
+        # 验证表确实被创建了
+        with get_memory_conn() as conn:
+            # 检查表是否存在
+            tables = conn.execute("SHOW TABLES").fetchall()
+            table_names = [table[0] for table in tables]
+            assert "stock_basic" in table_names
+            assert "stock_daily" in table_names
+
+    def test_create_all_tables_with_missing_schema(self, schema_file):
+        """测试当某些表在schema中不存在时的处理"""
+        from downloader2.db_connection import get_memory_conn
+        import tempfile
+        import os
+        
+        # 创建一个只包含部分表的schema文件
+        partial_schema_content = """
+[tables.stock_basic]
+table_name = "stock_basic"
+primary_key = ["ts_code"]
+description = "股票基本信息表字段"
+columns = [
+    { name = "ts_code", type = "TEXT" },
+    { name = "symbol", type = "TEXT" },
+    { name = "name", type = "TEXT" }
+]
+"""
+        
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            f.write(partial_schema_content)
+            partial_schema_file = f.name
+        
+        try:
+            creator = SchemaTableCreator(schema_file_path=partial_schema_file, conn=get_memory_conn)
+            results = creator.create_all_tables()
+            
+            # 验证只有存在于schema中的表创建成功
+            assert results["stock_basic"] is True
+            
+            # 验证不存在于schema中的表标记为失败
+            assert results["stock_daily"] is False
+            assert results["stock_adj_qfq"] is False
+            
+        finally:
+            # 清理临时文件
+            os.unlink(partial_schema_file)

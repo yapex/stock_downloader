@@ -11,7 +11,7 @@ from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate
 
 from downloader2.factories.fetcher_builder import FetcherBuilder, TaskType
 from downloader2.interfaces.event_bus import IEventBus
-from downloader2.interfaces.event_handler import EventType
+from downloader2.interfaces.task_handler import TaskEventType
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ class TushareDownloader:
 
         # 发布任务成功事件
         self.event_bus.publish(
-            EventType.TASK_SUCCEEDED.value,
+            TaskEventType.TASK_SUCCEEDED.value,
             self,
             symbol=symbol,
             total_task_count=len(self.symbols),
@@ -106,7 +106,7 @@ class TushareDownloader:
 
         # 发布任务失败事件
         self.event_bus.publish(
-            EventType.TASK_FAILED.value,
+            TaskEventType.TASK_FAILED.value,
             self,
             symbol=symbol,
             error=str(error),
@@ -128,7 +128,7 @@ class TushareDownloader:
         self._populate_symbol_queue()
         # 发布任务开始事件
         self.event_bus.publish(
-            EventType.TASK_STARTED.value,
+            TaskEventType.TASK_STARTED.value,
             self,
             total_task_count=len(self.symbols),
             task_type=self.task_type.value,
@@ -140,7 +140,7 @@ class TushareDownloader:
         """停止下载器，发送结束信号给所有工作线程"""
         self._shutdown()
         self.event_bus.publish(
-            EventType.TASK_FINISHED.value,
+            TaskEventType.TASK_FINISHED.value,
             self,
             total_task_count=len(self.symbols),
             processed_task_count=self.processed_symbols,

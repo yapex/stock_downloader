@@ -30,11 +30,13 @@ class TestTushareDownloaderBusinessLogic:
     @pytest.fixture
     def downloader(self, executor):
         with patch("downloader2.tushare_downloader.FetcherBuilder"):
+            mock_event_bus = Mock()
             instance = TushareDownloader(
                 symbols=[SUCCESS_SYM, FAIL_SYM, EMPTY_SYM],
                 task_type=TaskType.STOCK_DAILY,
                 data_queue=Queue(),
                 executor=executor,
+                event_bus=mock_event_bus,
             )
             instance._fetching_by_symbol = Mock()
             yield instance
@@ -108,7 +110,7 @@ class TestTushareDownloaderBusinessLogic:
         downloader.start()
 
         downloader.task_queue.join()
-        downloader.shutdown(wait=True)
+        downloader.stop()
 
         # --- 断言 (Assert) ---
         assert downloader.successful_symbols == 2
