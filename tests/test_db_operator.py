@@ -3,9 +3,9 @@ import pandas as pd
 from unittest.mock import Mock, patch
 from contextlib import contextmanager
 import duckdb
-from src.downloader2.db_oprator import DBOperator
-from src.downloader2.db_table_create import SchemaTableCreator
-from src.downloader2.db_connection import get_memory_conn
+from downloader2.database.db_oprator import DBOperator
+from downloader2.database.db_table_create import SchemaTableCreator
+from downloader2.database.db_connection import get_memory_conn
 from pathlib import Path
 
 
@@ -181,7 +181,7 @@ class TestDBOperator:
             "ts_code": {"type": "TEXT", "primary_key": True},
             "name": {"type": "TEXT"},
         }
-        result = db_operator.extract_column_names(columns_dict)
+        result = db_operator._extract_column_names(columns_dict)
         assert result == ["ts_code", "name"]
 
     def test_extract_column_names_list(self, db_operator):
@@ -190,13 +190,13 @@ class TestDBOperator:
             {"name": "ts_code", "type": "TEXT"},
             {"name": "symbol", "type": "TEXT"},
         ]
-        result = db_operator.extract_column_names(columns_list)
+        result = db_operator._extract_column_names(columns_list)
         assert result == ["ts_code", "symbol"]
 
     def test_extract_column_names_invalid_format(self, db_operator):
         """测试无效格式的列配置"""
         with pytest.raises(ValueError, match="不支持的列配置格式"):
-            db_operator.extract_column_names("invalid_format")
+            db_operator._extract_column_names("invalid_format")
 
     def test_get_max_date_with_date_col(self, db_operator):
         """测试有 date_col 的表查询最大日期"""

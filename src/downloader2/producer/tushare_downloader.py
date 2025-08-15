@@ -9,7 +9,7 @@ from box import Box
 import pandas as pd
 from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate
 
-from downloader2.factories.fetcher_builder import FetcherBuilder, TaskType
+from downloader2.producer.fetcher_builder import FetcherBuilder, TaskType
 from downloader2.interfaces.event_bus import IEventBus
 from downloader2.interfaces.task_handler import TaskEventType
 

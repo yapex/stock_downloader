@@ -5,12 +5,12 @@ from concurrent.futures import ThreadPoolExecutor
 # --- 从您的项目中导入或在此处定义接口和事件类型 ---
 from downloader2.interfaces.event_bus import IEventBus
 from downloader2.interfaces.task_handler import ITaskHandler
-from downloader2.event_bus import BlinkerEventBus
+from downloader2.producer.event_bus import BlinkerEventBus
 from downloader2.interfaces.task_handler import TaskEventType
 
 
 # 为了演示的可运行性，我们在此处重新定义它们
-from downloader2.tqmd_task_handler import TqdmTaskHandler
+from downloader2.producer.tqmd_task_handler import TqdmTaskHandler
 
 
 def simulate_downloader(symbols: list, event_bus: IEventBus):

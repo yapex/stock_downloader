@@ -2,7 +2,7 @@ import pytest
 import tempfile
 import os
 from unittest.mock import patch, MagicMock
-from downloader2.db_table_create import SchemaTableCreator, TableName
+from downloader2.database.db_table_create import SchemaTableCreator, TableName
 
 
 class TestSchemaTableCreator:
@@ -235,7 +235,7 @@ columns = [
 
     def test_dependency_injection_with_memory_conn(self, schema_file):
         """测试通过依赖注入使用内存数据库连接"""
-        from downloader2.db_connection import get_memory_conn
+        from downloader2.database.db_connection import get_memory_conn
         
         # 通过依赖注入创建使用内存数据库的 SchemaTableCreator
         creator = SchemaTableCreator(schema_file_path=schema_file, conn=get_memory_conn)
@@ -249,7 +249,7 @@ columns = [
 
     def test_dependency_injection_different_connections(self, schema_file):
         """测试可以注入不同的连接函数"""
-        from downloader2.db_connection import get_memory_conn, get_conn
+        from downloader2.database.db_connection import get_memory_conn, get_conn
         
         # 创建使用内存数据库的实例
         creator_memory = SchemaTableCreator(schema_file_path=schema_file, conn=get_memory_conn)
@@ -268,7 +268,7 @@ columns = [
 
     def test_create_all_tables(self, schema_file):
         """测试创建所有表的功能"""
-        from downloader2.db_connection import get_memory_conn
+        from downloader2.database.db_connection import get_memory_conn
         
         creator = SchemaTableCreator(schema_file_path=schema_file, conn=get_memory_conn)
         
@@ -296,7 +296,7 @@ columns = [
 
     def test_create_all_tables_with_missing_schema(self, schema_file):
         """测试当某些表在schema中不存在时的处理"""
-        from downloader2.db_connection import get_memory_conn
+        from downloader2.database.db_connection import get_memory_conn
         import tempfile
         import os
         

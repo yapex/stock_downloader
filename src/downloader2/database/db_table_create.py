@@ -1,5 +1,5 @@
 from downloader2.config import get_config
-from downloader2.db_connection import get_conn
+from downloader2.database.db_connection import get_conn
 from pathlib import Path
 import duckdb
 import logging
@@ -33,6 +33,23 @@ class SchemaTableCreator:
         )
         with open(schema_file_path, "rb") as f:
             self.stock_schema = Box(tomllib.load(f))
+
+        # 检测 schema 格式：是否有 tables 属性
+        self._has_tables_section = hasattr(self.stock_schema, "tables")
+
+    def _get_table_config(self, table_name: str) -> Box:
+        """根据 schema 格式获取表配置"""
+        if self._has_tables_section:
+            return self.stock_schema.tables[table_name]
+        else:
+            return self.stock_schema[table_name]
+
+    def _table_exists_in_schema(self, table_name: str) -> bool:
+        """检查表是否在 schema 中存在"""
+        if self._has_tables_section:
+            return table_name in self.stock_schema.tables
+        else:
+            return table_name in self.stock_schema
 
     def _get_table_schema(self, table_name: str) -> Box:
         """获取表的schema"""
@@ -105,13 +122,13 @@ class SchemaTableCreator:
         pk_columns = ", ".join(primary_key)
         return f",\n    PRIMARY KEY ({pk_columns})"
 
-    def extract_column_names(self, columns) -> list:
+    def _extract_column_names(self, columns) -> list:
         """
         从schema配置中提取列名
-        
+
         Args:
             columns: 列配置，可以是字典或列表格式
-            
+
         Returns:
             列名列表
         """
@@ -121,9 +138,9 @@ class SchemaTableCreator:
             column_names = []
             for col in columns:
                 if isinstance(col, dict):
-                    if 'name' in col:
+                    if "name" in col:
                         # 新格式：{name: "字段名", type: "类型"}
-                        column_names.append(col['name'])
+                        column_names.append(col["name"])
                     else:
                         # 旧格式：{"字段名": {"type": "类型"}}
                         column_names.extend(col.keys())
@@ -177,11 +194,11 @@ class SchemaTableCreator:
             )
             return False
 
-        if table_enum.value not in self.stock_schema:
+        if not self._table_exists_in_schema(table_enum.value):
             logger.error(f"表配置不存在: {table_name}")
             return False
 
-        table_config = self.stock_schema[table_enum.value]
+        table_config = self._get_table_config(table_enum.value)
         sql = self._generate_create_table_sql(table_config)
 
         try:
@@ -210,7 +227,7 @@ class SchemaTableCreator:
         for table_enum in TableName:
             table_name = table_enum.value
             # 只创建在schema中存在配置的表
-            if table_name in self.stock_schema:
+            if self._table_exists_in_schema(table_name):
                 success = self.create_table(table_name)
                 results[table_name] = success
                 if not success:

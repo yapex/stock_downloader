@@ -1,11 +1,15 @@
-from .db_table_create import SchemaTableCreator
-import pandas as pd
 import logging
-from typing import Any
-from downloader2.db_connection import get_conn
+
+import pandas as pd
+
+from downloader2.config import get_config
+from downloader2.database.db_connection import get_conn
+
+from .db_table_create import SchemaTableCreator
 
 
 logger = logging.getLogger(__name__)
+config = get_config()
 
 
 class DBOperator(SchemaTableCreator):
@@ -27,7 +31,7 @@ class DBOperator(SchemaTableCreator):
         table_config = self.stock_schema[table_key]
         table_name = table_config.table_name
         primary_keys = table_config.primary_key
-        columns = self.extract_column_names(table_config.columns)
+        columns = self._extract_column_names(table_config.columns)
 
         if not primary_keys:
             raise ValueError(f"表 '{table_name}' 未定义主键，无法执行 upsert 操作。")

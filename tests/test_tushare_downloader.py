@@ -7,8 +7,8 @@ import pandas as pd
 from box import Box
 
 # 假设您的代码文件路径如下
-from downloader2.tushare_downloader import TushareDownloader
-from downloader2.factories.fetcher_builder import TaskType
+from downloader2.producer.tushare_downloader import TushareDownloader
+from downloader2.producer.fetcher_builder import TaskType
 
 # --- 常量定义 ---
 SUCCESS_SYM = "000001.SZ"
@@ -29,7 +29,7 @@ class TestTushareDownloaderBusinessLogic:
 
     @pytest.fixture
     def downloader(self, executor):
-        with patch("downloader2.tushare_downloader.FetcherBuilder"):
+        with patch("downloader2.producer.tushare_downloader.FetcherBuilder"):
             mock_event_bus = Mock()
             instance = TushareDownloader(
                 symbols=[SUCCESS_SYM, FAIL_SYM, EMPTY_SYM],
