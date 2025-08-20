@@ -8,8 +8,9 @@ test_data/
 cache/
 data/
 *.egg-info
-*.log
+logs/
 .env
+config.toml
 
 # Virtual environments
 .venv
