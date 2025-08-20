@@ -25,10 +25,8 @@ dependencies = [
     "pandas>=2.3.1",
     "pipdeptree>=2.28.0",
     "plotly>=6.2.0",
-    "ratelimit>=2.2.1",
     "python-dotenv>=1.1.1",
     "pyyaml>=6.0.2",
-    "tabulate>=0.9.0",
     "tqdm>=4.67.1",
     "tushare>=1.4.21",
     "typer>=0.12.3",
@@ -36,34 +34,13 @@ dependencies = [
     "python-box>=7.3.2",
     "blinker>=1.9.0",
     "tomli-w>=1.2.0",
+    "huey>=2.5.3",
 ]
 
 [project.scripts]
-dl = "downloader.main:app"
-
-# 开发环境依赖 (uv run pytest 时会用到)
-[project.optional-dependencies]
-dev = [
-    "ipykernel>=6.30.0",
-    "ipywidgets>=8.1.7",
-    "nbformat>=5.10.4",
-    "itables>=2.4.4",
-    "ruff>=0.12.0",
-]
+dl = "downloader2.downloader_app:app"
 
 
-
-# ==========================================================
-# 插件系统入口点 (核心新增部分)
-# 这里是我们“注册”所有任务处理器的地方。
-# DownloadEngine 会自动发现并加载这里定义的所有插件。
-# ==========================================================
-[project.entry-points."stock_downloader.task_handlers"]
-# 格式为: "任务类型标识符" = "模块路径:处理器类名"
-daily = "downloader.tasks.daily:DailyTaskHandler"
-stock_list = "downloader.tasks.stock_list:StockListTaskHandler"
-daily_basic = "downloader.tasks.daily_basic:DailyBasicTaskHandler"
-financials = "downloader.tasks.financials:FinancialsTaskHandler"
 
 # ==========================================================
 # Ruff configuration
@@ -175,4 +152,5 @@ dev = [
     "pytest>=8.4.1",
     "mypy>=1.11.0",
     "types-pyyaml>=6.0.12.20250516",
+    "ipykernel>=6.30.1",
 ]

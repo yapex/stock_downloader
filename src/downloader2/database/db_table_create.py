@@ -215,6 +215,34 @@ class SchemaTableCreator:
             logger.error(f"表 {table_config.table_name} 创建失败: {e}")
             return False
 
+    def table_exists(self, table_name: str) -> bool:
+        """
+        检查表是否存在于数据库中
+
+        Args:
+            table_name: 表名
+
+        Returns:
+            表是否存在
+        """
+        try:
+            if callable(self.conn):
+                with self.conn() as conn:
+                    result = conn.execute(
+                        "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?",
+                        [table_name]
+                    ).fetchone()
+                    return result[0] > 0
+            else:
+                result = self.conn.execute(
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?",
+                    [table_name]
+                ).fetchone()
+                return result[0] > 0
+        except Exception as e:
+            logger.debug(f"检查表 {table_name} 是否存在时出错: {e}")
+            return False
+
     def create_all_tables(self) -> Dict[str, bool]:
         """
         创建所有表

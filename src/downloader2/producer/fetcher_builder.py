@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from threading import Lock
 
 from downloader2.config import get_config
-from downloader.utils import normalize_stock_code
+from downloader2.utils import normalize_stock_code
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -37,14 +37,10 @@ class TaskType(Enum):
     STOCK_BASIC = TaskTemplate(api_method="stock_basic")
     STOCK_DAILY = TaskTemplate(api_method="daily")
     DAILY_BAR_QFQ = TaskTemplate(
-        api_method="pro_bar",
-        base_object="ts",
-        default_params={"adj": "qfq"}
+        api_method="pro_bar", base_object="ts", default_params={"adj": "qfq"}
     )
     DAILY_BAR_NONE = TaskTemplate(
-        api_method="pro_bar",
-        base_object="ts",
-        default_params={"adj": None}
+        api_method="pro_bar", base_object="ts", default_params={"adj": None}
     )
     BALANCESHEET = TaskTemplate(api_method="balancesheet")
     INCOME = TaskTemplate(api_method="income")
@@ -128,7 +124,7 @@ class FetcherBuilder:
         # 检查任务类型是否有效
         if not isinstance(task_type, TaskType):
             raise ValueError(f"不支持的任务类型: {task_type}")
-        
+
         # 直接从枚举获取模板
         template = task_type.template
 
@@ -170,4 +166,4 @@ if __name__ == "__main__":
     print(df.head(1))
     fetcher = FetcherBuilder().build_by_task(task_type)
     df = fetcher()
-    print(len(df))
+    print(df["ts_code"].tail(3))

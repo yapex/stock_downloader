@@ -61,28 +61,6 @@ columns = [
     { name = "amount", type = "REAL" },
 ]
 
-[stock_adj_raw]
-table_name = "stock_adj_raw"
-primary_key = [
-    "ts_code",
-    "trade_date",
-]
-date_col = "trade_date"
-description = "复权行情数据字段"
-columns = [
-    { name = "ts_code", type = "TEXT" },
-    { name = "trade_date", type = "TEXT" },
-    { name = "open", type = "REAL" },
-    { name = "high", type = "REAL" },
-    { name = "low", type = "REAL" },
-    { name = "close", type = "REAL" },
-    { name = "pre_close", type = "REAL" },
-    { name = "change", type = "REAL" },
-    { name = "pct_chg", type = "REAL" },
-    { name = "vol", type = "REAL" },
-    { name = "amount", type = "REAL" },
-]
-
 [income_statement]
 table_name = "income_statement"
 primary_key = [

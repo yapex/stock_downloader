@@ -93,7 +93,7 @@ def generate_combined_schema_toml(
 
         # 最后添加其他字段
         table_config["description"] = schema_data["description"]
-        
+
         # 合并字段名和类型信息
         if "column_types" in schema_data:
             # 创建包含字段名和类型的字典列表
@@ -148,21 +148,6 @@ TABLE_CONFIGS = Box(
             "sample_params": {
                 "ts_code": "600519.SH",
                 "adj": "qfq",
-                "start_date": "20240101",
-                "end_date": "20240131",
-            },
-            "fields": [],
-            "output_file": "src/stock_schema.toml",
-        },
-        "stock_adj_raw": {
-            "table_name": "stock_adj_raw",
-            "primary_key": ["ts_code", "trade_date"],
-            "date_col": "trade_date",
-            "description": "复权行情数据字段",
-            "api_method": "pro_bar",
-            "sample_params": {
-                "ts_code": "600519.SH",
-                "adj": "",
                 "start_date": "20240101",
                 "end_date": "20240131",
             },
@@ -246,7 +231,7 @@ def get_table_schema_data(pro, table_name: str, config: Box) -> Dict[str, Any]:
 
         # 获取列名和类型
         columns = df.columns.tolist()
-        
+
         # 推断字段类型
         column_types = {}
         for col in columns:
@@ -309,7 +294,7 @@ def create_schemas(table_names: List[str] = None) -> None:
             # 添加字段类型信息（如果存在）
             if "column_types" in schema_data:
                 schema_dict["column_types"] = schema_data["column_types"]
-            
+
             all_schemas[table_name] = schema_dict
             success_count += 1
 

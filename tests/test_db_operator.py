@@ -61,9 +61,13 @@ class TestDBOperator:
         mock_config = Mock()
         mock_config.table_name = "test_table"
         mock_config.primary_key = []
-        mock_config.columns = {"col1": "TEXT"}
+        mock_config.columns = [{"name": "col1", "type": "TEXT"}]
 
         db_operator.stock_schema = {"test_table": mock_config}
+        
+        # 先创建表
+        with db_operator.conn() as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS test_table (col1 TEXT)")
 
         with pytest.raises(ValueError, match="未定义主键"):
             db_operator.upsert("test_table", sample_stock_basic_data)
@@ -77,6 +81,9 @@ class TestDBOperator:
                 # 缺少其他必需列
             }
         )
+        
+        # 先创建表
+        db_operator.create_table("stock_basic")
 
         with pytest.raises(ValueError, match="DataFrame 缺少以下列"):
             db_operator.upsert("stock_basic", incomplete_data)

@@ -1,9 +1,10 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import pandas as pd
 import argparse
 import sys
 import os
+from huey import MemoryHuey
 
 # 确保测试环境下可以直接从 src 导入包
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
@@ -49,6 +50,16 @@ def mock_storage():
     )  # 默认文件很新
     storage._get_file_path.return_value = mock_path
     return storage
+
+
+@pytest.fixture
+def huey_immediate():
+    """为测试提供即时模式的 Huey 实例"""
+    test_huey = MemoryHuey(immediate=True)
+    
+    # 使用 patch 替换 huey_tasks 模块中的 huey 实例
+    with patch('downloader2.producer.huey_tasks.huey', test_huey):
+        yield test_huey
 
 
 @pytest.fixture

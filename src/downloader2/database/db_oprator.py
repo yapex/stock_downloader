@@ -33,6 +33,12 @@ class DBOperator(SchemaTableCreator):
         primary_keys = table_config.primary_key
         columns = self._extract_column_names(table_config.columns)
 
+        # 检查表是否存在
+        if not self.table_exists(table_name):
+            raise ValueError(
+                f"表 '{table_name}' 不存在，无法执行 upsert 操作。请先创建表。"
+            )
+
         if not primary_keys:
             raise ValueError(f"表 '{table_name}' 未定义主键，无法执行 upsert 操作。")
 

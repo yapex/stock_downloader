@@ -5,32 +5,40 @@ import logging
 from queue import Empty, Queue
 import threading
 
-from box import Box
 import pandas as pd
 from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate
 
 from downloader2.producer.fetcher_builder import FetcherBuilder, TaskType
 from downloader2.interfaces.event_bus import IEventBus
 from downloader2.interfaces.task_handler import TaskEventType
+from .huey_tasks import process_fetched_data
 
 logger = logging.getLogger(__name__)
 
 
-class TushareDownloader:
+class TushareDownloader:  # 按给定symbol列表下载数据
     TASK_TYPE: TaskType
 
     def __init__(
         self,
         symbols: list[str],
         task_type: TaskType,
-        data_queue: Queue,
         executor: ThreadPoolExecutor,
         event_bus: IEventBus,
     ):
+        # 检查symbols是否为空列表
+        if not symbols and task_type != TaskType.STOCK_BASIC:
+            logger.warning(
+                f"警告：任务类型 {task_type.value} 的symbols列表为空，该下载器将不会执行任何任务"
+            )
+        elif not symbols and task_type == TaskType.STOCK_BASIC:
+            logger.warning(
+                f"警告：任务类型 {task_type.value} 的symbols列表为空，该下载器将不会执行任何任务"
+            )
+
         self.symbols = symbols
         self.task_type = task_type
         self.fetcher_builder = FetcherBuilder()
-        self.data_queue = data_queue
         self.executor = executor
 
         self.event_bus = event_bus
@@ -42,11 +50,17 @@ class TushareDownloader:
 
         self._shutdown_event = threading.Event()
 
-        self.total_symbols = len(symbols)
+        # 计算正确的总任务数：对于STOCK_BASIC任务，总任务数是1（如果symbols不为空）；其他任务是symbols数量
+        if task_type == TaskType.STOCK_BASIC:
+            self.total_symbols = 1 if symbols else 0
+        else:
+            self.total_symbols = len(symbols)
         self.processed_symbols = 0
         self.successful_symbols = 0
         self.failed_symbols = 0
         self._progress_lock = threading.Lock()
+        self._completion_checked = threading.Event()  # 使用 Event 防止重复检查完成状态
+        self._stop_called = threading.Event()  # 防止 stop 方法被多次调用
 
         self.rate_limiter = Limiter(
             InMemoryBucket([Rate(190, Duration.MINUTE)]),
@@ -76,20 +90,23 @@ class TushareDownloader:
     def _handle_successful_fetch(self, symbol: str, df: pd.DataFrame) -> None:
         """处理成功获取的数据"""
         if not df.empty:
-            task = Box(
-                {"symbol": symbol, "task_type": self.task_type.value, "data": df}
-            )
-            self.data_queue.put(task)
+            # 使用 Huey 任务替代 data_queue.put
+            process_fetched_data(symbol, self.task_type.name, df.to_dict())
 
         # 关键修正：在任务成功时，调用简化的进度更新方法。
         self._update_progress("success")
+
+        # 计算正确的总任务数：对于STOCK_BASIC任务，总任务数是1；其他任务是symbols数量
+        total_task_count = (
+            1 if self.task_type == TaskType.STOCK_BASIC else len(self.symbols)
+        )
 
         # 发布任务成功事件
         self.event_bus.publish(
             TaskEventType.TASK_SUCCEEDED.value,
             self,
             symbol=symbol,
-            total_task_count=len(self.symbols),
+            total_task_count=total_task_count,
             processed_task_count=self.processed_symbols,
             successful_task_count=self.successful_symbols,
             failed_task_count=self.failed_symbols,
@@ -125,12 +142,26 @@ class TushareDownloader:
 
     def start(self):
         """启动下载器，将任务提交给线程池"""
+        # 如果symbols为空，根据任务类型决定是否启动
+        if not self.symbols:
+            if self.task_type == TaskType.STOCK_BASIC:
+                # STOCK_BASIC任务类型，即使symbols为空也可以启动，但需要警告
+                logger.warning(
+                    f"任务类型 {self.task_type.value} 的symbols列表为空，但仍将启动下载器"
+                )
+            else:
+                # 其他任务类型，symbols为空时不启动
+                logger.warning(
+                    f"任务类型 {self.task_type.value} 的symbols列表为空，跳过启动"
+                )
+                return
+
         self._populate_symbol_queue()
         # 发布任务开始事件
         self.event_bus.publish(
             TaskEventType.TASK_STARTED.value,
             self,
-            total_task_count=len(self.symbols),
+            total_task_count=self.total_symbols,
             task_type=self.task_type.value,
         )
         for _ in range(self.worker_count):
@@ -138,11 +169,16 @@ class TushareDownloader:
 
     def stop(self):
         """停止下载器，发送结束信号给所有工作线程"""
+        # 确保 stop 方法只被执行一次
+        if self._stop_called.is_set():
+            return
+        self._stop_called.set()
+
         self._shutdown()
         self.event_bus.publish(
             TaskEventType.TASK_FINISHED.value,
             self,
-            total_task_count=len(self.symbols),
+            total_task_count=self.total_symbols,
             processed_task_count=self.processed_symbols,
             successful_task_count=self.successful_symbols,
             failed_task_count=self.failed_symbols,
@@ -151,18 +187,61 @@ class TushareDownloader:
 
     def _worker(self):
         """工作线程主循环"""
+        logger.debug(
+            f"工作线程启动 - 任务类型: {self.task_type.value}, 队列大小: {self.task_queue.qsize()}"
+        )
         while not self._shutdown_event.is_set():
             try:
                 symbol = self.task_queue.get(timeout=1.0)
+                logger.debug(
+                    f"工作线程获取到任务: {symbol} - 任务类型: {self.task_type.value}"
+                )
                 try:
                     self._process_symbol(symbol)
                 finally:
                     # 这个 finally 块是正确的，确保了 get() 和 task_done() 的配对
                     self.task_queue.task_done()
+
+                # 检查是否所有任务都已完成
+                self._check_completion()
+
             except Empty:
+                logger.debug(
+                    f"工作线程等待超时 - 任务类型: {self.task_type.value}, 队列大小: {self.task_queue.qsize()}"
+                )
+                # 队列为空时也检查是否所有任务都已完成
+                self._check_completion()
                 continue
             except Exception as e:
                 logger.error(f"工作线程发生未知严重错误: {e}")
+        logger.debug(f"工作线程结束 - 任务类型: {self.task_type.value}")
+
+    def _check_completion(self):
+        """检查是否所有任务都已完成，如果是则自动停止下载器"""
+        # 如果已经检查过完成状态，直接返回
+        if self._completion_checked.is_set():
+            return
+
+        with self._progress_lock:
+            # 再次检查，防止竞态条件
+            if self._completion_checked.is_set():
+                return
+
+            # 检查是否所有任务都已处理完成
+            if (
+                self.processed_symbols >= self.total_symbols
+                and self.task_queue.qsize() == 0
+                and self.total_symbols > 0
+            ):
+                self._completion_checked.set()  # 原子性标记已检查
+                logger.info(
+                    f"任务类型 {self.task_type.value} 的所有任务已完成，自动停止下载器"
+                )
+                self._shutdown_event.set()  # 设置停止信号
+                # 在单独的线程中调用stop方法，避免死锁
+                import threading
+
+                threading.Thread(target=self.stop, daemon=True).start()
 
     def _process_symbol(self, symbol: str):
         """处理单个symbol"""
@@ -196,8 +275,23 @@ class TushareDownloader:
 
     def _populate_symbol_queue(self):
         """将symbols数据放入内部队列"""
-        for symbol in self.symbols:
-            self.task_queue.put(symbol)
+        logger.debug(
+            f"开始填充任务队列 - 任务类型: {self.task_type.value}, 股票数量: {len(self.symbols)}"
+        )
+
+        # 特殊处理：对于STOCK_BASIC任务类型，只放入一个空字符串作为任务
+        # 因为STOCK_BASIC任务不需要symbol参数，可以直接获取所有股票的基本信息
+        if self.task_type == TaskType.STOCK_BASIC:
+            self.task_queue.put("")
+            logger.debug(f"STOCK_BASIC任务类型特殊处理：只添加一个空symbol任务")
+        else:
+            # 其他任务类型正常处理，遍历symbols列表
+            for symbol in self.symbols:
+                self.task_queue.put(symbol)
+
+        logger.debug(
+            f"任务队列填充完成 - 任务类型: {self.task_type.value}, 队列大小: {self.task_queue.qsize()}"
+        )
 
     def _shutdown(self, wait: bool = True, timeout: float = 30.0):
         """优雅地关闭下载器"""
@@ -216,7 +310,12 @@ class TushareDownloader:
         logger.debug("下载器关闭信号已发送。")
 
     def _fetching_by_symbol(self, symbol: str) -> pd.DataFrame:
-        fetcher = self.fetcher_builder.build_by_task(self.task_type, symbol)
+        # 对于空字符串symbol（STOCK_BASIC特殊处理），不传入symbol参数
+        if symbol == "" and self.task_type == TaskType.STOCK_BASIC:
+            fetcher = self.fetcher_builder.build_by_task(self.task_type)
+            logger.debug(f"STOCK_BASIC任务类型特殊处理：不传入symbol参数")
+        else:
+            fetcher = self.fetcher_builder.build_by_task(self.task_type, symbol)
         return fetcher()
 
 

@@ -1,4 +1,4 @@
-from .interfaces.event_bus import IEventBus
+from ..interfaces.event_bus import IEventBus
 from blinker import Signal
 from typing import Callable, Any
 

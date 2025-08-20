@@ -17,26 +17,41 @@ class TqdmTaskHandler(ITaskHandler):
     def __init__(self, event_bus: IEventBus):
         # 将 tqdm 实例作为成员变量，以便在不同方法中访问
         self.pbar: Optional[tqdm] = None
-        event_bus.subscribe(TaskEventType.TASK_STARTED, self.on_started)
-        event_bus.subscribe(TaskEventType.TASK_SUCCEEDED, self.on_progress)
-        event_bus.subscribe(TaskEventType.TASK_FAILED, self.on_failed)
-        event_bus.subscribe(TaskEventType.TASK_FINISHED, self.on_finished)
+        self.total_tasks = 0
+        self.started_count = 0
+        self.finished_count = 0
+        self.successful_count = 0
+        self.failed_count = 0
+        event_bus.subscribe(TaskEventType.TASK_STARTED.value, self.on_started)
+        event_bus.subscribe(TaskEventType.TASK_SUCCEEDED.value, self.on_progress)
+        event_bus.subscribe(TaskEventType.TASK_FAILED.value, self.on_failed)
+        event_bus.subscribe(TaskEventType.TASK_FINISHED.value, self.on_finished)
 
     def on_started(self, sender: Any, **kwargs) -> None:
         """
-        响应 TASK_STARTED 事件：创建并初始化进度条。
+        响应 TASK_STARTED 事件：累积任务数并在第一次时创建进度条。
         """
         total = kwargs.get("total_task_count", 0)
         task_type = kwargs.get("task_type", "Tasks")
-        if total > 0:
+        
+        # 累积总任务数
+        self.total_tasks += total
+        self.started_count += 1
+        
+        # 只在第一次启动时创建进度条
+        if self.pbar is None and self.total_tasks > 0:
             self.pbar = tqdm(
-                total=total,
-                desc=f"Processing {task_type}",
+                total=self.total_tasks,
+                desc=f"Processing Tasks",
                 unit="task",
                 bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]",
             )
             # 使用 tqdm 的 write 方法输出启动信息，避免干扰进度条
-            self.pbar.write(f"🚀 Starting downloader simulation for {total} tasks...")
+            self.pbar.write(f"🚀 Starting downloader simulation for {self.total_tasks} tasks...")
+        elif self.pbar is not None:
+            # 如果进度条已存在，更新总数
+            self.pbar.total = self.total_tasks
+            self.pbar.refresh()
 
     def on_progress(self, sender: Any, **kwargs) -> None:
         """
@@ -70,23 +85,36 @@ class TqdmTaskHandler(ITaskHandler):
 
     def on_finished(self, sender: Any, **kwargs) -> None:
         """
-        响应 TASK_FINISHED 事件：关闭进度条并打印最终总结。
+        响应 TASK_FINISHED 事件：累积完成数，并在所有下载器都完成后关闭进度条。
         """
         if not self.pbar:
             return
 
+        # 累积完成的任务数
         successful = kwargs.get("successful_task_count", 0)
         failed = kwargs.get("failed_task_count", 0)
-        total = kwargs.get("total_task_count", successful + failed)
-
-        # 确保进度条在关闭前是100%
-        # 这处理了任务提前终止的情况
-        self.pbar.n = successful + failed
-        self.pbar.refresh()
-
-        self.pbar.set_postfix_str("Completed!", refresh=True)
-        self.pbar.close()
-        # 在新的一行打印最终总结
+        self.successful_count += successful
+        self.failed_count += failed
+        self.finished_count += 1
+        
+        # 在新的一行打印当前下载器的总结
         self.pbar.write(
-            f"🏁 Task finished. Total: {total}, Success: {successful}, Failed: {failed}."
+            f"🏁 Task finished. Total: {successful + failed}, Success: {successful}, Failed: {failed}."
         )
+        
+        # 只有当所有下载器都完成时才关闭进度条
+        if self.finished_count >= self.started_count:
+            # 确保进度条在关闭前是100%
+            # 这处理了任务提前终止的情况
+            self.pbar.n = self.successful_count + self.failed_count
+            self.pbar.refresh()
+
+            self.pbar.set_postfix_str("All Completed!", refresh=True)
+            self.pbar.close()
+            # 重置计数器，以便下次使用
+            self.total_tasks = 0
+            self.started_count = 0
+            self.finished_count = 0
+            self.successful_count = 0
+            self.failed_count = 0
+            self.pbar = None
