@@ -79,17 +79,22 @@ def generate_combined_schema_toml(
         # 首先添加 table_name
         table_config["table_name"] = table_name
 
-        # 然后添加其他配置字段（黑名单机制：排除 api_method、sample_params、fields、output_file）
+        # 然后添加其他配置字段（黑名单机制：排除 fields、output_file，但保留 api_method 和 default_params）
         if table_name in TABLE_CONFIGS:
             config = TABLE_CONFIGS[table_name]
-            blacklist_fields = {"api_method", "sample_params", "fields", "output_file"}
+            blacklist_fields = {"fields", "output_file"}
 
             for key, value in config.items():
                 # 跳过 table_name（已添加）和黑名单字段
                 if key != "table_name" and key not in blacklist_fields:
                     # 只添加非空值
                     if value:
-                        table_config[key] = value
+                        # 对于 default_params，确保它是内联表格式
+                        if key == "default_params" and isinstance(value, dict):
+                            # 创建内联表格式的字典
+                            table_config[key] = dict(value)
+                        else:
+                            table_config[key] = value
 
         # 最后添加其他字段
         table_config["description"] = schema_data["description"]
@@ -108,9 +113,39 @@ def generate_combined_schema_toml(
 
         toml_data[table_name] = table_config
 
-    # 使用 tomli_w 写入 TOML 文件
-    with open(output_path, "wb") as f:
-        tomli_w.dump(toml_data, f)
+    # 手动构建 TOML 字符串以确保 default_params 是内联表格式
+    toml_lines = []
+    
+    for table_name, table_config in toml_data.items():
+        toml_lines.append(f"[{table_name}]")
+        
+        # 处理每个配置项
+        for key, value in table_config.items():
+            if key == "default_params" and isinstance(value, dict):
+                # 将 default_params 写成内联表格式
+                inline_params = ", ".join([f'{k} = "{v}"' if isinstance(v, str) else f'{k} = {v}' for k, v in value.items()])
+                toml_lines.append(f"default_params = {{ {inline_params} }}")
+            elif isinstance(value, list) and value and isinstance(value[0], str):
+                # 处理字符串数组（如 primary_key）
+                formatted_list = '[\n    ' + ',\n    '.join([f'"{item}"' for item in value]) + ',\n]'
+                toml_lines.append(f"{key} = {formatted_list}")
+            elif isinstance(value, list) and value and isinstance(value[0], dict):
+                # 处理对象数组（如 columns）
+                toml_lines.append(f"{key} = [")
+                for item in value:
+                    item_str = ", ".join([f'{k} = "{v}"' if isinstance(v, str) else f'{k} = {v}' for k, v in item.items()])
+                    toml_lines.append(f"    {{ {item_str} }},")
+                toml_lines.append("]")
+            elif isinstance(value, str):
+                toml_lines.append(f'{key} = "{value}"')
+            else:
+                toml_lines.append(f"{key} = {value}")
+        
+        toml_lines.append("")  # 空行分隔表
+    
+    # 写入文件
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(toml_lines))
 
     print(f"已生成合并的 schema 文件: {output_path}")
     total_columns = sum(len(schema["columns"]) for schema in all_schemas.values())
@@ -125,7 +160,7 @@ TABLE_CONFIGS = Box(
             "primary_key": ["ts_code"],
             "description": "股票基本信息表字段",
             "api_method": "stock_basic",
-            "sample_params": {"ts_code": "600519.SH"},
+            "default_params": {"ts_code": "600519.SH"},
             "fields": [],
             "output_file": "src/stock_schema.toml",
         },
@@ -135,7 +170,7 @@ TABLE_CONFIGS = Box(
             "date_col": "trade_date",
             "description": "股票日线数据字段",
             "api_method": "daily",
-            "sample_params": {"ts_code": "600519.SH", "trade_date": "20150726"},
+            "default_params": {"ts_code": "600519.SH", "trade_date": "20150726"},
             "fields": [],
             "output_file": "src/stock_schema.toml",
         },
@@ -145,7 +180,7 @@ TABLE_CONFIGS = Box(
             "date_col": "trade_date",
             "description": "复权行情数据字段",
             "api_method": "pro_bar",
-            "sample_params": {
+            "default_params": {
                 "ts_code": "600519.SH",
                 "adj": "qfq",
                 "start_date": "20240101",
@@ -160,7 +195,7 @@ TABLE_CONFIGS = Box(
             "date_col": "trade_date",
             "description": "获取全部股票每日重要的基本面指标",
             "api_method": "daily_basic",
-            "sample_params": {"ts_code": "600519.SH", "trade_date": "20150726"},
+            "default_params": {"ts_code": "600519.SH", "trade_date": "20150726"},
             "fields": [],
             "output_file": "src/stock_schema.toml",
         },
@@ -170,7 +205,7 @@ TABLE_CONFIGS = Box(
             "date_col": "ann_date",
             "description": "利润表字段",
             "api_method": "income",
-            "sample_params": {"ts_code": "600519.SH", "period": "20241231"},
+            "default_params": {"ts_code": "600519.SH", "period": "20241231"},
             "fields": [],
             "output_file": "src/stock_schema.toml",
         },
@@ -180,7 +215,7 @@ TABLE_CONFIGS = Box(
             "date_col": "ann_date",
             "description": "资产负债表字段",
             "api_method": "balancesheet",
-            "sample_params": {"ts_code": "600519.SH", "period": "20241231"},
+            "default_params": {"ts_code": "600519.SH", "period": "20241231"},
             "fields": [],
             "output_file": "src/stock_schema.toml",
         },
@@ -190,7 +225,7 @@ TABLE_CONFIGS = Box(
             "date_col": "ann_date",
             "description": "现金流量表字段",
             "api_method": "cashflow",
-            "sample_params": {"ts_code": "600519.SH", "period": "20241231"},
+            "default_params": {"ts_code": "600519.SH", "period": "20241231"},
             "fields": [],
             "output_file": "src/stock_schema.toml",
         },
@@ -234,10 +269,10 @@ def get_table_schema_data(pro, table_name: str, config: Box) -> Dict[str, Any]:
         # 调用 API 获取数据
         if config.fields:
             # 如果配置中指定了字段，使用指定字段
-            df = api_method(**config.sample_params, fields=config.fields)
+            df = api_method(**config.default_params, fields=config.fields)
         else:
             # 如果没有指定字段，获取所有字段
-            df = api_method(**config.sample_params)
+            df = api_method(**config.default_params)
 
         # 获取列名和类型
         columns = df.columns.tolist()

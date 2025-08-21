@@ -42,7 +42,7 @@ class TestTaskType:
         """测试任务类型枚举值"""
         assert TaskType.STOCK_BASIC.name == "STOCK_BASIC"
         assert TaskType.STOCK_DAILY.name == "STOCK_DAILY"
-        assert TaskType.DAILY_BAR_QFQ.name == "DAILY_BAR_QFQ"
+        assert TaskType.STOCK_ADJ_QFQ.name == "STOCK_ADJ_QFQ"
     
     def test_task_type_templates(self):
         """测试任务类型模板"""
@@ -157,7 +157,7 @@ class TestFetcherBuilder:
         result = fetcher()
         
         mock_get_api.assert_called_once_with("pro", "stock_basic")
-        mock_api_func.assert_called_once_with()
+        mock_api_func.assert_called_once_with(ts_code='600519.SH')
         assert isinstance(result, pd.DataFrame)
     
     @patch.object(TushareApiManager, 'get_api_function')
@@ -192,7 +192,7 @@ class TestFetcherBuilder:
         mock_get_api.return_value = mock_api_func
         
         # 使用有默认参数的任务类型
-        fetcher = self.builder.build_by_task(TaskType.DAILY_BAR_QFQ)
+        fetcher = self.builder.build_by_task(TaskType.STOCK_ADJ_QFQ)
         result = fetcher()
         
         mock_get_api.assert_called_once_with("ts", "pro_bar")

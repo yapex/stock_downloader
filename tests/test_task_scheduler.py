@@ -52,19 +52,19 @@ class TestTaskTypeConfig:
         
         assert config.get_priority(TaskType.STOCK_BASIC) == TaskPriority.HIGH
         assert config.get_priority(TaskType.STOCK_DAILY) == TaskPriority.MEDIUM
-        assert config.get_priority(TaskType.BALANCESHEET) == TaskPriority.LOW
+        assert config.get_priority(TaskType.BALANCE_SHEET) == TaskPriority.LOW
     
     def test_custom_priorities(self):
         """测试自定义优先级"""
         custom_priorities = {
             TaskType.STOCK_DAILY: TaskPriority.HIGH,
-            TaskType.BALANCESHEET: TaskPriority.MEDIUM
+            TaskType.BALANCE_SHEET: TaskPriority.MEDIUM
         }
         config = TaskTypeConfig(custom_priorities)
         
         # 自定义优先级应该覆盖默认值
         assert config.get_priority(TaskType.STOCK_DAILY) == TaskPriority.HIGH
-        assert config.get_priority(TaskType.BALANCESHEET) == TaskPriority.MEDIUM
+        assert config.get_priority(TaskType.BALANCE_SHEET) == TaskPriority.MEDIUM
         # 未自定义的应该保持默认值
         assert config.get_priority(TaskType.STOCK_BASIC) == TaskPriority.HIGH
     
@@ -82,7 +82,7 @@ class TestTaskTypeConfig:
         
         # 模拟一个不存在的任务类型
         # 由于我们无法创建新的 TaskType，这里测试现有类型的默认行为
-        assert config.get_priority(TaskType.INCOME) == TaskPriority.LOW
+        assert config.get_priority(TaskType.INCOME_STATEMENT) == TaskPriority.LOW
 
 
 class TestTaskScheduler:
@@ -128,7 +128,7 @@ class TestTaskScheduler:
     def test_priority_ordering(self, scheduler):
         """测试优先级排序"""
         # 添加不同优先级的任务
-        low_config = DownloadTaskConfig("600519", TaskType.BALANCESHEET)  # 默认 LOW
+        low_config = DownloadTaskConfig("600519", TaskType.BALANCE_SHEET)  # 默认 LOW
         medium_config = DownloadTaskConfig("000001", TaskType.STOCK_DAILY)  # 默认 MEDIUM
         high_config = DownloadTaskConfig("", TaskType.STOCK_BASIC)  # 默认 HIGH
         
@@ -144,7 +144,7 @@ class TestTaskScheduler:
         
         assert first_task.task_type == TaskType.STOCK_BASIC  # HIGH
         assert second_task.task_type == TaskType.STOCK_DAILY  # MEDIUM
-        assert third_task.task_type == TaskType.BALANCESHEET  # LOW
+        assert third_task.task_type == TaskType.BALANCE_SHEET  # LOW
     
     def test_fifo_same_priority(self, scheduler):
         """测试相同优先级时的 FIFO 顺序"""
@@ -170,7 +170,7 @@ class TestTaskScheduler:
         # 创建一个低优先级任务类型，但设置为高优先级
         config = DownloadTaskConfig(
             "600519", 
-            TaskType.BALANCESHEET,  # 默认 LOW
+            TaskType.BALANCE_SHEET,  # 默认 LOW
             priority=TaskPriority.HIGH  # 显式设置为 HIGH
         )
         normal_config = DownloadTaskConfig("", TaskType.STOCK_BASIC)  # 默认 HIGH
@@ -183,7 +183,7 @@ class TestTaskScheduler:
         second_task = scheduler.get_next_task()
         
         assert first_task.task_type == TaskType.STOCK_BASIC
-        assert second_task.task_type == TaskType.BALANCESHEET
+        assert second_task.task_type == TaskType.BALANCE_SHEET
     
     def test_get_next_task_empty_queue(self, scheduler):
         """测试从空队列获取任务"""

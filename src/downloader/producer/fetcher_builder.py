@@ -2,6 +2,7 @@
 
 基于函数构建器模式，提供灵活的数据获取器构建功能。
 支持配置驱动的任务模板和运行时参数覆盖。
+现在支持从 stock_schema.toml 动态生成任务类型。
 """
 
 import tushare as ts
@@ -10,12 +11,20 @@ import pandas as pd
 import logging
 from dataclasses import dataclass
 from threading import Lock
+from enum import Enum
+from functools import lru_cache
+import pysnooper
+from pathlib import Path
 
 from downloader.config import get_config
 from downloader.utils import normalize_stock_code
-from enum import Enum
+from downloader.database.schema_loader import SchemaLoader, ISchemaLoader
 
 logger = logging.getLogger(__name__)
+
+# 创建性能分析日志目录
+PERF_LOG_DIR = Path("logs/performance")
+PERF_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @dataclass(frozen=True)
@@ -31,25 +40,90 @@ class TaskTemplate:
             object.__setattr__(self, "default_params", {})
 
 
-class TaskType(Enum):
-    """任务类型常量定义，包含模板配置"""
+class TaskTypeRegistry:
+    """任务类型注册表，动态生成任务类型"""
 
-    STOCK_BASIC = TaskTemplate(api_method="stock_basic")
-    STOCK_DAILY = TaskTemplate(api_method="daily")
-    DAILY_BAR_QFQ = TaskTemplate(
-        api_method="pro_bar", base_object="ts", default_params={"adj": "qfq"}
-    )
-    DAILY_BAR_NONE = TaskTemplate(
-        api_method="pro_bar", base_object="ts", default_params={"adj": None}
-    )
-    BALANCESHEET = TaskTemplate(api_method="balancesheet")
-    INCOME = TaskTemplate(api_method="income")
-    CASHFLOW = TaskTemplate(api_method="cashflow")
+    _instance: Optional["TaskTypeRegistry"] = None
+    _lock = Lock()
 
-    @property
-    def template(self) -> "TaskTemplate":
-        """获取任务模板"""
-        return self.value
+    def __init__(self, schema_loader: Optional[ISchemaLoader] = None):
+        if TaskTypeRegistry._instance is not None:
+            raise RuntimeError("TaskTypeRegistry 是单例类，请使用 get_instance() 方法")
+
+        self.schema_loader = schema_loader or SchemaLoader()
+
+    @classmethod
+    def get_instance(
+        cls, schema_loader: Optional[ISchemaLoader] = None
+    ) -> "TaskTypeRegistry":
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls(schema_loader)
+        return cls._instance
+
+    @lru_cache(maxsize=1)
+    # @pysnooper.snoop(
+    #     output=PERF_LOG_DIR / "load_task_types.log", watch=("task_types", "schemas")
+    # )
+    def _load_task_types(self) -> Dict[str, TaskTemplate]:
+        """从 schema 加载任务类型"""
+        task_types = {}
+        schemas = self.schema_loader.get_all_table_schemas()
+
+        for table_name, schema in schemas.items():
+            # 确定 base_object
+            base_object = "ts" if schema.api_method == "pro_bar" else "pro"
+
+            # 创建任务模板
+            template = TaskTemplate(
+                api_method=schema.api_method,
+                base_object=base_object,
+                default_params=schema.default_params.copy(),
+            )
+
+            # 直接使用表名的大写形式作为枚举名
+            enum_name = table_name.upper()
+            task_types[enum_name] = template
+
+        return task_types
+
+    def get_task_types(self) -> Dict[str, TaskTemplate]:
+        """获取所有任务类型"""
+        return self._load_task_types()
+
+    @lru_cache(maxsize=1)
+    # @pysnooper.snoop(output=PERF_LOG_DIR / "enum_generation.log", watch=('task_types', 'enum_dict'))
+    def get_task_type_enum(self) -> type:
+        """获取动态生成的 TaskType 枚举类"""
+        task_types = self.get_task_types()
+
+        # 动态创建枚举类
+        enum_dict = {}
+        for name, template in task_types.items():
+            enum_dict[name] = template
+
+        # 添加 template 属性方法
+        def template_property(self):
+            return self.value
+
+        enum_dict["template"] = property(template_property)
+
+        # 创建枚举类
+        return Enum("TaskType", enum_dict)
+
+    def reload(self) -> None:
+        """重新加载配置"""
+        self._load_task_types.cache_clear()
+        self.get_task_type_enum.cache_clear()
+        self.schema_loader.reload()
+
+
+# 创建全局任务类型注册表实例
+_task_registry = TaskTypeRegistry.get_instance()
+
+# 动态生成 TaskType 枚举
+TaskType = _task_registry.get_task_type_enum()
 
 
 @dataclass(frozen=True)
@@ -71,6 +145,10 @@ class TushareApiManager:
     _instance: Optional["TushareApiManager"] = None
     _lock = Lock()
 
+    # @pysnooper.snoop(
+    #     output=PERF_LOG_DIR / "api_manager_init.log",
+    #     watch=("config", "self.pro", "self.ts"),
+    # )
     def __init__(self):
         if TushareApiManager._instance is not None:
             raise RuntimeError("TushareApiManager 是单例类，请使用 get_instance() 方法")
@@ -108,6 +186,10 @@ class FetcherBuilder:
     def __init__(self):
         self.api_manager = TushareApiManager.get_instance()
 
+    # @pysnooper.snoop(
+    #     output=PERF_LOG_DIR / "build_by_task.log",
+    #     watch=("task_type", "template", "merged_params", "api_func"),
+    # )
     def build_by_task(
         self, task_type: TaskType, symbol: str = "", **overrides: Any
     ) -> Callable[[], pd.DataFrame]:
@@ -132,7 +214,7 @@ class FetcherBuilder:
         if symbol:
             overrides["ts_code"] = normalize_stock_code(symbol)
 
-        # 合并参数：默认参数 + 运行时覆盖
+        # 合并参数：默认参数 + 运行时参数覆盖
         merged_params = (
             template.default_params.copy() if template.default_params else {}
         )
@@ -143,6 +225,9 @@ class FetcherBuilder:
             template.base_object, template.api_method
         )
 
+        # @pysnooper.snoop(
+        #     output=PERF_LOG_DIR / "api_execution.log", watch=("merged_params", "result")
+        # )
         def execute() -> pd.DataFrame:
             """执行数据获取"""
             logger.debug(f"调用 {template.api_method}，参数: {merged_params}")

@@ -40,7 +40,7 @@ class TestConfigFunctions:
         assert isinstance(config, TaskTypeConfig)
         assert config.get_priority(TaskType.STOCK_BASIC) == TaskPriority.HIGH
         assert config.get_priority(TaskType.STOCK_DAILY) == TaskPriority.MEDIUM
-        assert config.get_priority(TaskType.BALANCESHEET) == TaskPriority.LOW
+        assert config.get_priority(TaskType.BALANCE_SHEET) == TaskPriority.LOW
         
         # 验证 get_config 被正确调用
         mock_get_config.assert_called_with(None)
@@ -201,10 +201,10 @@ class TestDownloaderManagerConfig:
         # 验证映射关系
         assert TASK_NAME_TO_TYPE['stock_basic'] == TaskType.STOCK_BASIC
         assert TASK_NAME_TO_TYPE['stock_daily'] == TaskType.STOCK_DAILY
-        assert TASK_NAME_TO_TYPE['daily_basic'] == TaskType.STOCK_DAILY
-        assert TASK_NAME_TO_TYPE['balance_sheet'] == TaskType.BALANCESHEET
-        assert TASK_NAME_TO_TYPE['income_statement'] == TaskType.INCOME
-        assert TASK_NAME_TO_TYPE['cash_flow'] == TaskType.CASHFLOW
+        assert TASK_NAME_TO_TYPE['daily_basic'] == TaskType.DAILY_BASIC
+        assert TASK_NAME_TO_TYPE['balance_sheet'] == TaskType.BALANCE_SHEET
+        assert TASK_NAME_TO_TYPE['income_statement'] == TaskType.INCOME_STATEMENT
+        assert TASK_NAME_TO_TYPE['cash_flow'] == TaskType.CASH_FLOW
 
     def test_priority_value_to_enum_mapping(self):
         """测试优先级数值到枚举的映射"""

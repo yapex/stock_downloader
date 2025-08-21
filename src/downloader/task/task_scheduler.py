@@ -11,6 +11,7 @@ from enum import Enum
 
 from downloader.task.types import DownloadTaskConfig, TaskPriority
 from downloader.producer.fetcher_builder import TaskType
+from downloader.database.schema_loader import SchemaLoader
 
 
 @dataclass
@@ -36,26 +37,44 @@ class TaskTypeConfig:
     定义不同任务类型的默认优先级。
     """
     
-    # 默认任务类型优先级映射
-    DEFAULT_PRIORITIES: Dict[TaskType, TaskPriority] = {
-        TaskType.STOCK_BASIC: TaskPriority.HIGH,      # 基础数据优先级最高
-        TaskType.STOCK_DAILY: TaskPriority.MEDIUM,    # 日线数据中等优先级
-        TaskType.DAILY_BAR_QFQ: TaskPriority.MEDIUM,  # 复权数据中等优先级
-        TaskType.DAILY_BAR_NONE: TaskPriority.MEDIUM, # 不复权数据中等优先级
-        TaskType.BALANCESHEET: TaskPriority.LOW,      # 财务数据优先级较低
-        TaskType.INCOME: TaskPriority.LOW,            # 利润表优先级较低
-        TaskType.CASHFLOW: TaskPriority.LOW,          # 现金流量表优先级较低
-    }
-    
-    def __init__(self, custom_priorities: Optional[Dict[TaskType, TaskPriority]] = None):
+    def __init__(self, custom_priorities: Optional[Dict[TaskType, TaskPriority]] = None, schema_loader: Optional[SchemaLoader] = None):
         """初始化任务类型配置
         
         Args:
             custom_priorities: 自定义优先级映射，会覆盖默认配置
+            schema_loader: Schema 加载器，用于获取动态任务类型
         """
-        self.priorities = self.DEFAULT_PRIORITIES.copy()
+        self.priorities = self._build_default_priorities(schema_loader)
         if custom_priorities:
             self.priorities.update(custom_priorities)
+    
+    def _build_default_priorities(self, schema_loader: Optional[SchemaLoader] = None) -> Dict[TaskType, TaskPriority]:
+        """构建默认优先级映射
+        
+        Args:
+            schema_loader: Schema 加载器
+            
+        Returns:
+            任务类型到优先级的映射
+        """
+        if schema_loader is None:
+            schema_loader = SchemaLoader()
+        
+        priorities = {}
+        table_names = schema_loader.get_table_names()
+        
+        # 根据表名设置默认优先级
+        for table_name in table_names:
+            task_type = getattr(TaskType, table_name.upper(), None)
+            if task_type is not None:
+                if 'basic' in table_name.lower():
+                    priorities[task_type] = TaskPriority.HIGH
+                elif 'daily' in table_name.lower():
+                    priorities[task_type] = TaskPriority.MEDIUM
+                else:
+                    priorities[task_type] = TaskPriority.LOW
+        
+        return priorities
     
     def get_priority(self, task_type: TaskType) -> TaskPriority:
         """获取任务类型的优先级"""

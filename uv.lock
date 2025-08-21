@@ -722,6 +722,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pysnooper"
+version = "1.2.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d2/4a/be3c144f58de6b78911c417cc4a3b3fe5eb6d13cae4c12daf3ca17a8d473/pysnooper-1.2.3.tar.gz", hash = "sha256:1fa1425444a7af45108aaed860b5ca8b62b25bba25b0b037c059ba353d8f1e74", size = 46283, upload-time = "2025-05-31T23:22:46.786Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/69/87/df62c8a998216e6749b67d548dae0967906036c61457510ef49667927c49/PySnooper-1.2.3-py2.py3-none-any.whl", hash = "sha256:546372f0e72da89f8d1b89e758b7c05a478d65288569a1ca2cc1620e7b1b1944", size = 15086, upload-time = "2025-05-31T23:22:45.745Z" },
+]
+
+[[package]]
 name = "pytest"
 version = "8.4.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1007,6 +1016,7 @@ dependencies = [
     { name = "pipdeptree" },
     { name = "plotly" },
     { name = "pyrate-limiter" },
+    { name = "pysnooper" },
     { name = "python-box" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
@@ -1037,6 +1047,7 @@ requires-dist = [
     { name = "pipdeptree", specifier = ">=2.28.0" },
     { name = "plotly", specifier = ">=6.2.0" },
     { name = "pyrate-limiter", specifier = ">=3.9.0" },
+    { name = "pysnooper", specifier = ">=1.2.3" },
     { name = "python-box", specifier = ">=7.3.2" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },

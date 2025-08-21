@@ -23,19 +23,24 @@ from downloader.producer.fetcher_builder import TaskType
 from downloader.interfaces.download_task import IDownloadTask
 from downloader.config import get_config
 from pathlib import Path
+from downloader.database.schema_loader import SchemaLoader
 
 logger = logging.getLogger(__name__)
 
+def _build_task_name_to_type_mapping() -> Dict[str, TaskType]:
+    """动态构建任务名称到 TaskType 的映射"""
+    schema_loader = SchemaLoader()
+    mapping = {}
+    
+    for table_name in schema_loader.get_table_names():
+        task_type = getattr(TaskType, table_name.upper(), None)
+        if task_type is not None:
+            mapping[table_name] = task_type
+    
+    return mapping
+
 # 任务名称到 TaskType 的映射
-TASK_NAME_TO_TYPE = {
-    "stock_basic": TaskType.STOCK_BASIC,
-    "stock_daily": TaskType.STOCK_DAILY,
-    "stock_adj_qfq": TaskType.DAILY_BAR_QFQ,
-    "daily_basic": TaskType.STOCK_DAILY,  # daily_basic 使用 STOCK_DAILY 类型
-    "balance_sheet": TaskType.BALANCESHEET,
-    "income_statement": TaskType.INCOME,
-    "cash_flow": TaskType.CASHFLOW,
-}
+TASK_NAME_TO_TYPE = _build_task_name_to_type_mapping()
 
 # 优先级数值到 TaskPriority 的映射
 PRIORITY_VALUE_TO_ENUM = {

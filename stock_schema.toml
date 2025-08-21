@@ -4,6 +4,8 @@ primary_key = [
     "ts_code",
 ]
 description = "股票基本信息表字段"
+api_method = "stock_basic"
+default_params = { ts_code = "600519.SH" }
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "symbol", type = "TEXT" },
@@ -25,6 +27,8 @@ primary_key = [
 ]
 date_col = "trade_date"
 description = "股票日线数据字段"
+api_method = "daily"
+default_params = { ts_code = "600519.SH", trade_date = "20150726" }
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "trade_date", type = "TEXT" },
@@ -47,6 +51,8 @@ primary_key = [
 ]
 date_col = "trade_date"
 description = "复权行情数据字段"
+api_method = "pro_bar"
+default_params = { ts_code = "600519.SH", adj = "qfq", start_date = "20240101", end_date = "20240131" }
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "trade_date", type = "TEXT" },
@@ -69,6 +75,8 @@ primary_key = [
 ]
 date_col = "trade_date"
 description = "获取全部股票每日重要的基本面指标"
+api_method = "daily_basic"
+default_params = { ts_code = "600519.SH", trade_date = "20150726" }
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "trade_date", type = "TEXT" },
@@ -98,6 +106,8 @@ primary_key = [
 ]
 date_col = "ann_date"
 description = "利润表字段"
+api_method = "income"
+default_params = { ts_code = "600519.SH", period = "20241231" }
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "ann_date", type = "TEXT" },
@@ -194,6 +204,8 @@ primary_key = [
 ]
 date_col = "ann_date"
 description = "资产负债表字段"
+api_method = "balancesheet"
+default_params = { ts_code = "600519.SH", period = "20241231" }
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "ann_date", type = "TEXT" },
@@ -357,6 +369,8 @@ primary_key = [
 ]
 date_col = "ann_date"
 description = "现金流量表字段"
+api_method = "cashflow"
+default_params = { ts_code = "600519.SH", period = "20241231" }
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "ann_date", type = "TEXT" },
