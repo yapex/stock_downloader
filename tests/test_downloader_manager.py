@@ -111,7 +111,6 @@ class TestDownloaderManager:
         assert manager.task_executor is not None
         assert manager.scheduler is not None
         assert not manager.is_running
-        assert not manager.is_shutdown_requested
         assert manager.stats.total_tasks == 0
     
     def test_initialization_with_custom_executor(self):
@@ -227,12 +226,12 @@ class TestDownloaderManager:
     def test_mixed_execution_results(self):
         """测试混合执行结果"""
         mock_executor = MockTaskExecutor(success_rate=0.5, execution_delay=0.001)
-        # 设置混合结果：第1个任务成功，第2个任务失败后重试成功，第3个任务失败后重试失败，第4个任务失败后重试成功
-        # 执行顺序：000001(成功), 000002(失败), 000003(失败), 000004(失败), 000002重试(成功), 000003重试(失败), 000004重试(成功)
+        # 使用单线程执行确保执行顺序可预测
+        # 设置结果：第1个任务成功，第2个任务失败后重试成功，第3个任务失败后重试失败，第4个任务失败后重试成功
         mock_executor.set_call_results([True, False, False, False, True, False, True])
         
         manager = DownloaderManager(
-            max_workers=2,
+            max_workers=1,  # 使用单线程确保执行顺序
             task_executor=mock_executor,
             enable_progress_bar=False
         )

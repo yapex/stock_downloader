@@ -4,6 +4,7 @@
 import typer
 from typing import Optional, List
 from .manager.downloader_manager import DownloaderManager
+from .producer.tushare_downloader import TushareDownloader
 from .producer.fetcher_builder import TaskType
 from .task.types import TaskPriority
 from .config import get_config
@@ -72,10 +73,11 @@ def download_command(
             typer.echo("参数验证成功，dry-run 模式不启动下载器")
             return
 
-        # 创建下载管理器
+        # 创建下载管理器，使用 TushareDownloader 作为任务执行器
+        tushare_executor = TushareDownloader()
         manager = DownloaderManager(
             max_workers=4,
-            task_executor=None,  # 使用默认的 TaskExecutor
+            task_executor=tushare_executor,
             task_type_config=None,  # 使用默认的任务类型配置
             enable_progress_bar=True
         )
