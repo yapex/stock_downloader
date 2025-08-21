@@ -269,7 +269,7 @@ columns = [
 
     def test_create_all_tables(self, schema_file):
         """测试创建所有表的功能"""
-        from downloader.database.db_connection import get_memory_conn
+        from neo.database.connection import get_memory_conn
         
         creator = SchemaTableCreator(schema_file_path=schema_file, conn=get_memory_conn)
         
@@ -297,7 +297,7 @@ columns = [
 
     def test_create_all_tables_with_missing_schema(self, schema_file):
         """测试当某些表在schema中不存在时的处理"""
-        from downloader.database.db_connection import get_memory_conn
+        from neo.database.connection import get_memory_conn
         import tempfile
         import os
         

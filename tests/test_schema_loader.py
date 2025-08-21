@@ -3,7 +3,7 @@ import tempfile
 import os
 from pathlib import Path
 from unittest.mock import patch, mock_open
-from src.downloader.database.schema_loader import SchemaLoader, TableSchema
+from neo.database.schema_loader import SchemaLoader, TableSchema
 
 
 class TestSchemaLoader:
@@ -81,7 +81,7 @@ columns = [
         
         try:
             loader = SchemaLoader(temp_file)
-            schema = loader.get_table_schema("stock_basic")
+            schema = loader.load_schema("stock_basic")
             
             assert schema is not None
             assert schema.table_name == "stock_basic"
@@ -100,8 +100,12 @@ columns = [
         
         try:
             loader = SchemaLoader(temp_file)
-            schema = loader.get_table_schema("nonexistent_table")
-            assert schema is None
+            try:
+                schema = loader.load_schema("nonexistent_table")
+                assert False, "应该抛出 KeyError"
+            except KeyError:
+                pass  # 预期的异常
+            # 测试已经通过异常处理验证
         finally:
             os.unlink(temp_file)
 
@@ -113,7 +117,7 @@ columns = [
         
         try:
             loader = SchemaLoader(temp_file)
-            all_schemas = loader.get_all_table_schemas()
+            all_schemas = loader.load_all_schemas()
             
             assert len(all_schemas) == 2
             assert "stock_basic" in all_schemas
@@ -161,7 +165,7 @@ columns = [
         
         try:
             loader = SchemaLoader(temp_file)
-            schema = loader.get_table_schema("test_table")
+            schema = loader.load_schema("test_table")
             
             assert schema is not None
             assert schema.table_name == "test_table"
@@ -192,7 +196,7 @@ columns = [
         
         try:
             loader = SchemaLoader(temp_file)
-            schema = loader.get_table_schema("minimal_table")
+            schema = loader.load_schema("minimal_table")
             
             assert schema is not None
             assert schema.table_name == "minimal_table"
@@ -222,7 +226,7 @@ columns = [
         
         try:
             loader = SchemaLoader(temp_file)
-            schema = loader.get_table_schema("empty_params_table")
+            schema = loader.load_schema("empty_params_table")
             
             assert schema is not None
             assert schema.default_params == {}
@@ -249,7 +253,7 @@ columns = [
         
         try:
             loader = SchemaLoader(temp_file)
-            schema = loader.get_table_schema("complex_table")
+            schema = loader.load_schema("complex_table")
             
             expected_params = {
                 "ts_code": "600519.SH",

@@ -143,6 +143,13 @@ def process_task_result(task_result_data: Dict[str, Any]) -> None:
         from .types import DownloadTaskConfig, TaskType, TaskPriority, TaskResult
         import pandas as pd
         
+        # 获取任务基本信息用于日志
+        config_data = task_result_data['config']
+        task_name = f"{config_data['symbol']}_{config_data['task_type']}" if config_data['symbol'] else config_data['task_type']
+        
+        print(f"🚀 队列任务开始: {task_name}")
+        logger.info(f"开始处理队列任务: {task_name}")
+        
         # 创建数据处理器实例
         data_processor = SimpleDataProcessor()
         
@@ -184,10 +191,13 @@ def process_task_result(task_result_data: Dict[str, Any]) -> None:
         success = data_processor.process(task_result)
         
         if success:
+            print(f"✅ 队列任务完成: {task_name}")
             logger.info(f"TaskResult处理完成: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}")
         else:
+            print(f"❌ 队列任务失败: {task_name}")
             logger.warning(f"TaskResult处理失败: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}")
         
     except Exception as e:
+        print(f"💥 队列任务异常: {task_name} - {str(e)}")
         logger.error(f"处理TaskResult时出错: {e}")
         raise

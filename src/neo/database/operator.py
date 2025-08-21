@@ -200,94 +200,29 @@ class DBOperator(SchemaTableCreator, IDBOperator):
             logger.error(f"查询表 '{table_name}' 最大日期失败: {e}")
             raise
 
-    def get_all_symbols(self, table_name: str = None) -> List[str]:
+    def get_all_symbols(self) -> List[str]:
         """获取所有股票代码
         
-        Args:
-            table_name: 表名，默认为 stock_basic
-            
         Returns:
             股票代码列表
         """
-        if table_name is None:
-            table_name = TableName.STOCK_BASIC.value
+        table_name = TableName.STOCK_BASIC.value
+            
+        # 构建查询SQL，添加过滤条件
+        sql = f"SELECT DISTINCT ts_code FROM {table_name} WHERE ts_code IS NOT NULL AND ts_code != ''"
             
         try:
             if callable(self.conn):
                 with self.conn() as conn:
-                    result = conn.execute(f"SELECT DISTINCT ts_code FROM {table_name}").fetchall()
-                    return [row[0] for row in result]
+                    result = conn.execute(sql).fetchall()
             else:
-                result = self.conn.execute(f"SELECT DISTINCT ts_code FROM {table_name}").fetchall()
-                return [row[0] for row in result]
+                result = self.conn.execute(sql).fetchall()
+            
+            # 提取 ts_code 列表，过滤空值
+            ts_codes = [row[0] for row in result if row[0] is not None and row[0] != '']
+            logger.debug(f"从表 '{table_name}' 查询到 {len(ts_codes)} 个股票代码")
+            return ts_codes
                 
         except Exception as e:
-            logger.error(f"获取股票代码失败: {e}")
+            logger.error(f"查询表 '{table_name}' 的 ts_code 失败: {e}")
             raise
-
-    def query(self, sql: str, params: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
-        """执行查询SQL
-        
-        Args:
-            sql: SQL查询语句
-            params: 查询参数
-            
-        Returns:
-            查询结果列表
-        """
-        try:
-            if callable(self.conn):
-                with self.conn() as conn:
-                    if params:
-                        result = conn.execute(sql, params).fetchall()
-                    else:
-                        result = conn.execute(sql).fetchall()
-                    
-                    # 获取列名
-                    columns = [desc[0] for desc in conn.description]
-                    
-                    # 转换为字典列表
-                    return [dict(zip(columns, row)) for row in result]
-            else:
-                if params:
-                    result = self.conn.execute(sql, params).fetchall()
-                else:
-                    result = self.conn.execute(sql).fetchall()
-                    
-                # 获取列名
-                columns = [desc[0] for desc in self.conn.description]
-                
-                # 转换为字典列表
-                return [dict(zip(columns, row)) for row in result]
-                
-        except Exception as e:
-            logger.error(f"查询失败: {e}")
-            return []
-
-    def count_records(self, table_name: str, condition: str = None) -> int:
-        """统计表中记录数
-        
-        Args:
-            table_name: 表名
-            condition: 查询条件（WHERE子句，不包含WHERE关键字）
-            
-        Returns:
-            记录数
-        """
-        try:
-            if condition:
-                sql = f"SELECT COUNT(*) FROM {table_name} WHERE {condition}"
-            else:
-                sql = f"SELECT COUNT(*) FROM {table_name}"
-                
-            if callable(self.conn):
-                with self.conn() as conn:
-                    result = conn.execute(sql).fetchone()
-                    return result[0] if result else 0
-            else:
-                result = self.conn.execute(sql).fetchone()
-                return result[0] if result else 0
-                
-        except Exception as e:
-            logger.error(f"统计记录数失败: {e}")
-            return 0

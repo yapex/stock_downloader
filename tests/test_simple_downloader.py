@@ -9,8 +9,8 @@ import pandas as pd
 from unittest.mock import Mock, patch, MagicMock
 from pyrate_limiter import Limiter, Duration, InMemoryBucket, Rate
 
-from src.neo.downloader.simple_downloader import SimpleDownloader
-from src.neo.task_bus.types import TaskType, DownloadTaskConfig, TaskResult
+from neo.downloader.simple_downloader import SimpleDownloader
+from neo.task_bus.types import TaskType, DownloadTaskConfig, TaskResult
 
 
 class TestSimpleDownloader:
@@ -63,8 +63,8 @@ class TestSimpleDownloader:
         assert str(TaskType.STOCK_BASIC.value) in downloader.rate_limiters
         assert str(TaskType.STOCK_DAILY.value) in downloader.rate_limiters
     
-    @patch('src.neo.downloader.simple_downloader.SimpleDownloader._fetch_data')
-    @patch('src.neo.downloader.simple_downloader.SimpleDownloader._apply_rate_limiting')
+    @patch('neo.downloader.simple_downloader.SimpleDownloader._fetch_data')
+    @patch('neo.downloader.simple_downloader.SimpleDownloader._apply_rate_limiting')
     def test_download_success(self, mock_rate_limiting, mock_fetch_data):
         """测试成功下载"""
         # 准备测试数据
@@ -87,8 +87,8 @@ class TestSimpleDownloader:
         mock_rate_limiting.assert_called_once_with(TaskType.STOCK_BASIC)
         mock_fetch_data.assert_called_once_with(config)
     
-    @patch('src.neo.downloader.simple_downloader.SimpleDownloader._fetch_data')
-    @patch('src.neo.downloader.simple_downloader.SimpleDownloader._apply_rate_limiting')
+    @patch('neo.downloader.simple_downloader.SimpleDownloader._fetch_data')
+    @patch('neo.downloader.simple_downloader.SimpleDownloader._apply_rate_limiting')
     def test_download_failure(self, mock_rate_limiting, mock_fetch_data):
         """测试下载失败"""
         # 模拟异常
@@ -125,7 +125,7 @@ class TestSimpleDownloader:
         # 验证限制器被调用
         mock_limiter.try_acquire.assert_called_once_with(TaskType.STOCK_BASIC.value, 1)
     
-    @patch('src.neo.downloader.simple_downloader.FetcherBuilder')
+    @patch('neo.downloader.simple_downloader.FetcherBuilder')
     def test_fetch_data_success(self, mock_fetcher_builder_class):
         """测试数据获取成功"""
         # 准备测试数据
@@ -153,7 +153,7 @@ class TestSimpleDownloader:
         )
         mock_fetcher.assert_called_once()
     
-    @patch('src.neo.downloader.simple_downloader.FetcherBuilder')
+    @patch('neo.downloader.simple_downloader.FetcherBuilder')
     def test_fetch_data_failure(self, mock_fetcher_builder_class):
         """测试数据获取失败"""
         # 模拟异常
@@ -195,7 +195,7 @@ class TestSimpleDownloader:
         actual_keys = set(downloader.rate_limiters.keys())
         assert actual_keys == expected_keys
     
-    @patch('src.neo.downloader.simple_downloader.SimpleDownloader._fetch_data')
+    @patch('neo.downloader.simple_downloader.SimpleDownloader._fetch_data')
     def test_download_with_empty_data(self, mock_fetch_data):
         """测试下载空数据"""
         # 返回空的DataFrame
@@ -214,7 +214,7 @@ class TestSimpleDownloader:
         assert len(result.data) == 0
         assert result.error is None
     
-    @patch('src.neo.downloader.simple_downloader.SimpleDownloader._fetch_data')
+    @patch('neo.downloader.simple_downloader.SimpleDownloader._fetch_data')
     def test_download_with_none_data(self, mock_fetch_data):
         """测试下载返回None数据"""
         # 返回None

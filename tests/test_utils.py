@@ -1,6 +1,6 @@
 import pytest
 
-from downloader.utils import (
+from neo.helpers.utils import (
     normalize_stock_code,
     is_interval_greater_than_7_days,
 )

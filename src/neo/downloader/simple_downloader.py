@@ -77,6 +77,10 @@ class SimpleDownloader(IDownloader):
                 data=data
             )
             
+            # 将成功的任务结果提交到队列进行处理
+            if data is not None and not data.empty:
+                self._submit_to_queue(result)
+            
             logger.debug(f"下载任务成功: {config.task_type.value}, symbol: {config.symbol}, rows: {len(data) if data is not None else 0}")
             return result
             
@@ -113,9 +117,29 @@ class SimpleDownloader(IDownloader):
             # 执行数据获取
             data = fetcher()
             
-            logger.debug(f"真实数据获取完成: {len(data)} rows")
+            if data is not None and not data.empty:
+                logger.info(f"✅ 真实数据获取完成: {len(data)} rows")
+            else:
+                logger.warning(f"⚠️ 数据获取结果为空")
             return data
             
         except Exception as e:
             logger.error(f"数据获取失败: {e}")
             raise
+    
+    def _submit_to_queue(self, result: TaskResult) -> None:
+        """将 TaskResult 提交到 Huey 队列进行处理"""
+        from neo.task_bus.huey_task_bus import HueyTaskBus
+        
+        try:
+            # 获取 HueyTaskBus 实例并提交任务
+            from neo.data_processor.simple_data_processor import SimpleDataProcessor
+            data_processor = SimpleDataProcessor()
+            task_bus = HueyTaskBus(data_processor)
+            task_bus.submit_task(result)
+            
+            logger.info(f"✅ TaskResult 已提交到队列: {result.config.task_type.value}, symbol: {result.config.symbol}")
+            
+        except Exception as e:
+            logger.error(f"提交 TaskResult 到队列失败: {e}")
+            # 不抛出异常，避免影响下载流程

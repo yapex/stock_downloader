@@ -2,11 +2,11 @@ import pytest
 import pandas as pd
 from unittest.mock import Mock, patch, MagicMock
 from threading import Lock
-from src.neo.downloader.fetcher_builder import (
+from neo.downloader.fetcher_builder import (
     TushareApiManager,
     FetcherBuilder
 )
-from src.neo.task_bus.types import TaskTemplate, TaskType
+from neo.task_bus.types import TaskTemplate, TaskType
 
 
 class TestTaskTemplate:
@@ -57,14 +57,19 @@ class TestTaskType:
 class TestTushareApiManager:
     """测试 TushareApiManager 单例类"""
     
+    def teardown_method(self):
+        """测试后清理单例状态"""
+        TushareApiManager._instance = None
+        TushareApiManager._lock = Lock()
+    
     def test_singleton_pattern(self):
         """测试单例模式"""
         manager1 = TushareApiManager.get_instance()
         manager2 = TushareApiManager.get_instance()
         assert manager1 is manager2
     
-    @patch('src.neo.downloader.fetcher_builder.ts')
-    @patch('src.neo.downloader.fetcher_builder.get_config')
+    @patch('neo.downloader.fetcher_builder.ts')
+    @patch('neo.downloader.fetcher_builder.get_config')
     def test_get_api_function_pro(self, mock_get_config, mock_ts):
         """测试获取 pro API 函数"""
         # Mock 配置
@@ -89,8 +94,8 @@ class TestTushareApiManager:
         mock_ts.set_token.assert_called_once_with("test_token")
         mock_ts.pro_api.assert_called_once()
     
-    @patch('src.neo.downloader.fetcher_builder.ts')
-    @patch('src.neo.downloader.fetcher_builder.get_config')
+    @patch('neo.downloader.fetcher_builder.ts')
+    @patch('neo.downloader.fetcher_builder.get_config')
     def test_get_api_function_direct(self, mock_get_config, mock_ts):
         """测试获取直接 API 函数"""
         # Mock 配置
@@ -131,7 +136,7 @@ class TestFetcherBuilder:
             self.builder.build_by_task("invalid_type")
     
     @patch.object(TushareApiManager, 'get_api_function')
-    @patch('src.neo.downloader.fetcher_builder.normalize_stock_code')
+    @patch('neo.downloader.fetcher_builder.normalize_stock_code')
     def test_build_by_task_with_symbol(self, mock_normalize, mock_get_api):
         """测试带股票代码的任务构建"""
         mock_normalize.return_value = "600519.SH"
@@ -161,7 +166,7 @@ class TestFetcherBuilder:
         assert isinstance(result, pd.DataFrame)
     
     @patch.object(TushareApiManager, 'get_api_function')
-    @patch('src.neo.downloader.fetcher_builder.normalize_stock_code')
+    @patch('neo.downloader.fetcher_builder.normalize_stock_code')
     def test_build_by_task_with_overrides(self, mock_normalize, mock_get_api):
         """测试带参数覆盖的任务构建"""
         mock_normalize.return_value = "600519.SH"
@@ -213,7 +218,7 @@ class TestFetcherBuilder:
             fetcher()
     
     @patch.object(TushareApiManager, 'get_api_function')
-    @patch('src.neo.downloader.fetcher_builder.normalize_stock_code')
+    @patch('neo.downloader.fetcher_builder.normalize_stock_code')
     def test_parameter_merging(self, mock_normalize, mock_get_api):
         """测试参数合并逻辑"""
         mock_normalize.return_value = "600519.SH"

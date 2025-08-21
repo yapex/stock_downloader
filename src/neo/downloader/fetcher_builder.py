@@ -17,7 +17,7 @@ import pysnooper
 from pathlib import Path
 
 from neo.config import get_config
-from neo.downloader.utils import normalize_stock_code
+from neo.helpers import normalize_stock_code
 from neo.database.schema_loader import SchemaLoader
 from neo.database.interfaces import ISchemaLoader
 from neo.task_bus.types import TaskType, TaskTemplate
