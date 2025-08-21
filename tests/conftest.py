@@ -58,7 +58,7 @@ def huey_immediate():
     test_huey = MemoryHuey(immediate=True)
     
     # 使用 patch 替换 huey_tasks 模块中的 huey 实例
-    with patch('downloader2.producer.huey_tasks.huey', test_huey):
+    with patch('downloader.producer.huey_tasks.huey', test_huey):
         yield test_huey
 
 

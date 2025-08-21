@@ -38,7 +38,7 @@ dependencies = [
 ]
 
 [project.scripts]
-dl = "downloader2.downloader_app:app"
+dl = "downloader.downloader_app:app"
 
 
 

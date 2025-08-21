@@ -12,10 +12,10 @@ from box import Box
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from downloader2.config import get_config
-from downloader2.producer.fetcher_builder import FetcherBuilder, TaskType
-from downloader2.database.db_oprator import DBOperator
-from downloader2.utils import setup_logging
+from downloader.config import get_config
+from downloader.producer.fetcher_builder import FetcherBuilder, TaskType
+from downloader.database.db_oprator import DBOperator
+from downloader.utils import setup_logging
 
 
 def main():

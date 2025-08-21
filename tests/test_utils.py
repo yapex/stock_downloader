@@ -1,6 +1,6 @@
 import pytest
 
-from downloader2.utils import (
+from downloader.utils import (
     normalize_stock_code,
     is_interval_greater_than_7_days,
 )

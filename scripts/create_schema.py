@@ -1,4 +1,4 @@
-import downloader2.config
+import downloader.config
 import tushare
 from pathlib import Path
 from typing import List, Union, Dict, Any
@@ -190,7 +190,7 @@ TABLE_CONFIGS = Box(
 
 def get_tushare_api():
     """获取配置好的 tushare API 实例"""
-    config = downloader2.config.get_config()
+    config = downloader.config.get_config()
     tushare_token = config.tushare.token
     tushare.set_token(tushare_token)
     return tushare.pro_api()

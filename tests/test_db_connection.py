@@ -2,7 +2,7 @@ import pytest
 import threading
 import time
 from contextlib import contextmanager
-from downloader2.database.db_connection import get_memory_conn
+from downloader.database.db_connection import get_memory_conn
 
 
 class TestDbConnection:

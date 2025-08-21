@@ -26,12 +26,12 @@ class TestConfig:
         # 重新导入配置模块以触发配置加载
         import importlib
 
-        if "downloader2.config" in sys.modules:
-            importlib.reload(sys.modules["downloader2.config"])
+        if "downloader.config" in sys.modules:
+            importlib.reload(sys.modules["downloader.config"])
         else:
-            import downloader2.config
+            import downloader.config
 
-        from downloader2.config import get_config
+        from downloader.config import get_config
 
         # 测试点号访问
         config = get_config()
@@ -54,12 +54,12 @@ class TestConfig:
         # 重新导入配置模块
         import importlib
 
-        if "downloader2.config" in sys.modules:
-            importlib.reload(sys.modules["downloader2.config"])
+        if "downloader.config" in sys.modules:
+            importlib.reload(sys.modules["downloader.config"])
         else:
-            import downloader2.config
+            import downloader.config
 
-        from downloader2.config import get_config
+        from downloader.config import get_config
 
         # 测试 get 方法
         config = get_config()
@@ -88,12 +88,12 @@ class TestConfig:
         # 重新导入配置模块
         import importlib
 
-        if "downloader2.config" in sys.modules:
-            importlib.reload(sys.modules["downloader2.config"])
+        if "downloader.config" in sys.modules:
+            importlib.reload(sys.modules["downloader.config"])
         else:
-            import downloader2.config
+            import downloader.config
 
-        from downloader2.config import get_config
+        from downloader.config import get_config
 
         # 测试列表访问
         config = get_config()
@@ -119,12 +119,12 @@ class TestConfig:
         # 重新导入配置模块
         import importlib
 
-        if "downloader2.config" in sys.modules:
-            importlib.reload(sys.modules["downloader2.config"])
+        if "downloader.config" in sys.modules:
+            importlib.reload(sys.modules["downloader.config"])
         else:
-            import downloader2.config
+            import downloader.config
 
-        from downloader2.config import get_config
+        from downloader.config import get_config
 
         # 测试深层嵌套访问
         config = get_config()
@@ -138,12 +138,12 @@ class TestConfig:
         # 重新导入配置模块
         import importlib
 
-        if "downloader2.config" in sys.modules:
-            importlib.reload(sys.modules["downloader2.config"])
+        if "downloader.config" in sys.modules:
+            importlib.reload(sys.modules["downloader.config"])
         else:
-            import downloader2.config
+            import downloader.config
 
-        from downloader2.config import get_config
+        from downloader.config import get_config
 
         # 验证 config 是 Box 对象
         config = get_config()

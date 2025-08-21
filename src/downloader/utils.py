@@ -1,5 +1,6 @@
 import re
 import logging
+import warnings
 from datetime import datetime
 
 
@@ -122,6 +123,10 @@ def setup_logging(logger: logging.Logger = None):
     # 屏蔽第三方模块的日志输出到控制台，只保留文件日志
     # 这样终端只会显示tqdm进度条信息
     logging.getLogger("tushare").setLevel(logging.CRITICAL)
+    
+    # 屏蔽 pandas 的 FutureWarning 和其他警告
+    warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
+    warnings.filterwarnings("ignore", category=FutureWarning, module="tushare")
 
     # 标记日志已配置
     _logging_configured = True

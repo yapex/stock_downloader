@@ -1,5 +1,5 @@
-from downloader2.config import get_config
-from downloader2.database.db_connection import get_conn
+from downloader.config import get_config
+from downloader.database.db_connection import get_conn
 from pathlib import Path
 import duckdb
 import logging

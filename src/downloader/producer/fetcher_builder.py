@@ -11,8 +11,8 @@ import logging
 from dataclasses import dataclass
 from threading import Lock
 
-from downloader2.config import get_config
-from downloader2.utils import normalize_stock_code
+from downloader.config import get_config
+from downloader.utils import normalize_stock_code
 from enum import Enum
 
 logger = logging.getLogger(__name__)

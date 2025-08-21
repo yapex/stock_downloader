@@ -3,9 +3,9 @@ import pandas as pd
 from unittest.mock import Mock, patch
 from contextlib import contextmanager
 import duckdb
-from downloader2.database.db_oprator import DBOperator
-from downloader2.database.db_table_create import SchemaTableCreator
-from downloader2.database.db_connection import get_memory_conn
+from downloader.database.db_oprator import DBOperator
+from downloader.database.db_table_create import SchemaTableCreator
+from downloader.database.db_connection import get_memory_conn
 from pathlib import Path
 
 

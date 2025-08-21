@@ -10,7 +10,7 @@ from typing import Generator
 import duckdb
 import logging
 import threading
-from downloader2.config import get_config
+from downloader.config import get_config
 
 logger = logging.getLogger(__name__)
 
