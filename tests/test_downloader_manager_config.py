@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from box import Box
 
-from downloader.manager.downloader_manager import (
+from downloader.producer.downloader_manager import (
     DownloaderManager,
     create_task_type_config_from_config,
     get_task_types_from_group,
@@ -19,7 +19,7 @@ from downloader.task.task_scheduler import TaskTypeConfig
 class TestConfigFunctions:
     """测试配置相关函数"""
 
-    @patch('downloader.manager.downloader_manager.get_config')
+    @patch('downloader.producer.downloader_manager.get_config')
     def test_create_task_type_config_from_config_with_priorities(self, mock_get_config):
         """测试从配置创建任务类型配置（包含优先级）"""
         # 模拟配置
@@ -45,7 +45,7 @@ class TestConfigFunctions:
         # 验证 get_config 被正确调用
         mock_get_config.assert_called_with(None)
 
-    @patch('downloader.manager.downloader_manager.get_config')
+    @patch('downloader.producer.downloader_manager.get_config')
     def test_create_task_type_config_from_config_no_download_tasks(self, mock_get_config):
         """测试从配置创建任务类型配置（无 download_tasks）"""
         # 模拟配置（无 download_tasks）
@@ -63,7 +63,7 @@ class TestConfigFunctions:
         # 验证 get_config 被正确调用
         mock_get_config.assert_called_with(None)
 
-    @patch('downloader.manager.downloader_manager.get_config')
+    @patch('downloader.producer.downloader_manager.get_config')
     def test_create_task_type_config_invalid_priority(self, mock_get_config):
         """测试无效优先级值的处理"""
         # 模拟配置（包含无效优先级）
@@ -86,7 +86,7 @@ class TestConfigFunctions:
         assert config.get_priority(TaskType.STOCK_DAILY) == TaskPriority.MEDIUM
         mock_get_config.assert_called_with(None)
 
-    @patch('downloader.manager.downloader_manager.get_config')
+    @patch('downloader.producer.downloader_manager.get_config')
     def test_get_task_types_from_group(self, mock_get_config):
         """测试从任务组获取任务类型"""
         # 模拟配置
@@ -107,7 +107,7 @@ class TestConfigFunctions:
         assert TaskType.STOCK_DAILY in task_types
         mock_get_config.assert_called_with(None)
 
-    @patch('downloader.manager.downloader_manager.get_config')
+    @patch('downloader.producer.downloader_manager.get_config')
     def test_get_task_types_from_group_unknown_group(self, mock_get_config):
         """测试获取未知任务组"""
         # 模拟配置
@@ -123,7 +123,7 @@ class TestConfigFunctions:
             get_task_types_from_group('unknown_group')
         mock_get_config.assert_called_with(None)
 
-    @patch('downloader.manager.downloader_manager.get_config')
+    @patch('downloader.producer.downloader_manager.get_config')
     def test_get_task_types_from_group_unknown_task(self, mock_get_config):
         """测试任务组包含未知任务类型"""
         # 模拟配置
@@ -143,7 +143,7 @@ class TestConfigFunctions:
 class TestDownloaderManagerConfig:
     """测试 DownloaderManager 配置功能"""
 
-    @patch('downloader.manager.downloader_manager.create_task_type_config_from_config')
+    @patch('downloader.producer.downloader_manager.create_task_type_config_from_config')
     def test_create_from_config(self, mock_create_config):
         """测试从配置创建 DownloaderManager"""
         # 模拟 TaskTypeConfig
@@ -162,7 +162,7 @@ class TestDownloaderManagerConfig:
         assert manager.scheduler.task_type_config == mock_task_config
         mock_create_config.assert_called_once()
 
-    @patch('downloader.manager.downloader_manager.get_task_types_from_group')
+    @patch('downloader.producer.downloader_manager.get_task_types_from_group')
     def test_download_group(self, mock_get_task_types):
         """测试下载任务组功能"""
         # 模拟任务类型
@@ -212,7 +212,7 @@ class TestDownloaderManagerConfig:
         assert PRIORITY_VALUE_TO_ENUM[1] == TaskPriority.MEDIUM
         assert PRIORITY_VALUE_TO_ENUM[2] == TaskPriority.LOW
     
-    @patch('downloader.manager.downloader_manager.get_config')
+    @patch('downloader.producer.downloader_manager.get_config')
     def test_create_from_config_with_downloader_settings(self, mock_get_config):
         """测试从配置文件读取下载器设置"""
         # 模拟配置
@@ -235,7 +235,7 @@ class TestDownloaderManagerConfig:
         assert manager.enable_progress_bar == False
         mock_get_config.assert_called_with(None)
     
-    @patch('downloader.manager.downloader_manager.get_config')
+    @patch('downloader.producer.downloader_manager.get_config')
     def test_create_from_config_with_default_downloader_settings(self, mock_get_config):
         """测试配置文件中没有下载器设置时使用默认值"""
         # 模拟配置（没有 downloader 部分）

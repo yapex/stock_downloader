@@ -4,7 +4,7 @@
 import typer
 from typing import Optional
 from pathlib import Path
-from .manager.downloader_manager import DownloaderManager
+from .producer.downloader_manager import DownloaderManager
 from .producer.tushare_downloader import TushareDownloader
 from .utils import setup_logging
 import logging

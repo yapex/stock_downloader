@@ -6,7 +6,7 @@ import time
 from unittest.mock import Mock, patch, MagicMock
 from concurrent.futures import Future
 
-from downloader.manager.downloader_manager import DownloaderManager, DownloadStats
+from downloader.producer.downloader_manager import DownloaderManager, DownloadStats
 from downloader.task.types import DownloadTaskConfig, TaskResult, TaskPriority
 from downloader.task.task_scheduler import TaskTypeConfig
 from downloader.producer.fetcher_builder import TaskType
@@ -328,7 +328,7 @@ class TestDownloaderManager:
         assert all_tasks[0].task_type == TaskType.STOCK_BASIC
         assert all_tasks[1].task_type == TaskType.STOCK_DAILY
     
-    @patch('downloader.manager.downloader_manager.signal.signal')
+    @patch('downloader.producer.downloader_manager.signal.signal')
     def test_signal_handling(self, mock_signal):
         """测试信号处理"""
         manager = DownloaderManager()

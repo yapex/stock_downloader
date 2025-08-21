@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Optional
 
 from downloader.database.db_oprator import DBOperator
-from downloader.producer.fetcher_builder import TaskType
+from downloader.task.types import TaskType
 from .interfaces import IBatchSaver
 
 

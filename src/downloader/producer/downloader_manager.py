@@ -19,7 +19,8 @@ from downloader.task.task_scheduler import (
     TaskTypeConfig,
     create_task_configs,
 )
-from downloader.producer.fetcher_builder import TaskType
+from downloader.task.types import TaskType
+from downloader.producer.interfaces import IDownloaderManager
 from downloader.task.interfaces import IDownloadTask
 from downloader.config import get_config
 from pathlib import Path
@@ -27,17 +28,19 @@ from downloader.database.schema_loader import SchemaLoader
 
 logger = logging.getLogger(__name__)
 
+
 def _build_task_name_to_type_mapping() -> Dict[str, TaskType]:
     """动态构建任务名称到 TaskType 的映射"""
     schema_loader = SchemaLoader()
     mapping = {}
-    
+
     for table_name in schema_loader.get_table_names():
         task_type = getattr(TaskType, table_name.upper(), None)
         if task_type is not None:
             mapping[table_name] = task_type
-    
+
     return mapping
+
 
 # 任务名称到 TaskType 的映射
 TASK_NAME_TO_TYPE = _build_task_name_to_type_mapping()
@@ -49,58 +52,66 @@ PRIORITY_VALUE_TO_ENUM = {
     2: TaskPriority.LOW,
 }
 
-def create_task_type_config_from_config(config_path: Optional[Path] = None) -> TaskTypeConfig:
+
+def create_task_type_config_from_config(
+    config_path: Optional[Path] = None,
+) -> TaskTypeConfig:
     """从配置文件创建任务类型配置
-    
+
     Args:
         config_path: 配置文件路径，如果为 None 则使用默认配置文件
-    
+
     Returns:
         TaskTypeConfig: 基于配置文件的任务类型配置
     """
     config = get_config(config_path)
     custom_priorities = {}
-    
+
     # 检查是否存在 download_tasks 配置
-    if hasattr(config, 'download_tasks') and config.download_tasks:
+    if hasattr(config, "download_tasks") and config.download_tasks:
         for task_name, task_config in config.download_tasks.items():
-            if task_name in TASK_NAME_TO_TYPE and hasattr(task_config, 'priority'):
+            if task_name in TASK_NAME_TO_TYPE and hasattr(task_config, "priority"):
                 task_type = TASK_NAME_TO_TYPE[task_name]
                 priority_value = task_config.priority
-                
+
                 # 将数值优先级转换为 TaskPriority 枚举
                 if priority_value in PRIORITY_VALUE_TO_ENUM:
                     priority_enum = PRIORITY_VALUE_TO_ENUM[priority_value]
                     custom_priorities[task_type] = priority_enum
                     logger.info(f"设置任务 {task_name} 优先级为 {priority_enum.name}")
                 else:
-                    logger.warning(f"未知的优先级值 {priority_value} for task {task_name}")
-    
+                    logger.warning(
+                        f"未知的优先级值 {priority_value} for task {task_name}"
+                    )
+
     return TaskTypeConfig(custom_priorities)
 
-def get_task_types_from_group(group: str, config_path: Optional[Path] = None) -> List[TaskType]:
+
+def get_task_types_from_group(
+    group: str, config_path: Optional[Path] = None
+) -> List[TaskType]:
     """根据任务组名称获取任务类型列表
-    
+
     Args:
         group: 任务组名称
         config_path: 配置文件路径，如果为 None 则使用默认配置文件
-    
+
     Returns:
         List[TaskType]: 任务类型列表
     """
     config = get_config(config_path)
-    
+
     if group not in config.task_groups:
         raise ValueError(f"未找到任务组: {group}")
-    
+
     task_names = config.task_groups[group]
     task_types = []
-    
+
     for task_name in task_names:
         if task_name not in TASK_NAME_TO_TYPE:
             raise ValueError(f"未知的任务类型: {task_name}")
         task_types.append(TASK_NAME_TO_TYPE[task_name])
-    
+
     return task_types
 
 
@@ -129,7 +140,7 @@ class DownloadStats:
         return self.completed_tasks >= self.total_tasks
 
 
-class DownloaderManager:
+class DownloaderManager(IDownloaderManager):
     """重构后的下载管理器
 
     基于任务扁平化设计，简化了架构：
@@ -184,28 +195,30 @@ class DownloaderManager:
         config_path: Optional[Path] = None,
     ) -> "DownloaderManager":
         """从配置文件创建下载管理器
-        
+
         Args:
             task_executor: 任务执行器，如果为 None 则使用默认的 DownloadTask
             max_workers: 最大工作线程数，如果为 None 则从配置文件读取
             enable_progress_bar: 是否启用进度条，如果为 None 则从配置文件读取
             config_path: 配置文件路径，如果为 None 则使用默认配置文件
-            
+
         Returns:
             配置好的 DownloaderManager 实例
         """
         config = get_config(config_path)
         task_type_config = create_task_type_config_from_config(config_path)
-        
+
         # 从配置文件读取参数，如果未提供的话
         if max_workers is None:
-            downloader_config = getattr(config, 'downloader', {})
-            max_workers = getattr(downloader_config, 'max_workers', 4)
-        
+            downloader_config = getattr(config, "downloader", {})
+            max_workers = getattr(downloader_config, "max_workers", 4)
+
         if enable_progress_bar is None:
-            downloader_config = getattr(config, 'downloader', {})
-            enable_progress_bar = getattr(downloader_config, 'enable_progress_bar', True)
-        
+            downloader_config = getattr(config, "downloader", {})
+            enable_progress_bar = getattr(
+                downloader_config, "enable_progress_bar", True
+            )
+
         return cls(
             max_workers=max_workers,
             task_executor=task_executor,
@@ -233,36 +246,29 @@ class DownloaderManager:
         logger.info(f"添加了 {len(configs)} 个 {task_type.name} 任务")
 
     def download_group(
-        self,
-        group: str,
-        symbols: Optional[List[str]] = None,
-        **kwargs
+        self, group: str, symbols: Optional[List[str]] = None, **kwargs
     ) -> DownloadStats:
         """下载指定任务组的数据
-        
+
         Args:
             group: 任务组名称
             symbols: 股票代码列表，如果为 None 则使用 ["all"]
             **kwargs: 传递给任务的额外参数
-            
+
         Returns:
             下载统计信息
         """
         # 获取任务类型列表
         task_types = get_task_types_from_group(group, self.config_path)
-        
+
         # 使用默认股票代码列表
         if symbols is None:
             symbols = ["all"]
-        
+
         # 添加所有任务
         for task_type in task_types:
-            self.add_download_tasks(
-                symbols=symbols,
-                task_type=task_type,
-                **kwargs
-            )
-        
+            self.add_download_tasks(symbols=symbols, task_type=task_type, **kwargs)
+
         # 执行下载
         self.start()
         try:
@@ -366,13 +372,13 @@ class DownloaderManager:
         progress_bar = None
         if self.enable_progress_bar:
             progress_bar = tqdm(
-                total=len(futures), 
-                desc="下载进度", 
-                unit="task", 
+                total=len(futures),
+                desc="下载进度",
+                unit="task",
                 ncols=80,
                 leave=False,
                 dynamic_ncols=True,
-                miniters=1
+                miniters=1,
             )
 
         try:

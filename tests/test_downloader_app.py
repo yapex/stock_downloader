@@ -6,7 +6,7 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from downloader.downloader_app import app, download_command
-from downloader.manager.downloader_manager import DownloaderManager
+from downloader.producer.downloader_manager import DownloaderManager
 from downloader.producer.tushare_downloader import TushareDownloader
 
 

@@ -10,7 +10,7 @@ import threading
 from enum import Enum
 
 from downloader.task.types import DownloadTaskConfig, TaskPriority
-from downloader.producer.fetcher_builder import TaskType
+from downloader.task.types import TaskType
 from downloader.database.schema_loader import SchemaLoader
 
 

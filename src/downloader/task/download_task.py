@@ -8,8 +8,9 @@ import logging
 import pandas as pd
 from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate
 
-from downloader.producer.fetcher_builder import FetcherBuilder, TaskType
-from downloader.producer.huey_tasks import process_fetched_data
+from downloader.producer.fetcher_builder import FetcherBuilder
+from downloader.task.types import TaskType
+from downloader.producer.huey_tasks import process_task_result
 from downloader.task.interfaces import IDownloadTask
 from .types import DownloadTaskConfig, TaskResult, TaskPriority
 
@@ -69,6 +70,22 @@ class DownloadTask(IDownloadTask):
             
         except Exception as e:
             logger.warning(f"任务执行失败: {config.task_type.name}, symbol: {config.symbol}, error: {e}")
+            
+            # 对于失败的任务，也将TaskResult放入队列
+            failed_task_result_data = {
+                'config': {
+                    'symbol': config.symbol,
+                    'task_type': config.task_type.name,  # 序列化为字符串
+                    'priority': config.priority,
+                    'max_retries': config.max_retries
+                },
+                'success': False,
+                'data': None,
+                'error': str(e),
+                'retry_count': 0
+            }
+            process_task_result(failed_task_result_data)
+            
             return TaskResult(
                 config=config,
                 success=False,
@@ -94,6 +111,27 @@ class DownloadTask(IDownloadTask):
     def _handle_successful_data(self, config: DownloadTaskConfig, data: pd.DataFrame) -> None:
         """处理成功获取的数据"""
         if not data.empty:
-            # 使用 Huey 任务处理数据
-            process_fetched_data(config.symbol, config.task_type.name, data.to_dict())
-            logger.debug(f"数据已提交处理: {config.task_type.name}, symbol: {config.symbol}, rows: {len(data)}")
+            # 创建TaskResult并序列化为字典
+            task_result = TaskResult(
+                config=config,
+                success=True,
+                data=data
+            )
+            
+            # 序列化TaskResult为字典格式
+            task_result_data = {
+                'config': {
+                    'symbol': task_result.config.symbol,
+                    'task_type': task_result.config.task_type.name,  # 序列化为字符串
+                    'priority': task_result.config.priority,
+                    'max_retries': task_result.config.max_retries
+                },
+                'success': task_result.success,
+                'data': task_result.data.to_dict() if task_result.data is not None else None,  # 序列化DataFrame
+                'error': None,
+                'retry_count': task_result.retry_count
+            }
+            
+            # 将TaskResult放入Huey队列
+            process_task_result(task_result_data)
+            logger.debug(f"TaskResult已提交到队列: {config.task_type.name}, symbol: {config.symbol}, rows: {len(data)}")
