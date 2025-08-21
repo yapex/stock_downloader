@@ -1,8 +1,15 @@
 import pytest
 import threading
 import time
+import tempfile
+import os
 from contextlib import contextmanager
-from downloader.database.db_connection import get_memory_conn
+from unittest.mock import patch, MagicMock
+from downloader.database.db_connection import (
+    get_memory_conn, 
+    DatabaseConnectionManager, 
+    get_conn
+)
 
 
 class TestDbConnection:
@@ -166,3 +173,138 @@ class TestDbConnection:
         for i in range(num_threads):
             assert results[i] == i  # 每个线程看到自己的数据
             assert results[f"{i}_other_visible"] == 0  # 看不到其他线程的表
+
+
+class TestDatabaseConnectionManager:
+    """DatabaseConnectionManager 测试类"""
+
+    def test_init_with_default_path(self):
+        """测试使用默认路径初始化"""
+        with patch('downloader.database.db_connection.config') as mock_config:
+            mock_config.database.path = "/test/path/db.duckdb"
+            manager = DatabaseConnectionManager()
+            assert manager.db_path == "/test/path/db.duckdb"
+
+    def test_init_with_custom_path(self):
+        """测试使用自定义路径初始化"""
+        custom_path = "/custom/path/db.duckdb"
+        manager = DatabaseConnectionManager(custom_path)
+        assert manager.db_path == custom_path
+
+    def test_get_connection_success(self):
+        """测试成功获取连接"""
+        manager = DatabaseConnectionManager(":memory:")
+        with manager.get_connection() as conn:
+            assert conn is not None
+            # 测试连接可用性
+            result = conn.execute("SELECT 1").fetchone()
+            assert result[0] == 1
+
+    def test_get_connection_with_file_db(self):
+        """测试使用文件数据库连接"""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = os.path.join(tmp_dir, "test.duckdb")
+            
+            manager = DatabaseConnectionManager(db_path)
+            with manager.get_connection() as conn:
+                # 创建表并插入数据
+                conn.execute("CREATE TABLE test (id INTEGER, name TEXT)")
+                conn.execute("INSERT INTO test VALUES (1, 'test')")
+                
+                # 验证数据
+                result = conn.execute("SELECT * FROM test").fetchall()
+                assert len(result) == 1
+                assert result[0] == (1, 'test')
+
+    @patch('downloader.database.db_connection.duckdb.connect')
+    def test_get_connection_exception_handling(self, mock_connect):
+        """测试连接异常处理"""
+        # 模拟连接失败
+        mock_connect.side_effect = Exception("Connection failed")
+        
+        manager = DatabaseConnectionManager(":memory:")
+        with pytest.raises(Exception, match="Connection failed"):
+            with manager.get_connection() as conn:
+                pass
+
+    @patch('downloader.database.db_connection.duckdb.connect')
+    def test_connection_cleanup_on_exception(self, mock_connect):
+        """测试异常时连接清理"""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        
+        # 模拟在使用连接时发生异常
+        manager = DatabaseConnectionManager(":memory:")
+        with pytest.raises(RuntimeError, match="Test exception"):
+            with manager.get_connection() as conn:
+                raise RuntimeError("Test exception")
+        
+        # 验证连接被关闭
+        mock_conn.close.assert_called_once()
+
+    @patch('downloader.database.db_connection.duckdb.connect')
+    def test_connection_cleanup_on_success(self, mock_connect):
+        """测试正常情况下连接清理"""
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        
+        manager = DatabaseConnectionManager(":memory:")
+        with manager.get_connection() as conn:
+            pass  # 正常退出
+        
+        # 验证连接被关闭
+        mock_conn.close.assert_called_once()
+
+
+class TestGetConnFunction:
+    """get_conn 函数测试类"""
+
+    def test_get_conn_with_default_path(self):
+        """测试使用默认路径获取连接"""
+        with get_conn(":memory:") as conn:
+            assert conn is not None
+            result = conn.execute("SELECT 1").fetchone()
+            assert result[0] == 1
+
+    def test_get_conn_with_custom_path(self):
+        """测试使用自定义路径获取连接"""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = os.path.join(tmp_dir, "test.duckdb")
+            
+            with get_conn(db_path) as conn:
+                conn.execute("CREATE TABLE test (id INTEGER)")
+                conn.execute("INSERT INTO test VALUES (1)")
+                result = conn.execute("SELECT COUNT(*) FROM test").fetchone()
+                assert result[0] == 1
+
+    def test_get_conn_manager_reuse(self):
+        """测试管理器实例重用"""
+        # 第一次调用
+        with get_conn(":memory:") as conn1:
+            pass
+        
+        # 第二次调用，应该重用管理器
+        with get_conn(":memory:") as conn2:
+            pass
+        
+        # 使用不同的内存数据库路径，应该创建新管理器
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = os.path.join(tmp_dir, "test.duckdb")
+            with get_conn(db_path) as conn3:
+                pass
+
+    def test_get_conn_manager_recreation(self):
+        """测试管理器重新创建"""
+        # 第一次调用
+        with get_conn(":memory:") as conn1:
+            pass
+        
+        # 使用不同路径，应该创建新管理器
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = os.path.join(tmp_dir, "test.duckdb")
+            with get_conn(db_path) as conn2:
+                pass
+        
+        # 再次使用内存数据库，应该重用管理器
+        with get_conn(":memory:") as conn3:
+            pass
