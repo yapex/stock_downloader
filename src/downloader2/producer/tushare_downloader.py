@@ -218,13 +218,13 @@ class TushareDownloader:  # 按给定symbol列表下载数据
 
     def _check_completion(self):
         """检查是否所有任务都已完成，如果是则自动停止下载器"""
-        # 如果已经检查过完成状态，直接返回
-        if self._completion_checked.is_set():
+        # 快速检查，避免不必要的锁竞争
+        if self._completion_checked.is_set() or self._stop_called.is_set():
             return
 
         with self._progress_lock:
-            # 再次检查，防止竞态条件
-            if self._completion_checked.is_set():
+            # 双重检查模式，防止竞态条件
+            if self._completion_checked.is_set() or self._stop_called.is_set():
                 return
 
             # 检查是否所有任务都已处理完成
@@ -233,15 +233,12 @@ class TushareDownloader:  # 按给定symbol列表下载数据
                 and self.task_queue.qsize() == 0
                 and self.total_symbols > 0
             ):
-                self._completion_checked.set()  # 原子性标记已检查
+                self._completion_checked.set()
                 logger.info(
                     f"任务类型 {self.task_type.value} 的所有任务已完成，自动停止下载器"
                 )
-                self._shutdown_event.set()  # 设置停止信号
-                # 在单独的线程中调用stop方法，避免死锁
-                import threading
-
-                threading.Thread(target=self.stop, daemon=True).start()
+                self._shutdown_event.set()
+                self.stop()
 
     def _process_symbol(self, symbol: str):
         """处理单个symbol"""
