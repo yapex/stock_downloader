@@ -1,0 +1,29 @@
+"""数据库相关类型定义"""
+
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
+from enum import Enum
+
+
+@dataclass
+class TableSchema:
+    """表结构配置"""
+    table_name: str
+    api_method: str
+    default_params: Dict[str, Any]
+    primary_key: List[str]
+    description: str
+    date_col: Optional[str] = None
+    columns: Optional[List[Dict[str, str]]] = None
+
+
+class TableName(Enum):
+    """数据库表名枚举"""
+
+    STOCK_BASIC = "stock_basic"
+    STOCK_DAILY = "stock_daily"
+    STOCK_ADJ_QFQ = "stock_adj_qfq"
+    STOCK_DAILY_BASIC = "daily_basic"
+    INCOME_STATEMENT = "income_statement"
+    BALANCE_SHEET = "balance_sheet"
+    CASH_FLOW = "cash_flow"

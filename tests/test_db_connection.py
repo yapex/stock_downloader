@@ -5,7 +5,7 @@ import tempfile
 import os
 from contextlib import contextmanager
 from unittest.mock import patch, MagicMock
-from downloader.database.db_connection import (
+from neo.database.connection import (
     get_memory_conn, 
     DatabaseConnectionManager, 
     get_conn
@@ -180,7 +180,8 @@ class TestDatabaseConnectionManager:
 
     def test_init_with_default_path(self):
         """测试使用默认路径初始化"""
-        with patch('downloader.database.db_connection.config') as mock_config:
+        with patch('neo.database.connection.get_config') as mock_get_config:
+            mock_config = mock_get_config.return_value
             mock_config.database.path = "/test/path/db.duckdb"
             manager = DatabaseConnectionManager()
             assert manager.db_path == "/test/path/db.duckdb"
@@ -216,7 +217,7 @@ class TestDatabaseConnectionManager:
                 assert len(result) == 1
                 assert result[0] == (1, 'test')
 
-    @patch('downloader.database.db_connection.duckdb.connect')
+    @patch('neo.database.connection.duckdb.connect')
     def test_get_connection_exception_handling(self, mock_connect):
         """测试连接异常处理"""
         # 模拟连接失败
@@ -227,7 +228,7 @@ class TestDatabaseConnectionManager:
             with manager.get_connection() as conn:
                 pass
 
-    @patch('downloader.database.db_connection.duckdb.connect')
+    @patch('neo.database.connection.duckdb.connect')
     def test_connection_cleanup_on_exception(self, mock_connect):
         """测试异常时连接清理"""
         mock_conn = MagicMock()
@@ -242,7 +243,7 @@ class TestDatabaseConnectionManager:
         # 验证连接被关闭
         mock_conn.close.assert_called_once()
 
-    @patch('downloader.database.db_connection.duckdb.connect')
+    @patch('neo.database.connection.duckdb.connect')
     def test_connection_cleanup_on_success(self, mock_connect):
         """测试正常情况下连接清理"""
         mock_conn = MagicMock()

@@ -12,7 +12,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from downloader.database.db_table_create import SchemaTableCreator
+from neo.database.table_creator import SchemaTableCreator
 import logging
 
 # 配置日志

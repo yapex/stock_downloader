@@ -12,10 +12,11 @@ from box import Box
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from downloader.config import get_config
-from downloader.producer.fetcher_builder import FetcherBuilder, TaskType
-from downloader.database.db_oprator import DBOperator
-from downloader.utils import setup_logging
+from neo.config import get_config
+from neo.downloader.fetcher_builder import FetcherBuilder
+from neo.task_bus.types import TaskType
+from neo.database.operator import DBOperator
+from neo.downloader.utils import setup_logging
 
 config = get_config()
 # 配置日志

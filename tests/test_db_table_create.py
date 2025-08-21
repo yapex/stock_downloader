@@ -2,7 +2,8 @@ import pytest
 import tempfile
 import os
 from unittest.mock import patch, MagicMock
-from downloader.database.db_table_create import SchemaTableCreator, TableName
+from neo.database.table_creator import SchemaTableCreator
+from neo.database.types import TableName
 
 
 class TestSchemaTableCreator:
@@ -235,7 +236,7 @@ columns = [
 
     def test_dependency_injection_with_memory_conn(self, schema_file):
         """测试通过依赖注入使用内存数据库连接"""
-        from downloader.database.db_connection import get_memory_conn
+        from neo.database.connection import get_memory_conn
         
         # 通过依赖注入创建使用内存数据库的 SchemaTableCreator
         creator = SchemaTableCreator(schema_file_path=schema_file, conn=get_memory_conn)
@@ -249,7 +250,7 @@ columns = [
 
     def test_dependency_injection_different_connections(self, schema_file):
         """测试可以注入不同的连接函数"""
-        from downloader.database.db_connection import get_memory_conn, get_conn
+        from neo.database.connection import get_memory_conn, get_conn
         
         # 创建使用内存数据库的实例
         creator_memory = SchemaTableCreator(schema_file_path=schema_file, conn=get_memory_conn)
@@ -324,9 +325,10 @@ columns = [
             # 验证只有存在于schema中的表创建成功
             assert results["stock_basic"] is True
             
-            # 验证不存在于schema中的表标记为失败
-            assert results["stock_daily"] is False
-            assert results["stock_adj_qfq"] is False
+            # 验证结果中只包含schema中定义的表
+            assert "stock_daily" not in results
+            assert "stock_adj_qfq" not in results
+            assert len(results) == 1
             
         finally:
             # 清理临时文件

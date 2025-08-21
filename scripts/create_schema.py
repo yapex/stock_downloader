@@ -1,6 +1,12 @@
-import downloader.config
-import tushare
+import sys
 from pathlib import Path
+
+# 添加项目根目录到 Python 路径
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+import neo.config as neo_config
+import tushare
 from typing import List, Union, Dict, Any
 import pandas as pd
 import argparse
@@ -115,34 +121,46 @@ def generate_combined_schema_toml(
 
     # 手动构建 TOML 字符串以确保 default_params 是内联表格式
     toml_lines = []
-    
+
     for table_name, table_config in toml_data.items():
         toml_lines.append(f"[{table_name}]")
-        
+
         # 处理每个配置项
         for key, value in table_config.items():
             if key == "default_params" and isinstance(value, dict):
                 # 将 default_params 写成内联表格式
-                inline_params = ", ".join([f'{k} = "{v}"' if isinstance(v, str) else f'{k} = {v}' for k, v in value.items()])
+                inline_params = ", ".join(
+                    [
+                        f'{k} = "{v}"' if isinstance(v, str) else f"{k} = {v}"
+                        for k, v in value.items()
+                    ]
+                )
                 toml_lines.append(f"default_params = {{ {inline_params} }}")
             elif isinstance(value, list) and value and isinstance(value[0], str):
                 # 处理字符串数组（如 primary_key）
-                formatted_list = '[\n    ' + ',\n    '.join([f'"{item}"' for item in value]) + ',\n]'
+                formatted_list = (
+                    "[\n    " + ",\n    ".join([f'"{item}"' for item in value]) + ",\n]"
+                )
                 toml_lines.append(f"{key} = {formatted_list}")
             elif isinstance(value, list) and value and isinstance(value[0], dict):
                 # 处理对象数组（如 columns）
                 toml_lines.append(f"{key} = [")
                 for item in value:
-                    item_str = ", ".join([f'{k} = "{v}"' if isinstance(v, str) else f'{k} = {v}' for k, v in item.items()])
+                    item_str = ", ".join(
+                        [
+                            f'{k} = "{v}"' if isinstance(v, str) else f"{k} = {v}"
+                            for k, v in item.items()
+                        ]
+                    )
                     toml_lines.append(f"    {{ {item_str} }},")
                 toml_lines.append("]")
             elif isinstance(value, str):
                 toml_lines.append(f'{key} = "{value}"')
             else:
                 toml_lines.append(f"{key} = {value}")
-        
+
         toml_lines.append("")  # 空行分隔表
-    
+
     # 写入文件
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(toml_lines))
@@ -235,7 +253,7 @@ TABLE_CONFIGS = Box(
 
 def get_tushare_api():
     """获取配置好的 tushare API 实例"""
-    config = downloader.config.get_config()
+    config = neo_config.get_config()
     tushare_token = config.tushare.token
     tushare.set_token(tushare_token)
     return tushare.pro_api()
