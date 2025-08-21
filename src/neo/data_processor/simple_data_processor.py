@@ -10,6 +10,7 @@ import pandas as pd
 from ..config import get_config
 from .interfaces import IDataProcessor
 from .types import TaskResult
+from ..database.operator import DBOperator
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +21,14 @@ class SimpleDataProcessor(IDataProcessor):
     专注于数据清洗、转换和验证。
     """
     
-    def __init__(self):
-        """初始化数据处理器"""
+    def __init__(self, db_operator: Optional[DBOperator] = None):
+        """初始化数据处理器
+        
+        Args:
+            db_operator: 数据库操作器，用于保存数据
+        """
         self.config = get_config()
+        self.db_operator = db_operator or DBOperator()
     
     def process(self, task_result: TaskResult) -> bool:
         """处理任务结果
@@ -58,13 +64,13 @@ class SimpleDataProcessor(IDataProcessor):
                 logger.warning("数据转换失败")
                 return False
             
-            # 数据保存（这里是模拟保存）
-            success = self._save_data(transformed_data, task_result.config.task_type.value)
+            # 数据保存
+            success = self._save_data(transformed_data, task_result.config.task_type.value.api_method)
             
             if success:
                 logger.info(f"数据处理完成: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}, rows: {len(transformed_data)}")
             else:
-                logger.warning(f"数据保存失败: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}")
+                logger.warning(f"数据保存失败: {task_result.config.task_type}, symbol: {task_result.config.symbol}")
             
             return success
             
@@ -147,7 +153,7 @@ class SimpleDataProcessor(IDataProcessor):
     def _save_data(self, data: pd.DataFrame, task_type: str) -> bool:
         """数据保存
         
-        这里是模拟保存，实际应该保存到数据库。
+        将数据保存到数据库。
         
         Args:
             data: 转换后的数据
@@ -157,11 +163,27 @@ class SimpleDataProcessor(IDataProcessor):
             保存是否成功
         """
         try:
-            # 模拟数据保存
-            logger.debug(f"模拟保存数据到数据库: {task_type}, {len(data)} rows")
+            # 调试信息：打印 task_type 的类型和值
+            logger.info(f"task_type 类型: {type(task_type)}, 值: {task_type}")
             
-            # 这里可以添加实际的数据库保存逻辑
-            # 例如：使用database层的接口保存数据
+            # 根据任务类型确定表名
+            table_name_mapping = {
+                'stock_basic': 'stock_basic',
+                'daily': 'stock_daily',
+                'daily_basic': 'daily_basic',
+                'weekly': 'stock_weekly',
+                'monthly': 'stock_monthly'
+            }
+            
+            table_name = table_name_mapping.get(task_type)
+            if not table_name:
+                logger.warning(f"未知的任务类型: {task_type}")
+                return False
+            
+            # 保存数据到数据库
+            logger.debug(f"保存数据到数据库: {table_name}, {len(data)} rows")
+            self.db_operator.upsert(table_name, data)
+            logger.info(f"数据保存成功: {table_name}, {len(data)} rows")
             
             return True
             

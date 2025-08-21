@@ -156,7 +156,8 @@ class TestFetcherBuilder:
         result = fetcher()
         
         mock_get_api.assert_called_once_with("pro", "stock_basic")
-        mock_api_func.assert_called_once_with(ts_code='600519.SH')
+        # STOCK_BASIC 没有默认参数，所以不传递任何参数
+        mock_api_func.assert_called_once_with()
         assert isinstance(result, pd.DataFrame)
     
     @patch.object(TushareApiManager, 'get_api_function')

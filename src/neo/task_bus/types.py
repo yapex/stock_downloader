@@ -19,10 +19,13 @@ class TaskTemplate:
     api_method: str
     base_object: str = "pro"
     default_params: Dict[str, Any] = None
+    required_params: Dict[str, Any] = None
 
     def __post_init__(self):
         if self.default_params is None:
             object.__setattr__(self, "default_params", {})
+        if self.required_params is None:
+            object.__setattr__(self, "required_params", {})
 
 
 class TaskTypeRegistry:
@@ -62,6 +65,7 @@ class TaskTypeRegistry:
                 api_method=schema.api_method,
                 base_object=base_object,
                 default_params=schema.default_params.copy(),
+                required_params=schema.required_params.copy(),
             )
 
             # 直接使用表名的大写形式作为枚举名

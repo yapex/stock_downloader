@@ -16,14 +16,6 @@ logger = logging.getLogger(__name__)
 
 # 全局Huey实例
 _huey_instance = None
-_task_registered = False
-_global_process_task_result = None
-
-
-def _get_registered_task():
-    """获取已注册的任务函数"""
-    global _global_process_task_result
-    return _global_process_task_result
 
 
 def get_huey() -> SqliteHuey:
@@ -53,46 +45,9 @@ class HueyTaskBus(ITaskBus):
     
     def _register_tasks(self):
         """注册Huey任务"""
-        global _task_registered
-        
-        if _task_registered:
-            # 如果任务已经注册，直接获取已注册的任务
-            self._process_task_result = _get_registered_task()
-            return
-        
-        # 保存self引用供任务函数使用
-        task_bus_instance = self
-        
-        @self.huey.task()
-        def process_task_result(task_result_data: Dict[str, Any]) -> None:
-            """处理TaskResult的Huey任务
-            
-            Args:
-                task_result_data: 序列化的TaskResult数据
-            """
-            try:
-                # 反序列化TaskResult
-                task_result = task_bus_instance._deserialize_task_result(task_result_data)
-                
-                # 使用DataProcessor处理TaskResult
-                success = task_bus_instance.data_processor.process(task_result)
-                
-                if success:
-                    logger.info(f"TaskResult处理完成: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}")
-                else:
-                    logger.warning(f"TaskResult处理失败: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}")
-                
-            except Exception as e:
-                logger.error(f"处理TaskResult时出错: {e}")
-                raise
-        
-        # 保存任务函数引用
-        self._process_task_result = process_task_result
-        _task_registered = True
-        
-        # 保存全局任务引用
-        global _global_process_task_result
-        _global_process_task_result = process_task_result
+        # 任务已在模块级别注册，这里不需要重复注册
+        # 直接引用全局注册的任务函数
+        pass
     
     def submit_task(self, task_result: TaskResult) -> None:
         """提交任务到队列
@@ -103,10 +58,11 @@ class HueyTaskBus(ITaskBus):
         # 序列化TaskResult为字典格式
         task_result_data = self._serialize_task_result(task_result)
         
-        # 提交到Huey队列
-        self._process_task_result(task_result_data)
+        # 提交到Huey队列（异步执行）
+        # 直接调用全局注册的任务函数
+        result = process_task_result(task_result_data)
         
-        logger.debug(f"TaskResult已提交到队列: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}")
+        logger.debug(f"TaskResult已提交到队列: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}, result: {result}")
     
     def start_consumer(self) -> None:
         """启动消费者
@@ -168,3 +124,70 @@ class HueyTaskBus(ITaskBus):
             error=error,
             retry_count=task_result_data.get('retry_count', 0)
         )
+
+
+# 导出全局 Huey 实例供 huey_consumer 使用
+huey = get_huey()
+
+# 注册任务函数到全局 huey 实例
+@huey.task(name='process_task_result', retries=2, retry_delay=5)
+def process_task_result(task_result_data: Dict[str, Any]) -> None:
+    """处理TaskResult的Huey任务
+    
+    Args:
+        task_result_data: 序列化的TaskResult数据
+    """
+    try:
+        # 延迟导入避免循环导入
+        from ..data_processor.simple_data_processor import SimpleDataProcessor
+        from .types import DownloadTaskConfig, TaskType, TaskPriority, TaskResult
+        import pandas as pd
+        
+        # 创建数据处理器实例
+        data_processor = SimpleDataProcessor()
+        
+        # 直接在这里反序列化TaskResult，避免循环导入
+        config_data = task_result_data['config']
+        
+        # 处理TaskType
+        task_type = TaskType(config_data['task_type'])
+        
+        # 处理TaskPriority
+        priority = TaskPriority(config_data['priority'])
+        
+        config = DownloadTaskConfig(
+            symbol=config_data['symbol'],
+            task_type=task_type,
+            priority=priority,
+            max_retries=config_data['max_retries']
+        )
+        
+        # 处理数据
+        data = task_result_data['data']
+        if data is not None:
+            data = pd.DataFrame(data)
+        
+        # 处理错误
+        error = None
+        if task_result_data['error']:
+            error = Exception(task_result_data['error'])
+        
+        task_result = TaskResult(
+            config=config,
+            success=task_result_data['success'],
+            data=data,
+            error=error,
+            retry_count=task_result_data.get('retry_count', 0)
+        )
+        
+        # 使用DataProcessor处理TaskResult
+        success = data_processor.process(task_result)
+        
+        if success:
+            logger.info(f"TaskResult处理完成: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}")
+        else:
+            logger.warning(f"TaskResult处理失败: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}")
+        
+    except Exception as e:
+        logger.error(f"处理TaskResult时出错: {e}")
+        raise

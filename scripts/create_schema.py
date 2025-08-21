@@ -85,18 +85,18 @@ def generate_combined_schema_toml(
         # 首先添加 table_name
         table_config["table_name"] = table_name
 
-        # 然后添加其他配置字段（黑名单机制：排除 fields、output_file，但保留 api_method 和 default_params）
+        # 然后添加其他配置字段（黑名单机制：排除 fields、output_file 和 default_params）
         if table_name in TABLE_CONFIGS:
             config = TABLE_CONFIGS[table_name]
-            blacklist_fields = {"fields", "output_file"}
+            blacklist_fields = {"default_params", "fields", "output_file"}
 
             for key, value in config.items():
                 # 跳过 table_name（已添加）和黑名单字段
                 if key != "table_name" and key not in blacklist_fields:
                     # 只添加非空值
                     if value:
-                        # 对于 default_params，确保它是内联表格式
-                        if key == "default_params" and isinstance(value, dict):
+                        # 对于 required_params，确保它是内联表格式
+                        if key == "required_params" and isinstance(value, dict):
                             # 创建内联表格式的字典
                             table_config[key] = dict(value)
                         else:
@@ -127,15 +127,15 @@ def generate_combined_schema_toml(
 
         # 处理每个配置项
         for key, value in table_config.items():
-            if key == "default_params" and isinstance(value, dict):
-                # 将 default_params 写成内联表格式
+            if key in ["required_params"] and isinstance(value, dict):
+                # 将 required_params 写成内联表格式
                 inline_params = ", ".join(
                     [
                         f'{k} = "{v}"' if isinstance(v, str) else f"{k} = {v}"
                         for k, v in value.items()
                     ]
                 )
-                toml_lines.append(f"default_params = {{ {inline_params} }}")
+                toml_lines.append(f"{key} = {{ {inline_params} }}")
             elif isinstance(value, list) and value and isinstance(value[0], str):
                 # 处理字符串数组（如 primary_key）
                 formatted_list = (
@@ -198,9 +198,11 @@ TABLE_CONFIGS = Box(
             "date_col": "trade_date",
             "description": "复权行情数据字段",
             "api_method": "pro_bar",
+            "required_params": {
+                "adj": "qfq",
+            },
             "default_params": {
                 "ts_code": "600519.SH",
-                "adj": "qfq",
                 "start_date": "20240101",
                 "end_date": "20240131",
             },
@@ -347,7 +349,7 @@ def create_schemas(table_names: List[str] = None) -> None:
             print(f"警告: 未知的表名 '{table_name}'，跳过")
             continue
 
-        config = TABLE_CONFIGS[table_name]
+        config = Box(TABLE_CONFIGS[table_name])
         schema_data = get_table_schema_data(pro, table_name, config)
         if schema_data:
             schema_dict = {

@@ -12,6 +12,7 @@ from ..config import get_config
 from .interfaces import IDownloader
 from .types import DownloadTaskConfig, TaskResult, TaskType
 from .fetcher_builder import FetcherBuilder
+from ..database.operator import DBOperator
 
 logger = logging.getLogger(__name__)
 
@@ -22,15 +23,16 @@ class SimpleDownloader(IDownloader):
     专注于网络IO和数据获取，不处理业务逻辑。
     """
     
-    def __init__(self, rate_limiters: Optional[Dict[str, Limiter]] = None):
+    def __init__(self, rate_limiters: Optional[Dict[str, Limiter]] = None, db_operator: Optional[DBOperator] = None):
         """初始化下载器
         
         Args:
             rate_limiters: 按任务类型分组的速率限制器字典，如果为None则使用默认配置
+            db_operator: 数据库操作器，用于智能日期参数处理
         """
         self.config = get_config()
         self.rate_limiters = rate_limiters or {}
-        self.fetcher_builder = FetcherBuilder()
+        self.fetcher_builder = FetcherBuilder(db_operator=db_operator)
     
     def _get_rate_limiter(self, task_type: TaskType) -> Limiter:
         """获取指定任务类型的速率限制器

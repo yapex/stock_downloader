@@ -15,6 +15,11 @@ class TableSchema:
     description: str
     date_col: Optional[str] = None
     columns: Optional[List[Dict[str, str]]] = None
+    required_params: Dict[str, Any] = None
+
+    def __post_init__(self):
+        if self.required_params is None:
+            self.required_params = {}
 
 
 class TableName(Enum):

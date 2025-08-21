@@ -39,7 +39,7 @@ dependencies = [
 ]
 
 [project.scripts]
-dl = "downloader.downloader_app:app"
+stock = "neo.main:app"
 
 
 

@@ -57,7 +57,8 @@ class SchemaLoader(ISchemaLoader):
                 primary_key=config_box.get('primary_key', []),
                 description=config_box.get('description', ''),
                 date_col=config_box.get('date_col'),
-                columns=config_box.get('columns')
+                columns=config_box.get('columns'),
+                required_params=config_box.get('required_params', {})
             )
             schemas[table_name] = schema
 
