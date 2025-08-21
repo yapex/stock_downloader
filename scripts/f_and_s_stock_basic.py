@@ -17,16 +17,20 @@ from downloader.producer.fetcher_builder import FetcherBuilder, TaskType
 from downloader.database.db_oprator import DBOperator
 from downloader.utils import setup_logging
 
+config = get_config()
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
+logger = logging.getLogger(__name__)
+
 
 def main():
     """主函数：下载股票基础信息并保存到数据库"""
-    # 设置日志
-    logger = logging.getLogger(__name__)
-    setup_logging(logger)
 
     try:
         # 获取配置
-        config = get_config()
         logger.info(f"使用数据库: {config.database.path}")
         logger.info(f"数据库类型: {config.database.type}")
 

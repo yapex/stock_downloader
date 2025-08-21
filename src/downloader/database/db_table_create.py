@@ -15,7 +15,7 @@ class TableName(Enum):
     STOCK_BASIC = "stock_basic"
     STOCK_DAILY = "stock_daily"
     STOCK_ADJ_QFQ = "stock_adj_qfq"
-    STOCK_ADJ_RAW = "stock_adj_raw"
+    STOCK_DAILY_BASIC = "daily_basic"
     INCOME_STATEMENT = "income_statement"
     BALANCE_SHEET = "balance_sheet"
     CASH_FLOW = "cash_flow"
@@ -230,13 +230,13 @@ class SchemaTableCreator:
                 with self.conn() as conn:
                     result = conn.execute(
                         "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?",
-                        [table_name]
+                        [table_name],
                     ).fetchone()
                     return result[0] > 0
             else:
                 result = self.conn.execute(
                     "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?",
-                    [table_name]
+                    [table_name],
                 ).fetchone()
                 return result[0] > 0
         except Exception as e:

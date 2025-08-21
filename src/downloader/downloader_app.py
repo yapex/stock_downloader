@@ -2,44 +2,14 @@
 """基于 Typer 的下载器命令行应用程序"""
 
 import typer
-from typing import Optional, List
+from typing import Optional
 from .manager.downloader_manager import DownloaderManager
 from .producer.tushare_downloader import TushareDownloader
-from .producer.fetcher_builder import TaskType
-from .task.types import TaskPriority
-from .config import get_config
 from .utils import setup_logging
 import logging
 
 logger = logging.getLogger(__name__)
 setup_logging(logger)
-
-# 任务名称到 TaskType 的映射
-TASK_NAME_TO_TYPE = {
-    "stock_basic": TaskType.STOCK_BASIC,
-    "stock_daily": TaskType.STOCK_DAILY,
-    "stock_adj_qfq": TaskType.DAILY_BAR_QFQ,
-    "balance_sheet": TaskType.BALANCESHEET,
-    "income_statement": TaskType.INCOME,
-    "cash_flow": TaskType.CASHFLOW,
-}
-
-def get_task_types_from_group(group: str) -> List[TaskType]:
-    """根据任务组名称获取任务类型列表"""
-    config = get_config()
-    
-    if group not in config.task_groups:
-        raise ValueError(f"未找到任务组: {group}")
-    
-    task_names = config.task_groups[group]
-    task_types = []
-    
-    for task_name in task_names:
-        if task_name not in TASK_NAME_TO_TYPE:
-            raise ValueError(f"未知的任务类型: {task_name}")
-        task_types.append(TASK_NAME_TO_TYPE[task_name])
-    
-    return task_types
 
 app = typer.Typer(help="股票数据下载器命令行工具")
 
@@ -65,9 +35,6 @@ def download_command(
             # 去除空格并分割
             symbol_list = [s.strip() for s in symbols.split(",") if s.strip()]
 
-        # 获取任务类型列表
-        task_types = get_task_types_from_group(group)
-
         # 如果是 dry-run 模式，仅验证参数不启动下载器
         if dry_run:
             typer.echo("参数验证成功，dry-run 模式不启动下载器")
@@ -75,26 +42,18 @@ def download_command(
 
         # 创建下载管理器，使用 TushareDownloader 作为任务执行器
         tushare_executor = TushareDownloader()
-        manager = DownloaderManager(
-            max_workers=4,
+        manager = DownloaderManager.create_from_config(
             task_executor=tushare_executor,
-            task_type_config=None,  # 使用默认的任务类型配置
+            max_workers=4,
             enable_progress_bar=True
         )
 
-        # 添加下载任务
-        for task_type in task_types:
-            manager.add_download_tasks(
-                symbols=symbol_list or ["all"],  # 如果没有指定股票代码，使用 "all"
-                task_type=task_type,
-                priority=TaskPriority.MEDIUM,  # 默认优先级
-                max_retries=3  # 默认重试次数
-            )
-
-        # 启动下载任务
-        manager.start()
-        stats = manager.run()
-        manager.stop()
+        # 执行下载任务组
+        stats = manager.download_group(
+            group=group,
+            symbols=symbol_list,
+            max_retries=3  # 默认重试次数
+        )
         
         # 输出执行统计信息
         typer.echo(f"任务执行完成:")

@@ -129,7 +129,7 @@ columns = [
             "stock_basic",
             "stock_daily",
             "stock_adj_qfq",
-            "stock_adj_raw",
+            "daily_basic",
             "income_statement",
             "balance_sheet",
             "cash_flow",
