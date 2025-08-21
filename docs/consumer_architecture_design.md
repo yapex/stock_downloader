@@ -68,15 +68,15 @@ data_groups = {
     task_type: [] for task_type in TaskType
 }
 
-# 或者显式指定需要处理的任务类型
+# 或者显式指定需要处理的任务类型（基于 stock_schema.toml 中的表定义）
 data_groups = {
-    TaskType.STOCK_BASIC: [],
-    TaskType.STOCK_DAILY: [],
-    TaskType.DAILY_BAR_QFQ: [],
-    TaskType.DAILY_BAR_NONE: [],
-    TaskType.BALANCESHEET: [],
-    TaskType.INCOME: [],
-    TaskType.CASHFLOW: [],
+    TaskType.STOCK_BASIC: [],        # 股票基本信息
+    TaskType.STOCK_DAILY: [],        # 股票日线数据
+    TaskType.STOCK_ADJ_QFQ: [],      # 复权行情数据
+    TaskType.DAILY_BASIC: [],        # 每日基本面指标
+    TaskType.INCOME_STATEMENT: [],   # 利润表
+    TaskType.BALANCE_SHEET: [],      # 资产负债表
+    TaskType.CASH_FLOW: [],          # 现金流量表
 }
 ```
 
@@ -89,10 +89,7 @@ data_groups = {
 
 ### 批量处理优化
 
-- 设置合适的批量大小（如 1000 条记录）
-- 实现超时机制，避免数据积压
-- 支持动态调整批量大小
-- 优化内存使用，避免数据堆积
+- 设置合适的批量大小（如 100 条记录）, 从配置文件中读取
 
 ## 接口设计
 
@@ -100,20 +97,16 @@ data_groups = {
 
 ```python
 from typing import Protocol
-from abc import abstractmethod
 
 class IConsumerManager(Protocol):
-    @abstractmethod
     def start(self) -> None:
         """启动消费进程"""
         pass
 
-    @abstractmethod
     def stop(self) -> None:
         """停止消费进程"""
         pass
 
-    @abstractmethod
     def get_status(self) -> dict:
         """获取消费状态"""
         pass
@@ -123,12 +116,10 @@ class IConsumerManager(Protocol):
 
 ```python
 class IDataProcessor(Protocol):
-    @abstractmethod
     def process_task_result(self, task_result: TaskResult) -> None:
         """处理单个任务结果"""
         pass
 
-    @abstractmethod
     def flush_pending_data(self) -> None:
         """刷新待处理数据"""
         pass
@@ -138,57 +129,24 @@ class IDataProcessor(Protocol):
 
 ```python
 class IBatchSaver(Protocol):
-    @abstractmethod
     def save_batch(self, task_type: TaskType, data_batch: List[dict]) -> bool:
         """批量保存数据"""
         pass
 ```
-
-## 配置与监控
-
-### 配置参数
-
-```python
-@dataclass
-class ConsumerConfig:
-    worker_threads: int = 4
-    batch_size: int = 1000
-    batch_timeout: int = 30  # 秒
-    max_retries: int = 3
-    retry_delay: int = 5  # 秒
-    queue_check_interval: float = 0.1  # 秒
-```
-
-### 监控指标
-
-- 消费速率（条/秒）
-- 队列积压情况
-- 批量保存成功率
-- 错误统计和分类
-- 线程状态监控
 
 ## 错误处理与重试
 
 ### 错误分类
 
 1. **数据格式错误**：记录日志，丢弃数据
-2. **数据库连接错误**：重试机制，指数退避
-3. **数据约束错误**：记录详细信息，人工处理
-4. **系统资源错误**：暂停处理，等待恢复
-
-### 重试策略
-
-- 实现指数退避算法
-- 设置最大重试次数
-- 区分可重试和不可重试错误
-- 提供死信队列机制
+2. **数据约束错误**：记录详细信息，人工处理
+3. **系统资源错误**：暂停处理，等待恢复
 
 ## 与现有系统集成
 
 ### 与 Huey 集成
 
-- 复用现有的 SqliteHuey 实例
-- 监听 `process_fetched_data` 任务的结果
+- 独立进程运行 SqliteHuey 实例
 - 处理任务执行状态和异常情况
 
 ### 与数据库层集成
@@ -203,41 +161,12 @@ class ConsumerConfig:
 - 支持运行时配置更新
 - 提供配置验证机制
 
-## 部署和运维
-
-### 启动方式
-
-```python
-# 独立进程启动
-python -m src.downloader.consumer.main
-
-# 或集成到主应用
-from src.downloader.consumer import ConsumerManager
-consumer = ConsumerManager(config)
-consumer.start()
-```
-
-### 监控和日志
-
-- 结构化日志输出
-- 性能指标收集
-- 健康检查接口
-- 告警机制集成
-
-## 性能优化建议
-
-1. **批量大小调优**：根据数据类型和系统负载动态调整
-2. **连接池优化**：合理设置数据库连接池大小
-3. **内存管理**：及时释放处理完的数据，避免内存泄漏
-4. **并发控制**：平衡线程数量和系统资源消耗
-5. **数据预处理**：在保存前进行数据去重和验证
-
 ## 测试策略
 
 ### 单元测试
 
 - 各组件的独立功能测试
-- Mock 外部依赖（数据库、队列）
+- 使用内存数据库进行测试
 - 边界条件和异常情况测试
 
 ### 集成测试

@@ -10,7 +10,7 @@ from typing import Optional
 from downloader.task.download_task import DownloadTask
 from downloader.task.types import DownloadTaskConfig, TaskResult
 from downloader.producer.huey_tasks import process_fetched_data
-from downloader.interfaces.download_task import IDownloadTask
+from downloader.task.interfaces import IDownloadTask
 
 logger = logging.getLogger(__name__)
 

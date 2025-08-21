@@ -10,7 +10,7 @@ from downloader.manager.downloader_manager import DownloaderManager, DownloadSta
 from downloader.task.types import DownloadTaskConfig, TaskResult, TaskPriority
 from downloader.task.task_scheduler import TaskTypeConfig
 from downloader.producer.fetcher_builder import TaskType
-from downloader.interfaces.download_task import IDownloadTask
+from downloader.task.interfaces import IDownloadTask
 
 
 class MockTaskExecutor(IDownloadTask):

@@ -20,7 +20,7 @@ from downloader.task.task_scheduler import (
     create_task_configs,
 )
 from downloader.producer.fetcher_builder import TaskType
-from downloader.interfaces.download_task import IDownloadTask
+from downloader.task.interfaces import IDownloadTask
 from downloader.config import get_config
 from pathlib import Path
 from downloader.database.schema_loader import SchemaLoader

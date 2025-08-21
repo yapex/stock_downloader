@@ -10,7 +10,7 @@ from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass
 from box import Box
 from downloader.database.types import TableSchema
-from downloader.interfaces.schema_loader import ISchemaLoader
+from downloader.database.interfaces import ISchemaLoader
 
 
 class SchemaLoader(ISchemaLoader):

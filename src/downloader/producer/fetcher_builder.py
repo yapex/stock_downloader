@@ -18,7 +18,8 @@ from pathlib import Path
 
 from downloader.config import get_config
 from downloader.utils import normalize_stock_code
-from downloader.database.schema_loader import SchemaLoader, ISchemaLoader
+from downloader.database.schema_loader import SchemaLoader
+from downloader.database.interfaces import ISchemaLoader
 
 logger = logging.getLogger(__name__)
 

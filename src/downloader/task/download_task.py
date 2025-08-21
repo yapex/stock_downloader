@@ -10,7 +10,7 @@ from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate
 
 from downloader.producer.fetcher_builder import FetcherBuilder, TaskType
 from downloader.producer.huey_tasks import process_fetched_data
-from ..interfaces.download_task import IDownloadTask
+from downloader.task.interfaces import IDownloadTask
 from .types import DownloadTaskConfig, TaskResult, TaskPriority
 
 logger = logging.getLogger(__name__)
