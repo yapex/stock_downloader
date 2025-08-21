@@ -41,6 +41,9 @@ class TestConfigFunctions:
         assert config.get_priority(TaskType.STOCK_BASIC) == TaskPriority.HIGH
         assert config.get_priority(TaskType.STOCK_DAILY) == TaskPriority.MEDIUM
         assert config.get_priority(TaskType.BALANCESHEET) == TaskPriority.LOW
+        
+        # 验证 get_config 被正确调用
+        mock_get_config.assert_called_with(None)
 
     @patch('downloader.manager.downloader_manager.get_config')
     def test_create_task_type_config_from_config_no_download_tasks(self, mock_get_config):
@@ -56,6 +59,9 @@ class TestConfigFunctions:
         assert isinstance(config, TaskTypeConfig)
         # 验证默认优先级
         assert config.get_priority(TaskType.STOCK_BASIC) == TaskPriority.HIGH
+        
+        # 验证 get_config 被正确调用
+        mock_get_config.assert_called_with(None)
 
     @patch('downloader.manager.downloader_manager.get_config')
     def test_create_task_type_config_invalid_priority(self, mock_get_config):
@@ -78,6 +84,7 @@ class TestConfigFunctions:
         assert config.get_priority(TaskType.STOCK_BASIC) == TaskPriority.HIGH
         # stock_daily 应使用配置的优先级
         assert config.get_priority(TaskType.STOCK_DAILY) == TaskPriority.MEDIUM
+        mock_get_config.assert_called_with(None)
 
     @patch('downloader.manager.downloader_manager.get_config')
     def test_get_task_types_from_group(self, mock_get_config):
@@ -98,6 +105,7 @@ class TestConfigFunctions:
         assert len(task_types) == 2
         assert TaskType.STOCK_BASIC in task_types
         assert TaskType.STOCK_DAILY in task_types
+        mock_get_config.assert_called_with(None)
 
     @patch('downloader.manager.downloader_manager.get_config')
     def test_get_task_types_from_group_unknown_group(self, mock_get_config):
@@ -113,6 +121,7 @@ class TestConfigFunctions:
         # 测试获取未知任务组
         with pytest.raises(ValueError, match="未找到任务组: unknown_group"):
             get_task_types_from_group('unknown_group')
+        mock_get_config.assert_called_with(None)
 
     @patch('downloader.manager.downloader_manager.get_config')
     def test_get_task_types_from_group_unknown_task(self, mock_get_config):
@@ -128,6 +137,7 @@ class TestConfigFunctions:
         # 测试获取包含未知任务的任务组
         with pytest.raises(ValueError, match="未知的任务类型: unknown_task"):
             get_task_types_from_group('test_group')
+        mock_get_config.assert_called_with(None)
 
 
 class TestDownloaderManagerConfig:
@@ -183,7 +193,7 @@ class TestDownloaderManagerConfig:
             )
             
             # 验证调用
-            mock_get_task_types.assert_called_once_with('test_group')
+            mock_get_task_types.assert_called_once_with('test_group', None)
             assert stats == manager.stats
 
     def test_task_name_to_type_mapping(self):
@@ -198,7 +208,48 @@ class TestDownloaderManagerConfig:
 
     def test_priority_value_to_enum_mapping(self):
         """测试优先级数值到枚举的映射"""
-        # 验证映射关系
         assert PRIORITY_VALUE_TO_ENUM[0] == TaskPriority.HIGH
         assert PRIORITY_VALUE_TO_ENUM[1] == TaskPriority.MEDIUM
         assert PRIORITY_VALUE_TO_ENUM[2] == TaskPriority.LOW
+    
+    @patch('downloader.manager.downloader_manager.get_config')
+    def test_create_from_config_with_downloader_settings(self, mock_get_config):
+        """测试从配置文件读取下载器设置"""
+        # 模拟配置
+        mock_config = Box({
+            'downloader': {
+                'max_workers': 8,
+                'enable_progress_bar': False,
+            },
+            'download_tasks': {
+                'stock_basic': {'priority': 0},
+            }
+        })
+        mock_get_config.return_value = mock_config
+        
+        # 创建管理器
+        manager = DownloaderManager.create_from_config()
+        
+        # 验证配置被正确读取
+        assert manager.max_workers == 8
+        assert manager.enable_progress_bar == False
+        mock_get_config.assert_called_with(None)
+    
+    @patch('downloader.manager.downloader_manager.get_config')
+    def test_create_from_config_with_default_downloader_settings(self, mock_get_config):
+        """测试配置文件中没有下载器设置时使用默认值"""
+        # 模拟配置（没有 downloader 部分）
+        mock_config = Box({
+            'download_tasks': {
+                'stock_basic': {'priority': 0},
+            }
+        })
+        mock_get_config.return_value = mock_config
+        
+        # 创建管理器
+        manager = DownloaderManager.create_from_config()
+        
+        # 验证使用默认值
+        assert manager.max_workers == 4
+        assert manager.enable_progress_bar == True
+        mock_get_config.assert_called_with(None)

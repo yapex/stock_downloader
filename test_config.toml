@@ -1,0 +1,19 @@
+# 测试配置文件
+[tushare]
+token = "test_token_123"
+
+[database]
+type = "sqlite"
+path = "test_stock_data.db"
+
+[downloader]
+max_workers = 2
+enable_progress_bar = false
+
+[download_tasks]
+stock_basic = { priority = 0 }
+stock_daily = { priority = 1 }
+
+[task_groups]
+test = ["stock_basic"]
+small = ["stock_basic", "stock_daily"]

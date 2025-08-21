@@ -3,6 +3,7 @@
 
 import typer
 from typing import Optional
+from pathlib import Path
 from .manager.downloader_manager import DownloaderManager
 from .producer.tushare_downloader import TushareDownloader
 from .utils import setup_logging
@@ -23,6 +24,12 @@ def download_command(
         "-s",
         help="股票代码列表，用引号包裹，逗号分隔，例如: '000001,600519' ",
     ),
+    config: Optional[str] = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="配置文件路径，例如: config.toml 或 /path/to/config.toml",
+    ),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="仅验证参数，不实际启动下载器"
     ),
@@ -35,17 +42,26 @@ def download_command(
             # 去除空格并分割
             symbol_list = [s.strip() for s in symbols.split(",") if s.strip()]
 
+        # 解析配置文件路径
+        config_path = None
+        if config:
+            config_path = Path(config)
+            if not config_path.exists():
+                typer.echo(f"错误: 配置文件不存在: {config_path}", err=True)
+                raise typer.Exit(1)
+
         # 如果是 dry-run 模式，仅验证参数不启动下载器
         if dry_run:
             typer.echo("参数验证成功，dry-run 模式不启动下载器")
+            if config_path:
+                typer.echo(f"将使用配置文件: {config_path}")
             return
 
         # 创建下载管理器，使用 TushareDownloader 作为任务执行器
         tushare_executor = TushareDownloader()
         manager = DownloaderManager.create_from_config(
             task_executor=tushare_executor,
-            max_workers=4,
-            enable_progress_bar=True
+            config_path=config_path,
         )
 
         # 执行下载任务组
