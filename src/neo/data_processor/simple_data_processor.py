@@ -104,16 +104,15 @@ class SimpleDataProcessor(IDataProcessor):
             else task_result.config.task_type.name
         )
 
-        # 更新统计信息
-        self.stats["total_processed"] += 1
         task_type_name = task_result.config.task_type.name
+        
+        # 确保任务类型统计结构存在
         if task_type_name not in self.stats["task_type_stats"]:
             self.stats["task_type_stats"][task_type_name] = {
                 "count": 0,
                 "success": 0,
                 "rows": 0,
             }
-        self.stats["task_type_stats"][task_type_name]["count"] += 1
 
         logger.debug(
             f"处理任务: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}"
@@ -126,13 +125,19 @@ class SimpleDataProcessor(IDataProcessor):
             # 检查任务是否成功
             if not task_result.success:
                 logger.warning(f"任务执行失败，跳过处理: {task_result.error}")
-                # 更新失败统计
+                # 更新统计信息：总处理数和失败数
+                self.stats["total_processed"] += 1
                 self.stats["failed_processed"] += 1
+                self.stats["task_type_stats"][task_type_name]["count"] += 1
                 return False
 
             # 检查数据是否存在
             if task_result.data is None or task_result.data.empty:
                 logger.warning("数据为空，跳过处理")
+                # 更新统计信息：总处理数和失败数
+                self.stats["total_processed"] += 1
+                self.stats["failed_processed"] += 1
+                self.stats["task_type_stats"][task_type_name]["count"] += 1
                 return False
 
             logger.debug(
@@ -145,6 +150,10 @@ class SimpleDataProcessor(IDataProcessor):
             )
             if cleaned_data is None:
                 logger.warning("数据清洗失败")
+                # 更新统计信息：总处理数和失败数
+                self.stats["total_processed"] += 1
+                self.stats["failed_processed"] += 1
+                self.stats["task_type_stats"][task_type_name]["count"] += 1
                 return False
 
             logger.debug(f"数据清洗完成，清洗后 {len(cleaned_data)} 行")
@@ -155,6 +164,10 @@ class SimpleDataProcessor(IDataProcessor):
             )
             if transformed_data is None:
                 logger.warning("数据转换失败")
+                # 更新统计信息：总处理数和失败数
+                self.stats["total_processed"] += 1
+                self.stats["failed_processed"] += 1
+                self.stats["task_type_stats"][task_type_name]["count"] += 1
                 return False
 
             logger.debug("数据转换完成")
@@ -185,6 +198,10 @@ class SimpleDataProcessor(IDataProcessor):
                     transformed_data, task_result.config.task_type
                 )
 
+            # 更新统计信息：总处理数和任务类型计数
+            self.stats["total_processed"] += 1
+            self.stats["task_type_stats"][task_type_name]["count"] += 1
+            
             if success:
                 if not self.enable_batch:
                     print(f"✅ 成功保存 {len(transformed_data)} 行数据")
@@ -209,7 +226,10 @@ class SimpleDataProcessor(IDataProcessor):
         except Exception as e:
             print(f"💥 处理异常: {task_name} - {str(e)}")
             logger.error(f"处理TaskResult时出错: {e}")
+            # 更新统计信息：总处理数和失败数
+            self.stats["total_processed"] += 1
             self.stats["failed_processed"] += 1
+            self.stats["task_type_stats"][task_type_name]["count"] += 1
             return False
 
     def _clean_data(self, data: pd.DataFrame, task_type: str) -> Optional[pd.DataFrame]:

@@ -5,7 +5,6 @@
 
 import os
 import signal
-import subprocess
 import sys
 from typing import List, Protocol
 from neo.config import get_config
@@ -114,6 +113,9 @@ class AppService:
     def run_data_processor(self) -> None:
         """运行数据处理器"""
         import logging
+        from huey.consumer import Consumer
+        from neo.task_bus.huey_config import huey
+        from neo.task_bus import tasks  # 确保任务被注册
 
         logger = logging.getLogger(__name__)
 
@@ -126,30 +128,27 @@ class AppService:
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
+        # 配置日志 - 保持简洁
+        logging.basicConfig(
+            level=logging.WARNING,  # 只显示警告和错误
+            format='%(message)s'
+        )
+        
+        # 设置 Huey 日志级别
+        huey_logger = logging.getLogger('huey')
+        huey_logger.setLevel(logging.ERROR)
+
         # 输出启动信息
         print("数据处理器启动中...")
 
         try:
-            # 启动 Huey 消费者进程
-            cmd = ["uv", "run", "huey_consumer", "neo.task_bus.huey_config.huey"]
-
-            # 设置环境变量来控制huey的日志输出
-            env = os.environ.copy()
-            env["HUEY_LOGLEVEL"] = "CRITICAL"
-            env["PYTHONPATH"] = os.getcwd() + ":" + env.get("PYTHONPATH", "")
-
-            process = subprocess.Popen(
-                cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
-
+            # 直接创建和启动 Huey 消费者
+            consumer = Consumer(huey)
             print("数据处理器运行中，按 Ctrl+C 停止...")
-            process.wait()
-
+            consumer.run()
+            
         except KeyboardInterrupt:
             print("\n数据处理器已停止")
-            if "process" in locals():
-                process.terminate()
-                process.wait()
         except Exception as e:
             print(f"启动失败: {e}")
             sys.exit(1)

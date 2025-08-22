@@ -137,7 +137,7 @@ class TestBatchProcessing:
 
         # 添加到缓冲区
         self.processor._add_to_buffer(stock_data, "stock_basic")
-        self.processor._add_to_buffer(daily_data, "daily")
+        self.processor._add_to_buffer(daily_data, "stock_daily")
 
         assert self.processor.stats["buffered_items"] == 2
 
@@ -206,7 +206,7 @@ class TestBatchProcessing:
 
         # 验证缓冲区状态
         assert len(self.processor.batch_buffers["stock_basic"]) == 2
-        assert len(self.processor.batch_buffers["daily"]) == 2
+        assert len(self.processor.batch_buffers["stock_daily"]) == 2
         assert self.processor.stats["buffered_items"] == 4
         assert self.processor.stats["batch_flushes"] == 0  # 未达到批量大小
 

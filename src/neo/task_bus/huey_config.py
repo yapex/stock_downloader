@@ -56,3 +56,10 @@ def _create_huey_instance() -> SqliteHuey:
 
 # 全局 Huey 实例
 huey = _create_huey_instance()
+
+# 自动导入任务模块以确保任务被注册到 Huey
+try:
+    from . import tasks  # 导入任务模块以触发任务注册
+except ImportError:
+    # 在某些测试环境中可能会失败，这是正常的
+    pass
