@@ -6,7 +6,6 @@
 import logging
 import pandas as pd
 from typing import List, Dict, Any, Optional, Union
-from pathlib import Path
 
 from .table_creator import SchemaTableCreator
 from .connection import get_conn
@@ -18,26 +17,30 @@ logger = logging.getLogger(__name__)
 
 class DBOperator(SchemaTableCreator, IDBOperator):
     """数据库操作器
-    
+
     继承自SchemaTableCreator，提供数据库的基本操作功能。
     """
 
     def __init__(self, schema_file_path: str = None, conn=get_conn):
         """初始化数据库操作器
-        
+
         Args:
             schema_file_path: Schema文件路径
             conn: 数据库连接函数
         """
         super().__init__(schema_file_path, conn)
 
-    def upsert(self, table_name: str, data: Union[pd.DataFrame, Dict[str, Any], List[Dict[str, Any]]]) -> bool:
+    def upsert(
+        self,
+        table_name: str,
+        data: Union[pd.DataFrame, Dict[str, Any], List[Dict[str, Any]]],
+    ) -> bool:
         """向表中插入或更新数据
-        
+
         Args:
             table_name: 表名
             data: 要插入的数据，可以是DataFrame、字典或字典列表
-            
+
         Returns:
             操作是否成功
         """
@@ -45,11 +48,11 @@ class DBOperator(SchemaTableCreator, IDBOperator):
         if data is None:
             logger.warning(f"数据为空，跳过 upsert 操作: {table_name}")
             return True
-            
+
         if isinstance(data, pd.DataFrame) and data.empty:
             logger.warning(f"DataFrame 为空，跳过 upsert 操作: {table_name}")
             return True
-            
+
         if isinstance(data, (list, dict)) and not data:
             logger.warning(f"数据为空，跳过 upsert 操作: {table_name}")
             return True
@@ -65,10 +68,12 @@ class DBOperator(SchemaTableCreator, IDBOperator):
         if not self._table_exists_in_schema(table_name):
             logger.error(f"表 '{table_name}' 在 schema 中不存在")
             return False
-            
+
         table_config = self._get_table_config(table_name)
-        primary_key = getattr(table_config, 'primary_key', table_config.get("primary_key", []))
-        
+        primary_key = getattr(
+            table_config, "primary_key", table_config.get("primary_key", [])
+        )
+
         if not primary_key:
             raise ValueError(f"表 '{table_name}' 未定义主键，无法执行 upsert 操作")
 
@@ -87,10 +92,12 @@ class DBOperator(SchemaTableCreator, IDBOperator):
         # 检查必要的列是否存在
         missing_pk_cols = [col for col in primary_key if col not in df.columns]
         if missing_pk_cols:
-            raise ValueError(f"数据中缺少主键列 {missing_pk_cols}，无法执行 upsert 操作")
-        
+            raise ValueError(
+                f"数据中缺少主键列 {missing_pk_cols}，无法执行 upsert 操作"
+            )
+
         # 检查DataFrame是否包含表的所有必需列
-        columns = getattr(table_config, 'columns', table_config.get("columns", []))
+        columns = getattr(table_config, "columns", table_config.get("columns", []))
         table_columns = self._extract_column_names(columns)
         missing_cols = [col for col in table_columns if col not in df.columns]
         if missing_cols:
@@ -111,9 +118,11 @@ class DBOperator(SchemaTableCreator, IDBOperator):
             logger.error(f"upsert 操作失败 - 表: {table_name}, 错误: {e}")
             raise
 
-    def _perform_upsert(self, conn, table_name: str, df: pd.DataFrame, primary_key: List[str]) -> None:
+    def _perform_upsert(
+        self, conn, table_name: str, df: pd.DataFrame, primary_key: List[str]
+    ) -> None:
         """执行实际的 upsert 操作
-        
+
         Args:
             conn: 数据库连接
             table_name: 表名
@@ -124,17 +133,19 @@ class DBOperator(SchemaTableCreator, IDBOperator):
         columns = df.columns.tolist()
         placeholders = ", ".join(["?" for _ in columns])
         column_names = ", ".join(columns)
-        
+
         # 构建 ON CONFLICT 子句
-        pk_condition = " AND ".join([f"excluded.{col} = {table_name}.{col}" for col in primary_key])
+        " AND ".join([f"excluded.{col} = {table_name}.{col}" for col in primary_key])
         update_columns = [col for col in columns if col not in primary_key]
-        
+
         if update_columns:
-            update_clause = ", ".join([f"{col} = excluded.{col}" for col in update_columns])
+            update_clause = ", ".join(
+                [f"{col} = excluded.{col}" for col in update_columns]
+            )
             sql = f"""
                 INSERT INTO {table_name} ({column_names})
                 VALUES ({placeholders})
-                ON CONFLICT ({', '.join(primary_key)})
+                ON CONFLICT ({", ".join(primary_key)})
                 DO UPDATE SET {update_clause}
             """
         else:
@@ -142,16 +153,16 @@ class DBOperator(SchemaTableCreator, IDBOperator):
             sql = f"""
                 INSERT INTO {table_name} ({column_names})
                 VALUES ({placeholders})
-                ON CONFLICT ({', '.join(primary_key)})
+                ON CONFLICT ({", ".join(primary_key)})
                 DO NOTHING
             """
 
         # 批量插入数据
         self._upsert_batch_records(conn, sql, df)
-        
+
     def _upsert_batch_records(self, conn, sql: str, df: pd.DataFrame) -> None:
         """执行批量upsert记录
-        
+
         Args:
             conn: 数据库连接
             sql: SQL语句
@@ -162,67 +173,67 @@ class DBOperator(SchemaTableCreator, IDBOperator):
 
     def get_max_date(self, table_key: str) -> Optional[str]:
         """根据 schema 中定义的 date_col，查询指定表中日期字段的最大值
-        
+
         Args:
             table_key: 表在schema配置中的键名 (e.g., 'stock_basic')
-            
+
         Returns:
             日期字段的最大值，如果表为空或没有 date_col 则返回 None
         """
         if not self._table_exists_in_schema(table_key):
             raise ValueError(f"表配置 '{table_key}' 不存在于 schema 中")
-            
+
         table_config = self._get_table_config(table_key)
         table_name = table_config.get("table_name")
-        
+
         # 检查表是否定义了 date_col
         if "date_col" not in table_config or not table_config["date_col"]:
             logger.warning(f"表 '{table_name}' 未定义 date_col 字段，无法查询最大日期")
             return None
-            
+
         date_col = table_config["date_col"]
         sql = f"SELECT MAX({date_col}) as max_date FROM {table_name}"
-        
+
         try:
             if callable(self.conn):
                 with self.conn() as conn:
                     result = conn.execute(sql).fetchone()
             else:
                 result = self.conn.execute(sql).fetchone()
-                
+
             if result and result[0] is not None:
                 return result[0]
             else:
                 logger.warning(f"表 '{table_name}' 为空或 {date_col} 字段无有效数据")
                 return None
-                
+
         except Exception as e:
             logger.error(f"查询表 '{table_name}' 最大日期失败: {e}")
             raise
 
     def get_all_symbols(self) -> List[str]:
         """获取所有股票代码
-        
+
         Returns:
             股票代码列表
         """
         table_name = TableName.STOCK_BASIC.value
-            
+
         # 构建查询SQL，添加过滤条件
         sql = f"SELECT DISTINCT ts_code FROM {table_name} WHERE ts_code IS NOT NULL AND ts_code != ''"
-            
+
         try:
             if callable(self.conn):
                 with self.conn() as conn:
                     result = conn.execute(sql).fetchall()
             else:
                 result = self.conn.execute(sql).fetchall()
-            
+
             # 提取 ts_code 列表，过滤空值
-            ts_codes = [row[0] for row in result if row[0] is not None and row[0] != '']
+            ts_codes = [row[0] for row in result if row[0] is not None and row[0] != ""]
             logger.debug(f"从表 '{table_name}' 查询到 {len(ts_codes)} 个股票代码")
             return ts_codes
-                
+
         except Exception as e:
             logger.error(f"查询表 '{table_name}' 的 ts_code 失败: {e}")
             raise

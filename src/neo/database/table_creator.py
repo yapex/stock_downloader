@@ -4,27 +4,24 @@
 """
 
 from pathlib import Path
-import duckdb
 import logging
 import tomllib
 from box import Box
-from typing import Dict, Optional
-from enum import Enum
+from typing import Dict
 
 from ..config import get_config
 from .connection import get_conn
 from .interfaces import ISchemaTableCreator
-from .types import TableName
 
 logger = logging.getLogger(__name__)
 
 
 class SchemaTableCreator(ISchemaTableCreator):
     """基于Schema配置的表创建器"""
-    
+
     def __init__(self, schema_file_path: str = None, conn=get_conn):
         """初始化表创建器
-        
+
         Args:
             schema_file_path: Schema文件路径
             conn: 数据库连接函数
@@ -143,11 +140,11 @@ class SchemaTableCreator(ISchemaTableCreator):
         """
         if not columns:
             return []
-        
+
         # 支持字典格式：{"col_name": {"type": "TEXT"}}
         if isinstance(columns, dict):
             return list(columns.keys())
-        
+
         # 检查columns是否为有效格式
         if not isinstance(columns, (list, tuple)):
             raise ValueError("不支持的列配置格式")
@@ -180,7 +177,7 @@ class SchemaTableCreator(ISchemaTableCreator):
 
         # 构建列定义
         columns_sql = self._build_columns_sql(columns)
-        
+
         # 构建主键定义
         primary_key_sql = self._build_primary_key_sql(primary_key)
 
@@ -259,13 +256,13 @@ class SchemaTableCreator(ISchemaTableCreator):
             每个表的创建结果
         """
         results = {}
-        
+
         if self._has_tables_section:
             tables = self.stock_schema.tables
         else:
             tables = self.stock_schema
-            
+
         for table_name in tables.keys():
             results[table_name] = self.create_table(table_name)
-            
+
         return results

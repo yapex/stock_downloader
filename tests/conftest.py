@@ -58,9 +58,9 @@ def mock_storage():
 def huey_immediate():
     """为测试提供即时模式的 Huey 实例"""
     test_huey = MemoryHuey(immediate=True)
-    
+
     # 使用 patch 替换 neo.task_bus.huey_task_bus 模块中的 huey 实例
-    with patch('neo.task_bus.huey_task_bus.huey', test_huey):
+    with patch("neo.task_bus.huey_task_bus.huey", test_huey):
         yield test_huey
 
 
@@ -80,7 +80,7 @@ def setup_test_database():
     except Exception:
         # 如果表已存在或创建失败，忽略错误
         pass
-    
+
     yield
-    
+
     # 测试结束后清理（内存数据库会自动清理）

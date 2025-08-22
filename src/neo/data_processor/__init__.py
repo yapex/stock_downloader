@@ -8,10 +8,10 @@ from .simple_data_processor import SimpleDataProcessor
 from .types import TaskResult, DownloadTaskConfig, TaskType, TaskPriority
 
 __all__ = [
-    'IDataProcessor',
-    'SimpleDataProcessor',
-    'TaskResult',
-    'DownloadTaskConfig',
-    'TaskType',
-    'TaskPriority'
+    "IDataProcessor",
+    "SimpleDataProcessor",
+    "TaskResult",
+    "DownloadTaskConfig",
+    "TaskType",
+    "TaskPriority",
 ]

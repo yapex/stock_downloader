@@ -6,21 +6,14 @@
 """
 
 import tushare as ts
-from typing import Callable, Dict, Any, Optional
+from typing import Callable, Any, Optional
 import pandas as pd
 import logging
-from dataclasses import dataclass
 from threading import Lock
-from enum import Enum
-from functools import lru_cache
-import pysnooper
-from pathlib import Path
 
 from neo.config import get_config
 from neo.helpers import normalize_stock_code
-from neo.database.schema_loader import SchemaLoader
-from neo.database.interfaces import ISchemaLoader
-from neo.task_bus.types import TaskType, TaskTemplate
+from neo.task_bus.types import TaskType
 from neo.database.operator import DBOperator
 
 logger = logging.getLogger(__name__)
@@ -39,6 +32,7 @@ class TushareApiManager:
     def __init__(self):
         if TushareApiManager._instance is not None:
             raise RuntimeError("TushareApiManager 是单例类，请使用 get_instance() 方法")
+        self._initialize()
 
     @classmethod
     def get_instance(cls) -> "TushareApiManager":
@@ -63,10 +57,8 @@ class TushareApiManager:
     #     output=PERF_LOG_DIR / "api_manager_init.log",
     #     watch=("config", "self.pro", "self.ts"),
     # )
-    def __init__(self):
-        if TushareApiManager._instance is not None:
-            raise RuntimeError("TushareApiManager 是单例类，请使用 get_instance() 方法")
-
+    def _initialize(self):
+        """初始化 Tushare API"""
         config = get_config()
         logger.info("初始化 Tushare API...")
         ts.set_token(config.tushare.token)
@@ -81,8 +73,6 @@ class FetcherBuilder:
     def __init__(self, db_operator: Optional[DBOperator] = None):
         self.api_manager = TushareApiManager.get_instance()
         self.db_operator = db_operator
-
-
 
     def build_by_task(
         self, task_type: TaskType, symbol: str = "", **overrides: Any
@@ -108,11 +98,11 @@ class FetcherBuilder:
         # 合并参数：必需参数 + 覆盖参数
         template = task_type.template
         merged_params = {}
-        
+
         # 合并必需参数
         if template.required_params:
             merged_params.update(template.required_params)
-            
+
         # 应用运行时覆盖参数
         merged_params.update(overrides)
 
@@ -126,13 +116,19 @@ class FetcherBuilder:
         # )
         def execute() -> pd.DataFrame:
             """执行数据获取"""
-            logger.debug(f"开始执行任务 - 函数: {template.base_object}.{template.api_method}, 参数: {merged_params}")
+            logger.debug(
+                f"开始执行任务 - 函数: {template.base_object}.{template.api_method}, 参数: {merged_params}"
+            )
             try:
                 result = api_func(**merged_params)
-                logger.debug(f"任务执行成功 - 函数: {template.base_object}.{template.api_method}, 获取 {len(result)} 条记录")
+                logger.debug(
+                    f"任务执行成功 - 函数: {template.base_object}.{template.api_method}, 获取 {len(result)} 条记录"
+                )
                 return result
             except Exception as e:
-                logger.error(f"任务执行失败 - 函数: {template.base_object}.{template.api_method}, 参数: {merged_params}, 错误: {e}")
+                logger.error(
+                    f"任务执行失败 - 函数: {template.base_object}.{template.api_method}, 参数: {merged_params}, 错误: {e}"
+                )
                 raise
 
         return execute

@@ -8,6 +8,7 @@ from enum import Enum
 @dataclass
 class TableSchema:
     """表结构配置"""
+
     table_name: str
     api_method: str
     default_params: Dict[str, Any]

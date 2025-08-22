@@ -75,12 +75,19 @@ if __name__ == "__main__":
 
         # 使用 uv run 启动 Huey consumer
         import subprocess
-        subprocess.run([
-            "uv", "run", "huey_consumer.py", 
-            "huey_prototype.huey", 
-            "-w", "4", 
-            "-k", "process"
-        ])
+
+        subprocess.run(
+            [
+                "uv",
+                "run",
+                "huey_consumer.py",
+                "huey_prototype.huey",
+                "-w",
+                "4",
+                "-k",
+                "process",
+            ]
+        )
 
     else:
         print(f"错误: 未知的角色 '{role}'")

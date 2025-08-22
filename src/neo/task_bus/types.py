@@ -16,6 +16,7 @@ from neo.database.interfaces import ISchemaLoader
 @dataclass(frozen=True)
 class TaskTemplate:
     """任务模板配置"""
+
     api_method: str
     base_object: str = "pro"
     default_params: Dict[str, Any] = None
@@ -113,6 +114,7 @@ TaskType = _task_registry.get_task_type_enum()
 
 class TaskPriority(Enum):
     """任务优先级枚举"""
+
     LOW = 1
     MEDIUM = 2
     HIGH = 3
@@ -121,6 +123,7 @@ class TaskPriority(Enum):
 @dataclass
 class DownloadTaskConfig:
     """下载任务配置"""
+
     symbol: str
     task_type: TaskType
     priority: TaskPriority = TaskPriority.MEDIUM
@@ -130,6 +133,7 @@ class DownloadTaskConfig:
 @dataclass
 class TaskResult:
     """任务执行结果"""
+
     config: DownloadTaskConfig
     success: bool
     data: Optional[pd.DataFrame] = None
@@ -138,10 +142,10 @@ class TaskResult:
 
 
 __all__ = [
-    'TaskResult',
-    'DownloadTaskConfig', 
-    'TaskType',
-    'TaskPriority',
-    'TaskTemplate',
-    'TaskTypeRegistry'
+    "TaskResult",
+    "DownloadTaskConfig",
+    "TaskType",
+    "TaskPriority",
+    "TaskTemplate",
+    "TaskTypeRegistry",
 ]

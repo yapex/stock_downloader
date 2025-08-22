@@ -2,21 +2,18 @@
 """下载股票基础信息并保存到数据库的脚本"""
 
 import sys
-import os
 import logging
 import time
 from pathlib import Path
-from box import Box
 
 # 添加项目路径到sys.path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from neo.config import get_config
-from neo.downloader.fetcher_builder import FetcherBuilder
-from neo.task_bus.types import TaskType
-from neo.database.operator import DBOperator
-from neo.downloader.utils import setup_logging
+from neo.config import get_config  # noqa: E402
+from neo.downloader.fetcher_builder import FetcherBuilder  # noqa: E402
+from neo.task_bus.types import TaskType  # noqa: E402
+from neo.database.operator import DBOperator  # noqa: E402
 
 config = get_config()
 # 配置日志

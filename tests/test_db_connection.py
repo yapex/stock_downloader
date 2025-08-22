@@ -1,15 +1,9 @@
 import pytest
 import threading
-import time
 import tempfile
 import os
-from contextlib import contextmanager
 from unittest.mock import patch, MagicMock
-from neo.database.connection import (
-    get_memory_conn, 
-    DatabaseConnectionManager, 
-    get_conn
-)
+from neo.database.connection import get_memory_conn, DatabaseConnectionManager, get_conn
 
 
 class TestDbConnection:
@@ -22,37 +16,37 @@ class TestDbConnection:
             # 创建测试表并插入数据
             conn1.execute("CREATE TABLE test_table (id INTEGER, name TEXT)")
             conn1.execute("INSERT INTO test_table VALUES (1, 'test')")
-            
+
             # 第二次获取连接
             with get_memory_conn() as conn2:
                 # 验证是同一个连接（数据应该存在）
                 result = conn2.execute("SELECT * FROM test_table").fetchall()
                 assert len(result) == 1
-                assert result[0] == (1, 'test')
-                
+                assert result[0] == (1, "test")
+
                 # 验证连接对象是同一个
                 assert conn1 is conn2
 
     def test_different_threads_different_connections(self):
         """测试不同线程中调用 get_memory_conn 返回不同的连接"""
         connections = {}
-        
+
         def get_connection_in_thread(thread_id):
             with get_memory_conn() as conn:
                 connections[thread_id] = conn
-        
+
         # 创建两个线程
         thread1 = threading.Thread(target=get_connection_in_thread, args=(1,))
         thread2 = threading.Thread(target=get_connection_in_thread, args=(2,))
-        
+
         # 启动线程
         thread1.start()
         thread2.start()
-        
+
         # 等待线程完成
         thread1.join()
         thread2.join()
-        
+
         # 验证不同线程获取的是不同的连接
         assert 1 in connections
         assert 2 in connections
@@ -61,17 +55,19 @@ class TestDbConnection:
     def test_thread_isolation(self):
         """测试不同线程之间的数据隔离性"""
         results = {}
-        
+
         def create_and_query_table(thread_id, table_name, data):
             with get_memory_conn() as conn:
                 # 创建表并插入数据
                 conn.execute(f"CREATE TABLE {table_name} (id INTEGER, value TEXT)")
-                conn.execute(f"INSERT INTO {table_name} VALUES (?, ?)", (thread_id, data))
-                
+                conn.execute(
+                    f"INSERT INTO {table_name} VALUES (?, ?)", (thread_id, data)
+                )
+
                 # 查询数据
                 result = conn.execute(f"SELECT * FROM {table_name}").fetchall()
                 results[thread_id] = result
-                
+
                 # 尝试查询其他线程的表（应该不存在）
                 other_table = "thread1_table" if thread_id == 2 else "thread2_table"
                 try:
@@ -79,52 +75,51 @@ class TestDbConnection:
                     results[f"{thread_id}_can_see_other"] = True
                 except Exception:
                     results[f"{thread_id}_can_see_other"] = False
-        
+
         # 创建两个线程，使用不同的表名和数据
         thread1 = threading.Thread(
-            target=create_and_query_table, 
-            args=(1, "thread1_table", "data1")
+            target=create_and_query_table, args=(1, "thread1_table", "data1")
         )
         thread2 = threading.Thread(
-            target=create_and_query_table, 
-            args=(2, "thread2_table", "data2")
+            target=create_and_query_table, args=(2, "thread2_table", "data2")
         )
-        
+
         # 启动线程
         thread1.start()
         thread2.start()
-        
+
         # 等待线程完成
         thread1.join()
         thread2.join()
-        
+
         # 验证每个线程只能看到自己的数据
-        assert results[1] == [(1, 'data1')]
-        assert results[2] == [(2, 'data2')]
-        
+        assert results[1] == [(1, "data1")]
+        assert results[2] == [(2, "data2")]
+
         # 验证线程间数据隔离
         assert results["1_can_see_other"] is False
         assert results["2_can_see_other"] is False
 
     def test_thread_local_persistence_within_thread(self):
         """测试同一线程内连接的持久性"""
+
         def test_persistence():
             # 第一次连接：创建表
             with get_memory_conn() as conn:
                 conn.execute("CREATE TABLE persistent_test (id INTEGER)")
                 conn.execute("INSERT INTO persistent_test VALUES (1)")
-            
+
             # 第二次连接：验证数据仍然存在
             with get_memory_conn() as conn:
                 result = conn.execute("SELECT COUNT(*) FROM persistent_test").fetchone()
                 assert result[0] == 1
-            
+
             # 第三次连接：添加更多数据
             with get_memory_conn() as conn:
                 conn.execute("INSERT INTO persistent_test VALUES (2)")
                 result = conn.execute("SELECT COUNT(*) FROM persistent_test").fetchone()
                 assert result[0] == 2
-        
+
         # 在单独的线程中运行测试
         thread = threading.Thread(target=test_persistence)
         thread.start()
@@ -134,18 +129,18 @@ class TestDbConnection:
         """测试多个并发线程的连接隔离"""
         num_threads = 5
         results = {}
-        
+
         def worker(thread_id):
             with get_memory_conn() as conn:
                 # 每个线程创建自己的表
                 table_name = f"table_{thread_id}"
                 conn.execute(f"CREATE TABLE {table_name} (thread_id INTEGER)")
                 conn.execute(f"INSERT INTO {table_name} VALUES (?)", (thread_id,))
-                
+
                 # 验证只能看到自己的表
                 result = conn.execute(f"SELECT * FROM {table_name}").fetchall()
                 results[thread_id] = result[0][0]
-                
+
                 # 验证看不到其他线程的表
                 other_tables_visible = 0
                 for other_id in range(num_threads):
@@ -155,20 +150,20 @@ class TestDbConnection:
                             other_tables_visible += 1
                         except Exception:
                             pass
-                
+
                 results[f"{thread_id}_other_visible"] = other_tables_visible
-        
+
         # 创建并启动多个线程
         threads = []
         for i in range(num_threads):
             thread = threading.Thread(target=worker, args=(i,))
             threads.append(thread)
             thread.start()
-        
+
         # 等待所有线程完成
         for thread in threads:
             thread.join()
-        
+
         # 验证结果
         for i in range(num_threads):
             assert results[i] == i  # 每个线程看到自己的数据
@@ -180,7 +175,7 @@ class TestDatabaseConnectionManager:
 
     def test_init_with_default_path(self):
         """测试使用默认路径初始化"""
-        with patch('neo.database.connection.get_config') as mock_get_config:
+        with patch("neo.database.connection.get_config") as mock_get_config:
             mock_config = mock_get_config.return_value
             mock_config.database.path = "/test/path/db.duckdb"
             manager = DatabaseConnectionManager()
@@ -205,54 +200,54 @@ class TestDatabaseConnectionManager:
         """测试使用文件数据库连接"""
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = os.path.join(tmp_dir, "test.duckdb")
-            
+
             manager = DatabaseConnectionManager(db_path)
             with manager.get_connection() as conn:
                 # 创建表并插入数据
                 conn.execute("CREATE TABLE test (id INTEGER, name TEXT)")
                 conn.execute("INSERT INTO test VALUES (1, 'test')")
-                
+
                 # 验证数据
                 result = conn.execute("SELECT * FROM test").fetchall()
                 assert len(result) == 1
-                assert result[0] == (1, 'test')
+                assert result[0] == (1, "test")
 
-    @patch('neo.database.connection.duckdb.connect')
+    @patch("neo.database.connection.duckdb.connect")
     def test_get_connection_exception_handling(self, mock_connect):
         """测试连接异常处理"""
         # 模拟连接失败
         mock_connect.side_effect = Exception("Connection failed")
-        
+
         manager = DatabaseConnectionManager(":memory:")
         with pytest.raises(Exception, match="Connection failed"):
-            with manager.get_connection() as conn:
+            with manager.get_connection():
                 pass
 
-    @patch('neo.database.connection.duckdb.connect')
+    @patch("neo.database.connection.duckdb.connect")
     def test_connection_cleanup_on_exception(self, mock_connect):
         """测试异常时连接清理"""
         mock_conn = MagicMock()
         mock_connect.return_value = mock_conn
-        
+
         # 模拟在使用连接时发生异常
         manager = DatabaseConnectionManager(":memory:")
         with pytest.raises(RuntimeError, match="Test exception"):
-            with manager.get_connection() as conn:
+            with manager.get_connection():
                 raise RuntimeError("Test exception")
-        
+
         # 验证连接被关闭
         mock_conn.close.assert_called_once()
 
-    @patch('neo.database.connection.duckdb.connect')
+    @patch("neo.database.connection.duckdb.connect")
     def test_connection_cleanup_on_success(self, mock_connect):
         """测试正常情况下连接清理"""
         mock_conn = MagicMock()
         mock_connect.return_value = mock_conn
-        
+
         manager = DatabaseConnectionManager(":memory:")
-        with manager.get_connection() as conn:
+        with manager.get_connection():
             pass  # 正常退出
-        
+
         # 验证连接被关闭
         mock_conn.close.assert_called_once()
 
@@ -271,7 +266,7 @@ class TestGetConnFunction:
         """测试使用自定义路径获取连接"""
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = os.path.join(tmp_dir, "test.duckdb")
-            
+
             with get_conn(db_path) as conn:
                 conn.execute("CREATE TABLE test (id INTEGER)")
                 conn.execute("INSERT INTO test VALUES (1)")
@@ -281,31 +276,31 @@ class TestGetConnFunction:
     def test_get_conn_manager_reuse(self):
         """测试管理器实例重用"""
         # 第一次调用
-        with get_conn(":memory:") as conn1:
+        with get_conn(":memory:"):
             pass
-        
+
         # 第二次调用，应该重用管理器
-        with get_conn(":memory:") as conn2:
+        with get_conn(":memory:"):
             pass
-        
+
         # 使用不同的内存数据库路径，应该创建新管理器
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = os.path.join(tmp_dir, "test.duckdb")
-            with get_conn(db_path) as conn3:
+            with get_conn(db_path):
                 pass
 
     def test_get_conn_manager_recreation(self):
         """测试管理器重新创建"""
         # 第一次调用
-        with get_conn(":memory:") as conn1:
+        with get_conn(":memory:"):
             pass
-        
+
         # 使用不同路径，应该创建新管理器
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = os.path.join(tmp_dir, "test.duckdb")
-            with get_conn(db_path) as conn2:
+            with get_conn(db_path):
                 pass
-        
+
         # 再次使用内存数据库，应该重用管理器
-        with get_conn(":memory:") as conn3:
+        with get_conn(":memory:"):
             pass

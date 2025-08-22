@@ -4,7 +4,8 @@ import sys
 import time
 import random
 import os
-from huey_prototype import huey, process_data
+from huey_prototype import process_data
+
 
 def run_producer(producer_id):
     """
@@ -24,10 +25,11 @@ def run_producer(producer_id):
 
     print(f"---⏹️  Producer [{producer_id}] 已发送完所有任务。 ---")
 
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("用法: python producer.py <ID>")
         sys.exit(1)
-    
+
     producer_id = f"Producer-{sys.argv[1]}"
     run_producer(producer_id)

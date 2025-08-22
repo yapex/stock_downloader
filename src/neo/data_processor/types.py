@@ -7,9 +7,4 @@
 # 相关类型定义在 task_bus.types 模块中
 from ..task_bus.types import TaskResult, DownloadTaskConfig, TaskType, TaskPriority
 
-__all__ = [
-    'TaskResult',
-    'DownloadTaskConfig',
-    'TaskType', 
-    'TaskPriority'
-]
+__all__ = ["TaskResult", "DownloadTaskConfig", "TaskType", "TaskPriority"]

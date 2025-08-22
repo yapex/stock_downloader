@@ -7,9 +7,4 @@
 # 导入共享的核心类型
 from ..task_bus.types import TaskResult, DownloadTaskConfig, TaskType, TaskPriority
 
-__all__ = [
-    'TaskResult',
-    'DownloadTaskConfig', 
-    'TaskType',
-    'TaskPriority'
-]
+__all__ = ["TaskResult", "DownloadTaskConfig", "TaskType", "TaskPriority"]

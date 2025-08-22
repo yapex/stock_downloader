@@ -231,19 +231,19 @@ columns = [
             table_names = [row[0] for row in tables_result]
             assert "stock_basic" in table_names
             # 验证只有一个 stock_basic 表
-            stock_basic_count = table_names.count('stock_basic')
+            stock_basic_count = table_names.count("stock_basic")
             assert stock_basic_count == 1
 
     def test_dependency_injection_with_memory_conn(self, schema_file):
         """测试通过依赖注入使用内存数据库连接"""
         from neo.database.connection import get_memory_conn
-        
+
         # 通过依赖注入创建使用内存数据库的 SchemaTableCreator
         creator = SchemaTableCreator(schema_file_path=schema_file, conn=get_memory_conn)
-        
+
         # 验证依赖注入成功，conn 属性被正确设置
         assert creator.conn == get_memory_conn
-        
+
         # 验证可以成功创建表
         result = creator.create_table(TableName.STOCK_BASIC.value)
         assert result is True
@@ -251,18 +251,22 @@ columns = [
     def test_dependency_injection_different_connections(self, schema_file):
         """测试可以注入不同的连接函数"""
         from neo.database.connection import get_memory_conn, get_conn
-        
+
         # 创建使用内存数据库的实例
-        creator_memory = SchemaTableCreator(schema_file_path=schema_file, conn=get_memory_conn)
+        creator_memory = SchemaTableCreator(
+            schema_file_path=schema_file, conn=get_memory_conn
+        )
         assert creator_memory.conn == get_memory_conn
-        
+
         # 创建使用默认连接的实例
-        creator_default = SchemaTableCreator(schema_file_path=schema_file, conn=get_conn)
+        creator_default = SchemaTableCreator(
+            schema_file_path=schema_file, conn=get_conn
+        )
         assert creator_default.conn == get_conn
-        
+
         # 验证两个实例使用不同的连接函数
         assert creator_memory.conn != creator_default.conn
-        
+
         # 验证都可以成功创建表
         result1 = creator_memory.create_table(TableName.STOCK_BASIC.value)
         assert result1 is True
@@ -270,23 +274,23 @@ columns = [
     def test_create_all_tables(self, schema_file):
         """测试创建所有表的功能"""
         from neo.database.connection import get_memory_conn
-        
+
         creator = SchemaTableCreator(schema_file_path=schema_file, conn=get_memory_conn)
-        
+
         # 调用创建所有表的方法
         results = creator.create_all_tables()
-        
+
         # 验证返回结果是字典
         assert isinstance(results, dict)
-        
+
         # 验证包含了schema中定义的表
         assert "stock_basic" in results
         assert "stock_daily" in results
-        
+
         # 验证这些表都创建成功
         assert results["stock_basic"] is True
         assert results["stock_daily"] is True
-        
+
         # 验证表确实被创建了
         with get_memory_conn() as conn:
             # 检查表是否存在
@@ -300,7 +304,7 @@ columns = [
         from neo.database.connection import get_memory_conn
         import tempfile
         import os
-        
+
         # 创建一个只包含部分表的schema文件
         partial_schema_content = """
 [tables.stock_basic]
@@ -313,23 +317,25 @@ columns = [
     { name = "name", type = "TEXT" }
 ]
 """
-        
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
             f.write(partial_schema_content)
             partial_schema_file = f.name
-        
+
         try:
-            creator = SchemaTableCreator(schema_file_path=partial_schema_file, conn=get_memory_conn)
+            creator = SchemaTableCreator(
+                schema_file_path=partial_schema_file, conn=get_memory_conn
+            )
             results = creator.create_all_tables()
-            
+
             # 验证只有存在于schema中的表创建成功
             assert results["stock_basic"] is True
-            
+
             # 验证结果中只包含schema中定义的表
             assert "stock_daily" not in results
             assert "stock_adj_qfq" not in results
             assert len(results) == 1
-            
+
         finally:
             # 清理临时文件
             os.unlink(partial_schema_file)

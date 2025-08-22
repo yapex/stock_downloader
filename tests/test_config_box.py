@@ -1,6 +1,5 @@
 """测试基于 python-box 的配置管理器"""
 
-import pytest
 from unittest.mock import patch, mock_open
 from box import Box
 import sys
@@ -29,7 +28,7 @@ class TestConfig:
         if "neo.config" in sys.modules:
             importlib.reload(sys.modules["neo.config"])
         else:
-            import neo.config
+            pass
 
         from neo.config import get_config
 
@@ -57,7 +56,7 @@ class TestConfig:
         if "neo.config" in sys.modules:
             importlib.reload(sys.modules["neo.config"])
         else:
-            import neo.config
+            pass
 
         from neo.config import get_config
 
@@ -91,7 +90,7 @@ class TestConfig:
         if "neo.config" in sys.modules:
             importlib.reload(sys.modules["neo.config"])
         else:
-            import neo.config
+            pass
 
         from neo.config import get_config
 
@@ -122,7 +121,7 @@ class TestConfig:
         if "neo.config" in sys.modules:
             importlib.reload(sys.modules["neo.config"])
         else:
-            import neo.config
+            pass
 
         from neo.config import get_config
 
@@ -141,7 +140,7 @@ class TestConfig:
         if "neo.config" in sys.modules:
             importlib.reload(sys.modules["neo.config"])
         else:
-            import neo.config
+            pass
 
         from neo.config import get_config
 

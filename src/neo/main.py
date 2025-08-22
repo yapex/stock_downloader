@@ -6,10 +6,8 @@
 import typer
 from typing import List, Optional
 
-from neo.database import DBOperator
-from neo.task_bus.types import TaskType, TaskPriority
+from neo.task_bus.types import TaskPriority
 from neo.helpers import (
-    normalize_stock_code,
     TaskBuilder,
     GroupHandler,
     AppService,
@@ -44,6 +42,7 @@ def dl(
     if task_type:
         # 将字符串转换为TaskType枚举（转换为大写）
         from neo.task_bus.types import TaskType
+
         task_types = [TaskType[task_type.upper()]]
     else:
         task_types = group_handler.get_task_types_for_group(group)

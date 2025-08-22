@@ -1,17 +1,17 @@
 import sys
+import argparse
 from pathlib import Path
+from typing import List, Union, Dict, Any
+
+import pandas as pd
+import tushare
+from box import Box
 
 # 添加项目根目录到 Python 路径
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-import neo.config as neo_config
-import tushare
-from typing import List, Union, Dict, Any
-import pandas as pd
-import argparse
-from box import Box
-import tomli_w
+import neo.config as neo_config  # noqa: E402
 
 
 def generate_schema_toml(
@@ -371,7 +371,7 @@ def create_schemas(table_names: List[str] = None) -> None:
             f"\n完成! 成功生成 {success_count}/{total_count} 个表的 schema，输出到 {output_path}"
         )
     else:
-        print(f"\n失败! 没有成功获取任何表的 schema")
+        print("\n失败! 没有成功获取任何表的 schema")
 
 
 def main():

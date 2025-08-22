@@ -8,7 +8,7 @@ from .app_service import IAppService, AppService
 __all__ = [
     # Utils
     "normalize_stock_code",
-    "is_interval_greater_than_7_days", 
+    "is_interval_greater_than_7_days",
     "setup_logging",
     # Task Builder
     "ITaskBuilder",

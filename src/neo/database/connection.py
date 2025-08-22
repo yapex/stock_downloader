@@ -84,7 +84,7 @@ def get_conn(db_path: str = None) -> Generator[duckdb.DuckDBPyConnection, None, 
 @contextmanager
 def get_memory_conn() -> Generator[duckdb.DuckDBPyConnection, None, None]:
     """获取内存数据库连接的便捷函数
-    
+
     使用 thread-local 存储确保同一线程中返回相同的内存数据库连接。
 
     使用方式:
@@ -94,9 +94,9 @@ def get_memory_conn() -> Generator[duckdb.DuckDBPyConnection, None, None]:
     Yields:
         DuckDB 内存连接对象
     """
-    if not hasattr(_thread_local, 'memory_conn'):
+    if not hasattr(_thread_local, "memory_conn"):
         _thread_local.memory_conn = duckdb.connect(":memory:")
-    
+
     try:
         yield _thread_local.memory_conn
     except Exception as e:
