@@ -55,8 +55,11 @@ class GroupHandler:
         if group_name not in config.task_groups:
             raise ValueError(f"未找到组配置: {group_name}")
 
-        # 对于 stock_basic 组，不需要具体的股票代码
-        if group_name == "stock_basic":
+        # 获取组的任务类型
+        task_type_names = config.task_groups[group_name]
+        
+        # 如果组包含 stock_basic 任务，不需要具体的股票代码
+        if "stock_basic" in task_type_names:
             return []
 
         # 其他组需要从数据库获取所有股票代码

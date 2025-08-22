@@ -185,12 +185,18 @@ class SimpleDataProcessor(IDataProcessor):
 
                     # 检查是否需要刷新缓冲区
                     task_type_key = task_result.config.task_type.name if hasattr(task_result.config.task_type, 'name') else str(task_result.config.task_type)
+                    individual_flushed = False
                     if self._should_flush(task_type_key):
                         flush_success = self._flush_buffer(task_type_key)
                         if not flush_success:
                             success = False
-                    else:
-                        # 检查定时刷新
+                        else:
+                            individual_flushed = True
+                            # 单独刷新成功后，更新最后刷新时间，避免定时刷新立即触发
+                            self.last_flush_time = time.time()
+                    
+                    # 只有在没有进行单独刷新时才检查定时刷新
+                    if not individual_flushed:
                         self._check_and_flush_all_buffers()
             else:
                 # 单条处理模式：直接保存
@@ -407,7 +413,7 @@ class SimpleDataProcessor(IDataProcessor):
         """
         with self.buffer_lock:
             if task_type not in self.batch_buffers or not self.batch_buffers[task_type]:
-                return True  # 没有数据需要刷新
+                return True  # 没有数据需要刷新，静默返回
 
             buffer_data = self.batch_buffers[task_type]
 
@@ -453,7 +459,7 @@ class SimpleDataProcessor(IDataProcessor):
                 return False
 
     def _should_flush(self, task_type: str) -> bool:
-        """检查是否应该刷新缓冲区
+        """检查是否应该刷新缓冲区（仅基于批量大小）
 
         Args:
             task_type: 任务类型
@@ -462,16 +468,11 @@ class SimpleDataProcessor(IDataProcessor):
             bool: 是否应该刷新
         """
         with self.buffer_lock:
-            # 检查批量大小（按数据行数计算）
+            # 只检查批量大小（按数据行数计算）
             if task_type in self.batch_buffers and self.batch_buffers[task_type]:
                 total_rows = sum(len(df) for df in self.batch_buffers[task_type])
                 if total_rows >= self.batch_size:
                     return True
-
-            # 检查时间间隔
-            current_time = time.time()
-            if current_time - self.last_flush_time >= self.flush_interval_seconds:
-                return True
 
             return False
 
@@ -479,8 +480,18 @@ class SimpleDataProcessor(IDataProcessor):
         """检查并刷新所有需要刷新的缓冲区"""
         current_time = time.time()
         if current_time - self.last_flush_time >= self.flush_interval_seconds:
-            self.flush_all()
-            self.last_flush_time = current_time
+            # 只刷新那些有数据但未达到批量大小的缓冲区
+            flushed_any = False
+            with self.buffer_lock:
+                for task_type, buffer_data in self.batch_buffers.items():
+                    if buffer_data:  # 有数据
+                        total_rows = sum(len(df) for df in buffer_data)
+                        if total_rows < self.batch_size:  # 未达到批量大小
+                            if self._flush_buffer(task_type, force=True):
+                                flushed_any = True
+            
+            if flushed_any:
+                self.last_flush_time = current_time
 
     def _maybe_output_stats(self) -> None:
         """检查是否需要输出统计信息"""
@@ -578,6 +589,7 @@ class SimpleDataProcessor(IDataProcessor):
         logger.debug(f"开始刷新所有缓冲区: {len(task_types_to_flush)} 个任务类型")
 
         for task_type in task_types_to_flush:
+            # 直接调用 _flush_buffer，避免嵌套锁
             if self._flush_buffer(task_type, force=force):
                 flushed_types.append(task_type)
             else:

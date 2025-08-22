@@ -258,13 +258,14 @@ class TestBatchProcessing:
         )
         self.processor._add_to_buffer(test_data, "stock_basic")
 
-        # 时间推进，但未超过刷新间隔
+        # _should_flush 只检查批量大小，不检查时间
+        # 由于只有1行数据，小于 batch_size=3，所以应该返回 False
         mock_time.return_value = 1005.0
         assert not self.processor._should_flush("stock_basic")
 
-        # 时间推进，超过刷新间隔
+        # 即使时间超过刷新间隔，_should_flush 仍然只检查批量大小
         mock_time.return_value = 1015.0  # 超过 flush_interval_seconds = 10
-        assert self.processor._should_flush("stock_basic")
+        assert not self.processor._should_flush("stock_basic")  # 仍然是 False，因为数据量不足
 
     def test_large_data_auto_flush(self):
         """测试大量数据自动触发刷新（修复后的行数计算逻辑）"""

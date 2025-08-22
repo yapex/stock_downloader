@@ -47,6 +47,9 @@ def dl(
     app_service = AppService()
 
     # 处理组配置，获取股票代码和任务类型
+    if not group:
+        raise ValueError("必须指定任务组 (-g/--group) 参数")
+        
     if stock_codes:
         symbols = stock_codes
     else:
@@ -99,14 +102,6 @@ def dp(
     app_service = AppService()
 
     app_service.run_data_processor()
-
-
-@app.command()
-def demo():
-    """运行演示程序"""
-    app_service = AppService()
-
-    app_service.run_demo()
 
 
 def main():

@@ -5,6 +5,7 @@
 
 import logging
 import pandas as pd
+from functools import lru_cache
 from typing import List, Dict, Any, Optional, Union
 
 from .table_creator import SchemaTableCreator
@@ -211,6 +212,7 @@ class DBOperator(SchemaTableCreator, IDBOperator):
             logger.error(f"查询表 '{table_name}' 最大日期失败: {e}")
             raise
 
+    @lru_cache(maxsize=1)
     def get_all_symbols(self) -> List[str]:
         """获取所有股票代码
 

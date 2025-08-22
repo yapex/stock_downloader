@@ -8,8 +8,17 @@ class TestAppService:
 
     def setup_method(self):
         """每个测试方法前的设置"""
+        self.mock_db_operator = MagicMock()
         self.mock_downloader = MagicMock()
-        self.app_service = AppService(downloader=self.mock_downloader)
+        self.mock_data_processor = MagicMock()
+        self.mock_task_bus = MagicMock()
+        
+        self.app_service = AppService(
+            db_operator=self.mock_db_operator,
+            downloader=self.mock_downloader,
+            data_processor=self.mock_data_processor,
+            task_bus=self.mock_task_bus
+        )
 
     def test_run_downloader_with_single_task(self):
         """测试运行单个下载任务"""
@@ -124,10 +133,19 @@ class TestAppService:
         """测试 TaskBus 正确注入到下载器"""
         mock_task_bus = MagicMock()
         mock_db_operator = MagicMock()
+        mock_downloader = MagicMock()
+        mock_data_processor = MagicMock()
         
-        # 创建 AppService，不传入下载器让其自动创建
+        # 设置下载器的属性以便测试验证
+        mock_downloader.task_bus = mock_task_bus
+        mock_downloader.fetcher_builder = MagicMock()
+        mock_downloader.fetcher_builder.db_operator = mock_db_operator
+        
+        # 创建 AppService
         app_service = AppService(
             db_operator=mock_db_operator,
+            downloader=mock_downloader,
+            data_processor=mock_data_processor,
             task_bus=mock_task_bus
         )
         
@@ -139,6 +157,8 @@ class TestAppService:
         """测试 run_downloader 成功后提交任务到队列"""
         mock_task_bus = MagicMock()
         mock_downloader = MagicMock()
+        mock_db_operator = MagicMock()
+        mock_data_processor = MagicMock()
         
         # 模拟下载成功，返回 TaskResult
         task = DownloadTaskConfig(
@@ -150,7 +170,9 @@ class TestAppService:
         mock_downloader.download.return_value = mock_result
         
         app_service = AppService(
+            db_operator=mock_db_operator,
             downloader=mock_downloader,
+            data_processor=mock_data_processor,
             task_bus=mock_task_bus
         )
         

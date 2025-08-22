@@ -39,15 +39,21 @@ def mock_config():
 
 
 @pytest.fixture
-def task_bus_with_processor(mock_data_processor, mock_config):
-    """创建带数据处理器的任务总线"""
-    return HueyTaskBus(data_processor=mock_data_processor, config=mock_config)
+def task_bus_with_processor(mock_data_processor):
+    """创建带有数据处理器的任务总线实例"""
+    from huey import SqliteHuey
+    # 使用SqliteHuey但配置为内存模式，并设置immediate=True确保任务立即执行
+    immediate_huey = SqliteHuey(filename=':memory:', immediate=True)
+    return HueyTaskBus(data_processor=mock_data_processor, huey_instance=immediate_huey)
 
 
 @pytest.fixture
-def task_bus_without_processor(mock_config):
-    """创建不带数据处理器的任务总线"""
-    return HueyTaskBus(data_processor=None, config=mock_config)
+def task_bus_without_processor():
+    """创建不带数据处理器的任务总线实例"""
+    from huey import MemoryHuey
+    # 使用immediate模式的MemoryHuey确保任务立即执行
+    immediate_huey = MemoryHuey(immediate=True)
+    return HueyTaskBus(data_processor=None, huey_instance=immediate_huey)
 
 
 class TestHueyTaskBus:
@@ -57,14 +63,65 @@ class TestHueyTaskBus:
         """测试 HueyTaskBus 初始化"""
         assert hasattr(task_bus_with_processor, "huey")
         assert hasattr(task_bus_with_processor, "data_processor")
-        assert hasattr(task_bus_with_processor, "config")
 
-    def test_data_processor_injection(self, mock_config):
+    def test_data_processor_injection(self):
         """测试数据处理器注入"""
         mock_processor = MockDataProcessor()
-        task_bus = HueyTaskBus(data_processor=mock_processor, config=mock_config)
+        task_bus = HueyTaskBus(data_processor=mock_processor)
 
         assert task_bus.data_processor is mock_processor
+
+    def test_init_without_data_processor(self):
+        """测试不注入数据处理器的初始化"""
+        task_bus = HueyTaskBus(data_processor=None)
+        
+        assert task_bus.data_processor is None
+        assert hasattr(task_bus, 'huey')
+        assert hasattr(task_bus, 'process_task_result')
+
+    def test_init_sets_global_data_processor(self):
+        """测试初始化时设置全局数据处理器"""
+        mock_processor = MockDataProcessor()
+        
+        # Mock tasks模块以验证set_data_processor被调用
+        import unittest.mock
+        with unittest.mock.patch('neo.task_bus.tasks.set_data_processor') as mock_set_processor:
+            task_bus = HueyTaskBus(data_processor=mock_processor)
+            
+            # 验证set_data_processor被调用
+            mock_set_processor.assert_called_once_with(mock_processor)
+            
+        assert task_bus.data_processor is mock_processor
+
+    def test_init_skips_global_data_processor_when_none(self):
+        """测试当数据处理器为None时跳过设置全局数据处理器"""
+        # Mock tasks模块
+        import unittest.mock
+        with unittest.mock.patch('neo.task_bus.tasks.set_data_processor') as mock_set_processor:
+            task_bus = HueyTaskBus(data_processor=None)
+            
+            # 验证set_data_processor没有被调用
+            mock_set_processor.assert_not_called()
+            assert task_bus.data_processor is None
+    
+    def test_huey_instance_injection(self):
+        """测试Huey实例的依赖注入"""
+        from huey import MemoryHuey
+        custom_huey = MemoryHuey()
+        
+        task_bus = HueyTaskBus(data_processor=None, huey_instance=custom_huey)
+        
+        # 验证注入的huey实例被正确设置
+        assert task_bus.huey is custom_huey
+        assert isinstance(task_bus.huey, MemoryHuey)
+    
+    def test_huey_instance_defaults_to_global(self):
+        """测试未提供huey_instance时使用全局实例"""
+        from neo.task_bus.huey_task_bus import huey
+        
+        task_bus = HueyTaskBus(data_processor=None)
+        
+        assert task_bus.huey is huey
 
     def test_serialize_task_result_success(self, task_bus_with_processor):
         """测试成功任务结果的序列化"""
@@ -172,3 +229,67 @@ class TestHueyTaskBusIntegration:
         # 不再检查日志输出内容
 
     # 移除异步测试，专注于同步测试和核心逻辑验证
+
+    def test_submit_task_exception_handling(self, task_bus_with_processor):
+        """测试提交任务时的异常处理"""
+        config = DownloadTaskConfig(
+            symbol="000001.SZ",
+            task_type=TaskType.stock_basic,
+            priority=TaskPriority.HIGH,
+        )
+        
+        # 创建一个会导致序列化失败的任务结果
+        task_result = TaskResult(config=config, success=True, data=None)
+        
+        # Mock _serialize_task_result 方法抛出异常
+        import unittest.mock
+        with unittest.mock.patch.object(
+            task_bus_with_processor, '_serialize_task_result', 
+            side_effect=Exception("Serialization failed")
+        ):
+            with pytest.raises(Exception, match="Serialization failed"):
+                task_bus_with_processor.submit_task(task_result)
+
+    def test_get_data_processor_with_injected_processor(self, task_bus_with_processor):
+        """测试获取注入的数据处理器"""
+        processor = task_bus_with_processor._get_data_processor()
+        assert processor is task_bus_with_processor.data_processor
+        assert isinstance(processor, MockDataProcessor)
+
+    def test_get_data_processor_without_injected_processor(self, task_bus_without_processor):
+        """测试获取默认数据处理器"""
+        processor = task_bus_without_processor._get_data_processor()
+        # 验证返回的是SimpleDataProcessor实例
+        from neo.data_processor.simple_data_processor import SimpleDataProcessor
+        assert isinstance(processor, SimpleDataProcessor)
+        # 验证不是注入的处理器
+        assert processor is not task_bus_without_processor.data_processor
+
+    def test_start_consumer_immediate_mode(self, task_bus_with_processor):
+        """测试在immediate模式下启动消费者"""
+        # 确保huey处于immediate模式
+        task_bus_with_processor.huey.immediate = True
+        
+        # 调用start_consumer应该直接返回，不启动消费者
+        # 这个测试主要验证方法不会抛出异常
+        task_bus_with_processor.start_consumer()
+        
+        # 验证immediate模式被正确检查
+        assert task_bus_with_processor.huey.immediate is True
+
+    def test_start_consumer_production_mode(self, task_bus_with_processor):
+        """测试在生产模式下启动消费者"""
+        # 设置huey为非immediate模式
+        task_bus_with_processor.huey.immediate = False
+        
+        # Mock Consumer类以避免实际启动消费者进程
+        import unittest.mock
+        with unittest.mock.patch('huey.consumer.Consumer') as mock_consumer_class:
+            mock_consumer = Mock()
+            mock_consumer_class.return_value = mock_consumer
+            
+            task_bus_with_processor.start_consumer()
+            
+            # 验证Consumer被正确创建和启动
+            mock_consumer_class.assert_called_once_with(task_bus_with_processor.huey)
+            mock_consumer.run.assert_called_once()
