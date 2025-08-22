@@ -24,12 +24,17 @@ def dl(
     group: Optional[str] = typer.Option(None, "--group", "-g", help="任务组名称"),
     task_type: Optional[str] = typer.Option(None, "--type", "-t", help="任务类型"),
     priority: int = typer.Option(1, "--priority", "-p", help="任务优先级"),
+    log_level: str = typer.Option("info", "--log-level", "-l", help="日志级别 (debug, info, warning, error, critical)"),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="仅显示将要执行的任务，不实际执行"
     ),
 ):
     """下载股票数据"""
+    from neo.helpers.utils import setup_logging
     from neo.database.operator import DBOperator
+    
+    # 初始化下载日志配置
+    setup_logging("download", log_level)
     
     task_builder = TaskBuilder()
     db_operator = DBOperator()
@@ -70,11 +75,17 @@ def dl(
 
 @app.command()
 def dp(
+    log_level: str = typer.Option("info", "--log-level", "-l", help="日志级别 (debug, info, warning, error, critical)"),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="仅显示将要执行的操作，不实际执行"
     ),
 ):
     """运行数据处理器"""
+    from neo.helpers.utils import setup_logging
+    
+    # 初始化数据处理日志配置
+    setup_logging("data_process", log_level)
+    
     app_service = AppService()
 
     app_service.run_data_processor()

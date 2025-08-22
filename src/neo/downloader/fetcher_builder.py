@@ -18,10 +18,6 @@ from neo.database.operator import DBOperator
 
 logger = logging.getLogger(__name__)
 
-# 创建性能分析日志目录
-# PERF_LOG_DIR = Path("logs/performance")
-# PERF_LOG_DIR.mkdir(parents=True, exist_ok=True)
-
 
 class TushareApiManager:
     """Tushare API 管理器（单例模式）"""
@@ -53,10 +49,6 @@ class TushareApiManager:
 
         return getattr(api_obj, method_name)
 
-    # @pysnooper.snoop(
-    #     output=PERF_LOG_DIR / "api_manager_init.log",
-    #     watch=("config", "self.pro", "self.ts"),
-    # )
     def _initialize(self):
         """初始化 Tushare API"""
         config = get_config()
@@ -111,9 +103,6 @@ class FetcherBuilder:
             template.base_object, template.api_method
         )
 
-        # @pysnooper.snoop(
-        #     output=PERF_LOG_DIR / "api_execution.log", watch=("merged_params", "result")
-        # )
         def execute() -> pd.DataFrame:
             """执行数据获取"""
             logger.debug(

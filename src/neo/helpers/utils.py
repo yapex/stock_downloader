@@ -63,17 +63,16 @@ def is_interval_greater_than_7_days(start_date: str, end_date: str) -> bool:
 
 
 # 全局标志，防止重复配置日志
-_logging_configured = False
 
 
-def setup_logging(logger: logging.Logger = None):
-    """配置日志记录"""
-    global _logging_configured
 
-    # 如果已经配置过，直接返回
-    if _logging_configured:
-        return
-
+def setup_logging(log_type: str = "download", log_level: str = "INFO"):
+    """配置日志记录
+    
+    Args:
+        log_type: 日志类型，支持 'download' 或 'data_process'
+        log_level: 日志级别，支持 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
+    """
     import logging
     import os
     from logging.handlers import TimedRotatingFileHandler
@@ -83,9 +82,24 @@ def setup_logging(logger: logging.Logger = None):
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
+    # 根据日志类型确定文件名
+    log_filename = f"{log_type}.log"
+    
+    # 将字符串日志级别转换为logging模块的级别常量
+    level_mapping = {
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+        "CRITICAL": logging.CRITICAL
+    }
+    
+    # 获取日志级别，如果无效则默认为INFO
+    numeric_level = level_mapping.get(log_level.upper(), logging.INFO)
+    
     # 配置根日志记录器
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG)
+    root_logger.setLevel(numeric_level)
 
     # 清除根日志记录器现有的处理器
     for handler in root_logger.handlers[:]:
@@ -93,7 +107,7 @@ def setup_logging(logger: logging.Logger = None):
 
     # 创建文件处理器，每天轮换
     file_handler = TimedRotatingFileHandler(
-        filename=os.path.join(log_dir, "download.log"),
+        filename=os.path.join(log_dir, log_filename),
         when="midnight",
         interval=1,
         backupCount=1,  # 保留1天的日志
@@ -113,7 +127,7 @@ def setup_logging(logger: logging.Logger = None):
     session_separator = f"\n{'=' * 80}\n"
 
     # 直接写入分隔符到文件，避免通过日志系统重复处理
-    log_file_path = os.path.join("logs", "download.log")
+    log_file_path = os.path.join("logs", log_filename)
     try:
         with open(log_file_path, "a", encoding="utf-8") as f:
             f.write(f"\n{session_separator}\n")
@@ -127,6 +141,3 @@ def setup_logging(logger: logging.Logger = None):
     # 屏蔽 pandas 的 FutureWarning 和其他警告
     warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
     warnings.filterwarnings("ignore", category=FutureWarning, module="tushare")
-
-    # 标记日志已配置
-    _logging_configured = True
