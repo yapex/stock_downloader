@@ -29,8 +29,11 @@ def dl(
     ),
 ):
     """下载股票数据"""
+    from neo.database.operator import DBOperator
+    
     task_builder = TaskBuilder()
-    group_handler = GroupHandler()
+    db_operator = DBOperator()
+    group_handler = GroupHandler(db_operator=db_operator)
     app_service = AppService()
 
     # 处理组配置，获取股票代码和任务类型
