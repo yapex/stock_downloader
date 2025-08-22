@@ -25,6 +25,23 @@ def get_huey() -> SqliteHuey:
         _huey_instance = SqliteHuey(
             filename=config.huey.db_file, immediate=config.huey.immediate
         )
+        
+        # 禁用huey的所有日志输出
+        import logging
+        huey_logger = logging.getLogger('huey')
+        huey_logger.setLevel(logging.CRITICAL)
+        huey_logger.propagate = False
+        
+        # 禁用huey.consumer的日志输出
+        consumer_logger = logging.getLogger('huey.consumer')
+        consumer_logger.setLevel(logging.CRITICAL)
+        consumer_logger.propagate = False
+        
+        # 禁用huey.api的日志输出
+        api_logger = logging.getLogger('huey.api')
+        api_logger.setLevel(logging.CRITICAL)
+        api_logger.propagate = False
+        
     return _huey_instance
 
 
@@ -152,8 +169,7 @@ def process_task_result(task_result_data: Dict[str, Any]) -> None:
             else config_data["task_type"]
         )
 
-        print(f"🚀 队列任务开始: {task_name}")
-        logger.info(f"开始处理队列任务: {task_name}")
+        logger.debug(f"队列任务开始: {task_name}")
 
         # 通过工厂函数获取数据处理器实例
         data_processor = _get_data_processor()
@@ -196,17 +212,14 @@ def process_task_result(task_result_data: Dict[str, Any]) -> None:
         success = data_processor.process(task_result)
 
         if success:
-            print(f"✅ 任务完成: {task_name}")
-            logger.info(
+            logger.debug(
                 f"TaskResult处理完成: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}"
             )
         else:
-            print(f"❌ 队列任务失败: {task_name}")
             logger.warning(
                 f"TaskResult处理失败: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}"
             )
 
     except Exception as e:
-        print(f"💥 队列任务异常: {task_name} - {str(e)}")
         logger.error(f"处理TaskResult时出错: {e}")
         raise

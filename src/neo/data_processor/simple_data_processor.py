@@ -25,7 +25,9 @@ class SimpleDataProcessor(IDataProcessor):
     专注于数据清洗、转换和验证。
     """
 
-    def __init__(self, db_operator: Optional[DBOperator] = None, enable_batch: bool = True):
+    def __init__(
+        self, db_operator: Optional[DBOperator] = None, enable_batch: bool = True
+    ):
         """初始化数据处理器
 
         Args:
@@ -39,7 +41,7 @@ class SimpleDataProcessor(IDataProcessor):
         # 批量处理配置
         self.batch_size = self.config.data_processor.batch_size
         self.flush_interval_seconds = self.config.data_processor.flush_interval_seconds
-        
+
         # 批量处理缓冲区：按任务类型分组存储待处理数据
         self.batch_buffers: Dict[str, List[pd.DataFrame]] = defaultdict(list)
         self.buffer_lock = threading.Lock()  # 线程安全锁
@@ -87,10 +89,7 @@ class SimpleDataProcessor(IDataProcessor):
             }
         self.stats["task_type_stats"][task_type_name]["count"] += 1
 
-        print(f"📊 开始处理: {task_name}")
-        logger.info(
-            f"开始处理TaskResult: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}"
-        )
+        logger.debug(f"处理任务: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}")
 
         # 检查是否需要输出统计信息
         self._maybe_output_stats()
@@ -98,7 +97,6 @@ class SimpleDataProcessor(IDataProcessor):
         try:
             # 检查任务是否成功
             if not task_result.success:
-                print(f"❌ 任务执行失败，跳过处理: {task_name} - {task_result.error}")
                 logger.warning(f"任务执行失败，跳过处理: {task_result.error}")
                 # 更新失败统计
                 self.stats["failed_processed"] += 1
@@ -106,48 +104,42 @@ class SimpleDataProcessor(IDataProcessor):
 
             # 检查数据是否存在
             if task_result.data is None or task_result.data.empty:
-                print(f"⚠️  数据为空，跳过处理: {task_name}")
                 logger.warning("数据为空，跳过处理")
                 return False
 
-            print(
-                f"📈 数据行数: {len(task_result.data)} 行，列数: {len(task_result.data.columns)} 列"
-            )
+            logger.debug(f"数据维度: {len(task_result.data)} 行 x {len(task_result.data.columns)} 列")
 
             # 数据清洗和验证
-            print(f"🧹 开始数据清洗: {task_name}")
             cleaned_data = self._clean_data(
                 task_result.data, task_result.config.task_type.value
             )
             if cleaned_data is None:
-                print(f"❌ 数据清洗失败: {task_name}")
                 logger.warning("数据清洗失败")
                 return False
 
-            print(f"✅ 数据清洗完成: {task_name}，清洗后 {len(cleaned_data)} 行")
+            logger.debug(f"数据清洗完成，清洗后 {len(cleaned_data)} 行")
 
             # 数据转换
-            print(f"🔄 开始数据转换: {task_name}")
             transformed_data = self._transform_data(
                 cleaned_data, task_result.config.task_type.value
             )
             if transformed_data is None:
-                print(f"❌ 数据转换失败: {task_name}")
                 logger.warning("数据转换失败")
                 return False
 
-            print(f"✅ 数据转换完成: {task_name}")
+            logger.debug("数据转换完成")
 
             # 根据模式选择处理方式
             if self.enable_batch:
                 # 批量处理模式：添加到缓冲区
-                success = self._add_to_buffer(transformed_data, task_result.config.task_type.value.api_method)
+                success = self._add_to_buffer(
+                    transformed_data, task_result.config.task_type.value.api_method
+                )
                 if success:
-                    print(f"📦 数据已添加到缓冲区: {task_name}，{len(transformed_data)} 行数据")
-                    logger.info(
+                    logger.debug(
                         f"数据已添加到缓冲区: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}, rows: {len(transformed_data)}"
                     )
-                    
+
                     # 检查是否需要刷新缓冲区
                     task_type_key = task_result.config.task_type.value.api_method
                     if self._should_flush(task_type_key):
@@ -159,26 +151,24 @@ class SimpleDataProcessor(IDataProcessor):
                         self._check_and_flush_all_buffers()
             else:
                 # 单条处理模式：直接保存
-                print(f"💾 开始保存数据: {task_name}")
                 success = self._save_data(
                     transformed_data, task_result.config.task_type.value.api_method
                 )
 
             if success:
                 if not self.enable_batch:
-                    print(
-                        f"🎉 数据处理完成: {task_name}，成功保存 {len(transformed_data)} 行数据"
-                    )
+                    print(f"✅ 成功保存 {len(transformed_data)} 行数据")
                     # 在批量模式下，行数统计在刷新时更新
                     self.stats["total_rows_processed"] += len(transformed_data)
-                    
+
                 # 更新成功统计
                 self.stats["successful_processed"] += 1
                 self.stats["task_type_stats"][task_type_name]["success"] += 1
                 if not self.enable_batch:
-                    self.stats["task_type_stats"][task_type_name]["rows"] += len(transformed_data)
+                    self.stats["task_type_stats"][task_type_name]["rows"] += len(
+                        transformed_data
+                    )
             else:
-                print(f"❌ 数据处理失败: {task_name}")
                 logger.warning(
                     f"数据处理失败: {task_result.config.task_type}, symbol: {task_result.config.symbol}"
                 )
@@ -202,6 +192,7 @@ class SimpleDataProcessor(IDataProcessor):
         Returns:
             清洗后的数据，如果清洗失败返回None
         """
+        pass  # 先注释掉，暂不需要清洗数据
         try:
             cleaned_data = data.copy()
 
@@ -328,7 +319,6 @@ class SimpleDataProcessor(IDataProcessor):
                 return False
 
             # 保存数据到数据库
-            logger.debug(f"开始保存数据: {table_name}, {len(data)} rows")
             self.db_operator.upsert(table_name, data)
             logger.info(f"数据保存成功: {table_name}, {len(data)} rows")
 
@@ -340,11 +330,11 @@ class SimpleDataProcessor(IDataProcessor):
 
     def _add_to_buffer(self, data: pd.DataFrame, task_type: str) -> bool:
         """将数据添加到批量处理缓冲区
-        
+
         Args:
             data: 要添加的数据
             task_type: 任务类型
-            
+
         Returns:
             bool: 添加是否成功
         """
@@ -352,43 +342,45 @@ class SimpleDataProcessor(IDataProcessor):
             with self.buffer_lock:
                 self.batch_buffers[task_type].append(data.copy())
                 self.stats["buffered_items"] += len(data)
-                
-            logger.debug(f"数据已添加到缓冲区: {task_type}, {len(data)} 行, 缓冲区大小: {len(self.batch_buffers[task_type])}")
+
+            logger.debug(
+                f"数据已添加到缓冲区: {task_type}, {len(data)} 行, 缓冲区大小: {len(self.batch_buffers[task_type])}"
+            )
             return True
-            
+
         except Exception as e:
             logger.error(f"添加数据到缓冲区失败: {task_type} - {e}")
             return False
 
     def _flush_buffer(self, task_type: str, force: bool = False) -> bool:
         """刷新指定任务类型的缓冲区数据到数据库
-        
+
         Args:
             task_type: 任务类型
             force: 是否强制刷新（忽略批量大小限制）
-            
+
         Returns:
             bool: 刷新是否成功
         """
         with self.buffer_lock:
             if task_type not in self.batch_buffers or not self.batch_buffers[task_type]:
                 return True  # 没有数据需要刷新
-                
+
             buffer_data = self.batch_buffers[task_type]
-            
+
             # 检查是否需要刷新（按数据行数计算）
             if not force:
                 total_rows = sum(len(df) for df in buffer_data)
                 if total_rows < self.batch_size:
                     return True  # 不需要刷新
-                
+
             try:
                 # 合并所有缓冲区数据
                 if len(buffer_data) == 1:
                     combined_data = buffer_data[0]
                 else:
                     combined_data = pd.concat(buffer_data, ignore_index=True)
-                    
+
                 # 获取表名映射
                 table_name_mapping = {
                     "stock_basic": "stock_basic",
@@ -400,42 +392,40 @@ class SimpleDataProcessor(IDataProcessor):
                     "cashflow": "cash_flow",
                     "balancesheet": "balance_sheet",
                 }
-                
+
                 table_name = table_name_mapping.get(task_type)
                 if not table_name:
                     logger.warning(f"未知的任务类型: {task_type}")
                     return False
-                    
+
                 # 批量保存到数据库
-                logger.info(f"批量刷新开始: {table_name}, {len(combined_data)} 行数据 (来自 {len(buffer_data)} 个任务)")
                 self.db_operator.upsert(table_name, combined_data)
                 logger.info(f"批量刷新成功: {table_name}, {len(combined_data)} 行数据")
-                
+
                 # 更新统计信息
                 self.stats["batch_flushes"] += 1
                 self.stats["total_rows_processed"] += len(combined_data)
-                
+
                 # 计算要减少的缓冲项目数（按行数计算）
                 buffered_rows = sum(len(df) for df in buffer_data)
-                
+
                 # 清空缓冲区
                 self.batch_buffers[task_type].clear()
                 self.stats["buffered_items"] -= buffered_rows
-                
-                print(f"🚀 批量刷新完成: {task_type} -> {table_name}, {len(combined_data)} 行数据")
+
+                print(f"✅ 批量保存 {len(combined_data)} 行数据到 {table_name}")
                 return True
-                
+
             except Exception as e:
                 logger.error(f"批量刷新失败: {task_type} - {e}")
-                print(f"❌ 批量刷新失败: {task_type} - {str(e)}")
                 return False
-                
+
     def _should_flush(self, task_type: str) -> bool:
         """检查是否应该刷新缓冲区
-        
+
         Args:
             task_type: 任务类型
-            
+
         Returns:
             bool: 是否应该刷新
         """
@@ -445,14 +435,14 @@ class SimpleDataProcessor(IDataProcessor):
                 total_rows = sum(len(df) for df in self.batch_buffers[task_type])
                 if total_rows >= self.batch_size:
                     return True
-                
+
             # 检查时间间隔
             current_time = time.time()
             if current_time - self.last_flush_time >= self.flush_interval_seconds:
                 return True
-                
+
             return False
-            
+
     def _check_and_flush_all_buffers(self) -> None:
         """检查并刷新所有需要刷新的缓冲区"""
         current_time = time.time()
@@ -492,12 +482,12 @@ class SimpleDataProcessor(IDataProcessor):
         print(f"📈 成功率: {success_rate:.1f}%")
         print(f"🚀 处理速率: {processing_rate:.2f} 任务/秒")
         print(f"📋 总处理行数: {self.stats['total_rows_processed']}")
-        
+
         # 批量处理统计
         if self.enable_batch:
             print(f"🔄 批量刷新次数: {self.stats['batch_flushes']}")
             print(f"📦 当前缓冲项目: {self.stats['buffered_items']}")
-            
+
             # 显示各缓冲区状态
             if self.batch_buffers:
                 print("\n📦 缓冲区状态:")
@@ -505,7 +495,9 @@ class SimpleDataProcessor(IDataProcessor):
                     for task_type, buffer_data in self.batch_buffers.items():
                         if buffer_data:
                             total_rows = sum(len(df) for df in buffer_data)
-                            print(f"  {task_type}: {len(buffer_data)} 个任务, {total_rows} 行数据")
+                            print(
+                                f"  {task_type}: {len(buffer_data)} 个任务, {total_rows} 行数据"
+                            )
 
         # 按任务类型统计
         if self.stats["task_type_stats"]:
@@ -526,39 +518,42 @@ class SimpleDataProcessor(IDataProcessor):
         logger.info(
             f"统计信息 - 总任务: {self.stats['total_processed']}, 成功: {self.stats['successful_processed']}, 失败: {self.stats['failed_processed']}, 成功率: {success_rate:.1f}%, 处理速率: {processing_rate:.2f} 任务/秒, 总行数: {self.stats['total_rows_processed']}, 批量刷新: {self.stats['batch_flushes']}, 缓冲项目: {self.stats['buffered_items']}"
         )
-        
+
     def flush_all(self, force: bool = True) -> bool:
         """刷新所有缓冲区数据到数据库
-        
+
         Args:
             force: 是否强制刷新所有数据（忽略批量大小限制）
-            
+
         Returns:
             bool: 所有刷新是否成功
         """
         success = True
         flushed_types = []
-        
+
         with self.buffer_lock:
             # 获取所有有数据的任务类型
-            task_types_to_flush = [task_type for task_type, buffer_data in self.batch_buffers.items() if buffer_data]
-            
+            task_types_to_flush = [
+                task_type
+                for task_type, buffer_data in self.batch_buffers.items()
+                if buffer_data
+            ]
+
         if not task_types_to_flush:
             logger.debug("没有缓冲区数据需要刷新")
             return True
-            
-        print(f"🔄 开始刷新所有缓冲区: {len(task_types_to_flush)} 个任务类型")
-        
+
+        logger.debug(f"开始刷新所有缓冲区: {len(task_types_to_flush)} 个任务类型")
+
         for task_type in task_types_to_flush:
             if self._flush_buffer(task_type, force=force):
                 flushed_types.append(task_type)
             else:
                 success = False
-                
+
         if flushed_types:
-            print(f"✅ 批量刷新完成: {', '.join(flushed_types)}")
-            logger.info(f"批量刷新完成: {', '.join(flushed_types)}")
-        
+            logger.debug(f"批量刷新完成: {', '.join(flushed_types)}")
+
         return success
 
     def get_stats(self) -> Dict[str, Any]:
@@ -587,9 +582,9 @@ class SimpleDataProcessor(IDataProcessor):
                         total_rows = sum(len(df) for df in buffer_data)
                         buffer_status[task_type] = {
                             "tasks": len(buffer_data),
-                            "rows": total_rows
+                            "rows": total_rows,
                         }
-        
+
         return {
             "elapsed_time": elapsed_time,
             "total_processed": self.stats["total_processed"],

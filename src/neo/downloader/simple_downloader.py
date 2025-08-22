@@ -66,8 +66,6 @@ class SimpleDownloader(IDownloader):
         Returns:
             TaskResult: 任务执行结果
         """
-        logger.debug(f"开始下载任务: {config.task_type.value}, symbol: {config.symbol}")
-
         try:
             # 应用速率限制
             self._apply_rate_limiting(config.task_type)

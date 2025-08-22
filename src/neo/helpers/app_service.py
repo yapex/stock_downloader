@@ -3,6 +3,7 @@
 负责应用的初始化、配置和运行逻辑。
 """
 
+import os
 import signal
 import subprocess
 import sys
@@ -48,32 +49,15 @@ class IAppService(Protocol):
             dry_run: 是否为试运行模式
         """
         if dry_run:
-            print(f"[DRY RUN] 将要执行 {len(tasks)} 个下载任务:")
-            for task in tasks:
-                task_name = (
-                    f"{task.symbol}_{task.task_type.name}"
-                    if task.symbol
-                    else task.task_type.name
-                )
-                print(f"  - {task_name}: {task.task_type.value.api_method}")
+            print(f"[DRY RUN] {len(tasks)} 个任务")
             return
 
         for task in tasks:
             try:
                 self._downloader.download(task)
-                task_name = (
-                    f"{task.symbol}_{task.task_type.name}"
-                    if task.symbol
-                    else task.task_type.name
-                )
-                print(f"成功下载: {task_name}")
+                print(f"✅ 下载完成")
             except Exception as e:
-                task_name = (
-                    f"{task.symbol}_{task.task_type.name}"
-                    if task.symbol
-                    else task.task_type.name
-                )
-                print(f"下载失败 {task_name}: {e}")
+                print(f"❌ 下载失败: {e}")
 
 
 class AppService:
@@ -124,7 +108,7 @@ class AppService:
         logger = logging.getLogger(__name__)
 
         def signal_handler(signum, frame):
-            print("\n接收到中断信号，正在停止数据处理器...")
+            print("\n数据处理器已停止")
             logger.info("数据处理器收到停止信号，正在优雅关闭...")
             sys.exit(0)
 
@@ -133,37 +117,29 @@ class AppService:
         signal.signal(signal.SIGTERM, signal_handler)
 
         # 输出启动信息
-        print("=== Neo 数据处理器启动 ===")
-        print(f"数据库路径: {self._config.database.path}")
-        print(f"Huey 数据库: {self._config.huey.db_file}")
-        print(f"即时模式: {'开启' if self._config.huey.immediate else '关闭'}")
-        print("支持的任务类型:")
-
-        # 显示支持的任务类型
-        from neo.task_bus.types import TaskType
-
-        for task_type in TaskType:
-            print(f"  - {task_type.name}: {task_type.value.api_method}")
-
-        print("\n正在启动 Huey 消费者进程...")
-        logger.info("开始启动数据处理器")
+        print("数据处理器启动中...")
 
         try:
             # 启动 Huey 消费者进程
             cmd = ["uv", "run", "huey_consumer", "neo.task_bus.huey_task_bus.huey"]
-            process = subprocess.Popen(cmd)
+            
+            # 设置环境变量来控制huey的日志输出
+            env = os.environ.copy()
+            env['HUEY_LOGLEVEL'] = 'CRITICAL'
+            env['PYTHONPATH'] = os.getcwd() + ':' + env.get('PYTHONPATH', '')
+            
+            process = subprocess.Popen(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-            print("数据处理器已启动，按 Ctrl+C 停止...")
-            logger.info("数据处理器启动成功，开始监听任务队列")
+            print("数据处理器运行中，按 Ctrl+C 停止...")
             process.wait()
 
         except KeyboardInterrupt:
-            print("\n正在停止数据处理器...")
+            print("\n数据处理器已停止")
             if "process" in locals():
                 process.terminate()
                 process.wait()
         except Exception as e:
-            print(f"启动数据处理器时出错: {e}")
+            print(f"启动失败: {e}")
             sys.exit(1)
 
     def run_demo(self) -> None:

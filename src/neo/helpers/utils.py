@@ -137,7 +137,21 @@ def setup_logging(log_type: str = "download", log_level: str = "INFO"):
     # 屏蔽第三方模块的日志输出到控制台，只保留文件日志
     # 这样终端只会显示tqdm进度条信息
     logging.getLogger("tushare").setLevel(logging.CRITICAL)
-
+    
+    # 屏蔽技术类日志的控制台输出
+    logging.getLogger("huey").setLevel(logging.CRITICAL)
+    logging.getLogger("huey.consumer").setLevel(logging.CRITICAL)
+    logging.getLogger("huey.api").setLevel(logging.CRITICAL)
+    logging.getLogger("huey.scheduler").setLevel(logging.CRITICAL)
+    logging.getLogger("sqlite3").setLevel(logging.CRITICAL)
+    logging.getLogger("urllib3").setLevel(logging.CRITICAL)
+    logging.getLogger("requests").setLevel(logging.CRITICAL)
+    
+    # 完全禁用huey的所有日志输出到控制台
+    huey_logger = logging.getLogger("huey")
+    huey_logger.handlers.clear()
+    huey_logger.propagate = False
+    
     # 屏蔽 pandas 的 FutureWarning 和其他警告
     warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
     warnings.filterwarnings("ignore", category=FutureWarning, module="tushare")

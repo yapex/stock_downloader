@@ -52,7 +52,6 @@ class TushareApiManager:
     def _initialize(self):
         """初始化 Tushare API"""
         config = get_config()
-        logger.info("初始化 Tushare API...")
         ts.set_token(config.tushare.token)
         self.pro = ts.pro_api()
         self.ts = ts

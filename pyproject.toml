@@ -39,7 +39,7 @@ dependencies = [
 ]
 
 [project.scripts]
-stock = "neo.main:app"
+neo = "neo.main:app"
 
 
 
