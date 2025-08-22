@@ -67,7 +67,7 @@ class TestBatchProcessing:
         })
         
         config = DownloadTaskConfig(
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             symbol="000001.SZ",
             priority=TaskPriority.HIGH,
         )
@@ -100,7 +100,7 @@ class TestBatchProcessing:
             })
             
             config = DownloadTaskConfig(
-                task_type=TaskType.STOCK_BASIC,
+                task_type=TaskType.stock_basic,
                 symbol=f"00000{i+1}.SZ",
                 priority=TaskPriority.HIGH,
             )
@@ -163,10 +163,10 @@ class TestBatchProcessing:
         """测试不同任务类型的混合批量处理"""
         # 创建不同类型的任务
         tasks = [
-            (TaskType.STOCK_BASIC, "stock_basic", {"ts_code": "000001.SZ", "symbol": "000001", "name": "平安银行"}),
-            (TaskType.STOCK_BASIC, "stock_basic", {"ts_code": "000002.SZ", "symbol": "000002", "name": "万科A"}),
-            (TaskType.STOCK_DAILY, "daily", {"ts_code": "000001.SZ", "trade_date": "20240101", "open": 10.0, "high": 11.0, "low": 9.5, "close": 10.5}),
-            (TaskType.STOCK_DAILY, "daily", {"ts_code": "000002.SZ", "trade_date": "20240101", "open": 20.0, "high": 21.0, "low": 19.5, "close": 20.5}),
+            (TaskType.stock_basic, "stock_basic", {"ts_code": "000001.SZ", "symbol": "000001", "name": "平安银行"}),
+            (TaskType.stock_basic, "stock_basic", {"ts_code": "000002.SZ", "symbol": "000002", "name": "万科A"}),
+            (TaskType.stock_daily, "daily", {"ts_code": "000001.SZ", "trade_date": "20240101", "open": 10.0, "high": 11.0, "low": 9.5, "close": 10.5}),
+            (TaskType.stock_daily, "daily", {"ts_code": "000002.SZ", "trade_date": "20240101", "open": 20.0, "high": 21.0, "low": 19.5, "close": 20.5}),
         ]
         
         for task_type, api_method, data_dict in tasks:
@@ -251,7 +251,7 @@ class TestBatchProcessing:
         })
         
         config = DownloadTaskConfig(
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             symbol="",
             priority=TaskPriority.HIGH,
         )

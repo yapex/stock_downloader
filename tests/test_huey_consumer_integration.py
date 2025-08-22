@@ -25,7 +25,7 @@ class TestHueyConsumerIntegration:
     def create_test_task_data(
         self,
         symbol="000001.SZ",
-        task_type=TaskType.STOCK_BASIC,
+        task_type=TaskType.stock_basic,
         success=True,
         data_rows=1,
     ):
@@ -97,7 +97,7 @@ class TestHueyConsumerIntegration:
         # 验证调用参数
         processed_task_result = mock_process.call_args[0][0]
         assert processed_task_result.config.symbol == "000001.SZ"
-        assert processed_task_result.config.task_type == TaskType.STOCK_BASIC
+        assert processed_task_result.config.task_type == TaskType.stock_basic
         assert processed_task_result.success is True
         assert processed_task_result.data is not None
         assert len(processed_task_result.data) == 1
@@ -164,7 +164,7 @@ class TestHueyConsumerIntegration:
 
     def test_process_task_result_different_task_types(self, capfd):
         """测试不同任务类型的处理"""
-        task_types = [TaskType.STOCK_BASIC, TaskType.STOCK_DAILY, TaskType.DAILY_BASIC]
+        task_types = [TaskType.stock_basic, TaskType.stock_daily, TaskType.daily_basic]
 
         with patch(
             "neo.data_processor.simple_data_processor.SimpleDataProcessor.process"
@@ -198,7 +198,7 @@ class TestHueyConsumerIntegration:
                 # 创建不同优先级的任务配置
                 config = DownloadTaskConfig(
                     symbol="000001.SZ",
-                    task_type=TaskType.STOCK_BASIC,
+                    task_type=TaskType.stock_basic,
                     priority=priority,
                     max_retries=3,
                 )
@@ -234,7 +234,7 @@ class TestSimpleDataProcessorConsumer:
     def create_task_result(self, success=True, data_rows=1, symbol="000001.SZ"):
         """创建 TaskResult 对象"""
         config = DownloadTaskConfig(
-            symbol=symbol, task_type=TaskType.STOCK_BASIC, priority=TaskPriority.HIGH
+            symbol=symbol, task_type=TaskType.stock_basic, priority=TaskPriority.HIGH
         )
 
         test_data = None
@@ -261,16 +261,19 @@ class TestSimpleDataProcessorConsumer:
             error=None if success else Exception("测试错误"),
         )
 
-    @patch("neo.data_processor.simple_data_processor.SimpleDataProcessor._save_data")
-    def test_process_successful_task(self, mock_save_data, capfd):
+    @patch("neo.database.operator.DBOperator.upsert")
+    def test_process_successful_task(self, mock_upsert, capfd):
         """测试成功处理任务"""
-        mock_save_data.return_value = True
+        mock_upsert.return_value = None  # upsert方法没有返回值
 
         task_result = self.create_task_result()
         result = self.data_processor.process(task_result)
+        
+        # 强制刷新缓冲区以触发保存
+        self.data_processor.flush_all()
 
         assert result is True
-        mock_save_data.assert_called_once()
+        mock_upsert.assert_called_once()
 
         # 不再检查日志输出内容
 
@@ -292,41 +295,52 @@ class TestSimpleDataProcessorConsumer:
 
         # 不再检查日志输出内容
 
-    @patch("neo.data_processor.simple_data_processor.SimpleDataProcessor._save_data")
-    def test_process_multiple_rows(self, mock_save_data, capfd):
+    @patch("neo.database.operator.DBOperator.upsert")
+    def test_process_multiple_rows(self, mock_upsert, capfd):
         """测试处理多行数据"""
-        mock_save_data.return_value = True
+        mock_upsert.return_value = None  # upsert方法没有返回值
 
         task_result = self.create_task_result(data_rows=5)
         result = self.data_processor.process(task_result)
+        
+        # 强制刷新缓冲区以触发保存
+        self.data_processor.flush_all()
 
         assert result is True
-        mock_save_data.assert_called_once()
+        mock_upsert.assert_called_once()
 
         # 不再检查日志输出内容
 
-    @patch("neo.data_processor.simple_data_processor.SimpleDataProcessor._save_data")
-    def test_process_save_failure(self, mock_save_data, capfd):
+    @patch("neo.database.operator.DBOperator.upsert")
+    def test_process_save_failure(self, mock_upsert, capfd):
         """测试数据保存失败的情况"""
-        mock_save_data.return_value = False
+        mock_upsert.side_effect = Exception("数据库保存失败")
 
         task_result = self.create_task_result()
         result = self.data_processor.process(task_result)
+        
+        # 强制刷新缓冲区以触发保存
+        flush_result = self.data_processor.flush_all()
 
-        assert result is False
-        mock_save_data.assert_called_once()
+        assert result is True  # process本身成功，只是flush失败
+        assert flush_result is False  # flush失败
+        mock_upsert.assert_called_once()
 
         # 不再检查日志输出内容
 
-    @patch("neo.data_processor.simple_data_processor.SimpleDataProcessor._save_data")
-    def test_process_save_exception(self, mock_save_data, capfd):
+    @patch("neo.database.operator.DBOperator.upsert")
+    def test_process_save_exception(self, mock_upsert, capfd):
         """测试数据保存时发生异常"""
-        mock_save_data.side_effect = Exception("数据库连接失败")
+        mock_upsert.side_effect = Exception("数据库连接失败")
 
         task_result = self.create_task_result()
         result = self.data_processor.process(task_result)
+        
+        # 强制刷新缓冲区以触发保存
+        flush_result = self.data_processor.flush_all()
 
-        assert result is False
+        assert result is True  # process本身成功，只是flush失败
+        assert flush_result is False  # flush失败
 
         # 不再检查日志输出内容
 
@@ -354,7 +368,7 @@ class TestConsumerPerformance:
             task_data = {
                 "config": {
                     "symbol": symbol,
-                    "task_type": TaskType.STOCK_BASIC.value,
+                    "task_type": TaskType.stock_basic.value,
                     "priority": TaskPriority.MEDIUM.value,
                     "max_retries": 3,
                 },
@@ -395,7 +409,7 @@ class TestConsumerPerformance:
                 task_data = {
                     "config": {
                         "symbol": f"00000{i % 10}.SZ",
-                        "task_type": TaskType.STOCK_BASIC.value,
+                        "task_type": TaskType.stock_basic.value,
                         "priority": TaskPriority.MEDIUM.value,
                         "max_retries": 3,
                     },

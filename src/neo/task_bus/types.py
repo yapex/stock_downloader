@@ -51,7 +51,6 @@ class TaskTypeRegistry:
                     cls._instance = cls(schema_loader)
         return cls._instance
 
-    @lru_cache(maxsize=1)
     def _load_task_types(self) -> Dict[str, TaskTemplate]:
         """从 schema 加载任务类型"""
         task_types = {}
@@ -69,12 +68,12 @@ class TaskTypeRegistry:
                 required_params=schema.required_params.copy(),
             )
 
-            # 直接使用表名的大写形式作为枚举名
-            enum_name = table_name.upper()
-            task_types[enum_name] = template
+            # 直接使用原始表名作为枚举名，避免大小写转换
+            task_types[table_name] = template
 
         return task_types
 
+    @lru_cache(maxsize=1)
     def get_task_types(self) -> Dict[str, TaskTemplate]:
         """获取所有任务类型"""
         return self._load_task_types()
@@ -100,7 +99,7 @@ class TaskTypeRegistry:
 
     def reload(self) -> None:
         """重新加载配置"""
-        self._load_task_types.cache_clear()
+        self.get_task_types.cache_clear()
         self.get_task_type_enum.cache_clear()
         self.schema_loader.reload_schemas()
 

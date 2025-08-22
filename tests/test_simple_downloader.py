@@ -37,21 +37,21 @@ class TestSimpleDownloader:
         downloader = SimpleDownloader()
 
         # 第一次获取应该创建新的限制器
-        limiter1 = downloader._get_rate_limiter(TaskType.STOCK_BASIC)
+        limiter1 = downloader._get_rate_limiter(TaskType.stock_basic)
 
         assert limiter1 is not None
-        assert str(TaskType.STOCK_BASIC.value) in downloader.rate_limiters
+        assert str(TaskType.stock_basic.value) in downloader.rate_limiters
 
         # 第二次获取应该返回相同的限制器
-        limiter2 = downloader._get_rate_limiter(TaskType.STOCK_BASIC)
+        limiter2 = downloader._get_rate_limiter(TaskType.stock_basic)
         assert limiter1 is limiter2
 
     def test_get_rate_limiter_different_task_types(self):
         """测试不同任务类型有独立的速率限制器"""
         downloader = SimpleDownloader()
 
-        limiter_basic = downloader._get_rate_limiter(TaskType.STOCK_BASIC)
-        limiter_daily = downloader._get_rate_limiter(TaskType.STOCK_DAILY)
+        limiter_basic = downloader._get_rate_limiter(TaskType.stock_basic)
+        limiter_daily = downloader._get_rate_limiter(TaskType.stock_daily)
 
         # 应该是不同的限制器实例
         assert limiter_basic is not limiter_daily
@@ -59,8 +59,8 @@ class TestSimpleDownloader:
 
         # 应该在字典中有两个键
         assert len(downloader.rate_limiters) == 2
-        assert str(TaskType.STOCK_BASIC.value) in downloader.rate_limiters
-        assert str(TaskType.STOCK_DAILY.value) in downloader.rate_limiters
+        assert str(TaskType.stock_basic.value) in downloader.rate_limiters
+        assert str(TaskType.stock_daily.value) in downloader.rate_limiters
 
     @patch("neo.downloader.simple_downloader.SimpleDownloader._fetch_data")
     @patch("neo.downloader.simple_downloader.SimpleDownloader._apply_rate_limiting")
@@ -71,7 +71,7 @@ class TestSimpleDownloader:
         mock_fetch_data.return_value = test_data
 
         downloader = SimpleDownloader()
-        config = DownloadTaskConfig(task_type=TaskType.STOCK_BASIC, symbol="000001.SZ")
+        config = DownloadTaskConfig(task_type=TaskType.stock_basic, symbol="000001.SZ")
 
         # 执行下载
         result = downloader.download(config)
@@ -83,7 +83,7 @@ class TestSimpleDownloader:
         assert result.error is None
 
         # 验证调用
-        mock_rate_limiting.assert_called_once_with(TaskType.STOCK_BASIC)
+        mock_rate_limiting.assert_called_once_with(TaskType.stock_basic)
         mock_fetch_data.assert_called_once_with(config)
 
     @patch("neo.downloader.simple_downloader.SimpleDownloader._fetch_data")
@@ -95,7 +95,7 @@ class TestSimpleDownloader:
         mock_fetch_data.side_effect = test_error
 
         downloader = SimpleDownloader()
-        config = DownloadTaskConfig(task_type=TaskType.STOCK_BASIC, symbol="000001.SZ")
+        config = DownloadTaskConfig(task_type=TaskType.stock_basic, symbol="000001.SZ")
 
         # 执行下载
         result = downloader.download(config)
@@ -107,7 +107,7 @@ class TestSimpleDownloader:
         assert result.error == test_error
 
         # 验证调用
-        mock_rate_limiting.assert_called_once_with(TaskType.STOCK_BASIC)
+        mock_rate_limiting.assert_called_once_with(TaskType.stock_basic)
         mock_fetch_data.assert_called_once_with(config)
 
     def test_apply_rate_limiting(self):
@@ -116,13 +116,13 @@ class TestSimpleDownloader:
         mock_limiter = Mock()
 
         downloader = SimpleDownloader()
-        downloader.rate_limiters[str(TaskType.STOCK_BASIC.value)] = mock_limiter
+        downloader.rate_limiters[str(TaskType.stock_basic.value)] = mock_limiter
 
         # 应用速率限制
-        downloader._apply_rate_limiting(TaskType.STOCK_BASIC)
+        downloader._apply_rate_limiting(TaskType.stock_basic)
 
         # 验证限制器被调用
-        mock_limiter.try_acquire.assert_called_once_with(TaskType.STOCK_BASIC.value, 1)
+        mock_limiter.try_acquire.assert_called_once_with(TaskType.stock_basic.value, 1)
 
     @patch("neo.downloader.simple_downloader.FetcherBuilder")
     def test_fetch_data_success(self, mock_fetcher_builder_class):
@@ -137,7 +137,7 @@ class TestSimpleDownloader:
         mock_fetcher_builder_class.return_value = mock_builder_instance
 
         downloader = SimpleDownloader()
-        config = DownloadTaskConfig(task_type=TaskType.STOCK_BASIC, symbol="000001.SZ")
+        config = DownloadTaskConfig(task_type=TaskType.stock_basic, symbol="000001.SZ")
 
         # 执行数据获取
         result = downloader._fetch_data(config)
@@ -147,7 +147,7 @@ class TestSimpleDownloader:
 
         # 验证调用
         mock_builder_instance.build_by_task.assert_called_once_with(
-            task_type=TaskType.STOCK_BASIC, symbol="000001.SZ"
+            task_type=TaskType.stock_basic, symbol="000001.SZ"
         )
         mock_fetcher.assert_called_once()
 
@@ -162,7 +162,7 @@ class TestSimpleDownloader:
         mock_fetcher_builder_class.return_value = mock_builder_instance
 
         downloader = SimpleDownloader()
-        config = DownloadTaskConfig(task_type=TaskType.STOCK_BASIC, symbol="000001.SZ")
+        config = DownloadTaskConfig(task_type=TaskType.stock_basic, symbol="000001.SZ")
 
         # 执行数据获取应该抛出异常
         with pytest.raises(Exception) as exc_info:
@@ -175,9 +175,9 @@ class TestSimpleDownloader:
         downloader = SimpleDownloader()
 
         # 获取不同任务类型的限制器
-        limiter1 = downloader._get_rate_limiter(TaskType.STOCK_BASIC)
-        limiter2 = downloader._get_rate_limiter(TaskType.STOCK_DAILY)
-        limiter3 = downloader._get_rate_limiter(TaskType.DAILY_BASIC)
+        limiter1 = downloader._get_rate_limiter(TaskType.stock_basic)
+        limiter2 = downloader._get_rate_limiter(TaskType.stock_daily)
+        limiter3 = downloader._get_rate_limiter(TaskType.daily_basic)
 
         # 验证每个任务类型都有独立的限制器
         assert limiter1 is not limiter2
@@ -186,9 +186,9 @@ class TestSimpleDownloader:
 
         # 验证字典中有正确的键
         expected_keys = {
-            str(TaskType.STOCK_BASIC.value),
-            str(TaskType.STOCK_DAILY.value),
-            str(TaskType.DAILY_BASIC.value),
+            str(TaskType.stock_basic.value),
+            str(TaskType.stock_daily.value),
+            str(TaskType.daily_basic.value),
         }
         actual_keys = set(downloader.rate_limiters.keys())
         assert actual_keys == expected_keys
@@ -200,7 +200,7 @@ class TestSimpleDownloader:
         mock_fetch_data.return_value = pd.DataFrame()
 
         downloader = SimpleDownloader()
-        config = DownloadTaskConfig(task_type=TaskType.STOCK_BASIC, symbol="000001.SZ")
+        config = DownloadTaskConfig(task_type=TaskType.stock_basic, symbol="000001.SZ")
 
         # 执行下载
         result = downloader.download(config)
@@ -219,7 +219,7 @@ class TestSimpleDownloader:
         mock_fetch_data.return_value = None
 
         downloader = SimpleDownloader()
-        config = DownloadTaskConfig(task_type=TaskType.STOCK_BASIC, symbol="000001.SZ")
+        config = DownloadTaskConfig(task_type=TaskType.stock_basic, symbol="000001.SZ")
 
         # 执行下载
         result = downloader.download(config)

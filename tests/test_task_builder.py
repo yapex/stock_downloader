@@ -12,7 +12,7 @@ class TestTaskBuilder:
     def test_build_tasks_with_single_symbol_and_task_type(self):
         """测试单个股票代码和任务类型的任务构建"""
         symbols = ["000001.SZ"]
-        task_types = [TaskType.STOCK_BASIC]
+        task_types = [TaskType.stock_basic]
         priority = TaskPriority.HIGH
 
         tasks = self.task_builder.build_tasks(symbols, task_types, priority)
@@ -21,13 +21,13 @@ class TestTaskBuilder:
         task = tasks[0]
         assert isinstance(task, DownloadTaskConfig)
         assert task.symbol == "000001.SZ"
-        assert task.task_type == TaskType.STOCK_BASIC
+        assert task.task_type == TaskType.stock_basic
         assert task.priority == priority
 
     def test_build_tasks_with_multiple_symbols_and_task_types(self):
         """测试多个股票代码和任务类型的任务构建"""
         symbols = ["000001.SZ", "000002.SZ"]
-        task_types = [TaskType.STOCK_BASIC, TaskType.STOCK_DAILY]
+        task_types = [TaskType.stock_basic, TaskType.stock_daily]
         priority = TaskPriority.MEDIUM
 
         tasks = self.task_builder.build_tasks(symbols, task_types, priority)
@@ -37,10 +37,10 @@ class TestTaskBuilder:
 
         # 验证任务组合
         expected_combinations = [
-            ("000001.SZ", TaskType.STOCK_BASIC),
-            ("000001.SZ", TaskType.STOCK_DAILY),
-            ("000002.SZ", TaskType.STOCK_BASIC),
-            ("000002.SZ", TaskType.STOCK_DAILY),
+            ("000001.SZ", TaskType.stock_basic),
+            ("000001.SZ", TaskType.stock_daily),
+            ("000002.SZ", TaskType.stock_basic),
+            ("000002.SZ", TaskType.stock_daily),
         ]
 
         actual_combinations = [(task.symbol, task.task_type) for task in tasks]
@@ -53,7 +53,7 @@ class TestTaskBuilder:
     def test_build_tasks_with_empty_symbols(self):
         """测试空股票代码列表（stock_basic组的情况）"""
         symbols = []
-        task_types = [TaskType.STOCK_BASIC]
+        task_types = [TaskType.stock_basic]
         priority = TaskPriority.LOW
 
         tasks = self.task_builder.build_tasks(symbols, task_types, priority)
@@ -61,7 +61,7 @@ class TestTaskBuilder:
         # stock_basic组即使symbols为空也应该创建任务
         assert len(tasks) == 1
         assert tasks[0].symbol == ""
-        assert tasks[0].task_type == TaskType.STOCK_BASIC
+        assert tasks[0].task_type == TaskType.stock_basic
         assert tasks[0].priority == TaskPriority.LOW
 
     def test_build_tasks_with_empty_task_types(self):
@@ -77,7 +77,7 @@ class TestTaskBuilder:
     def test_build_tasks_with_default_priority(self):
         """测试默认优先级"""
         symbols = ["000001.SZ"]
-        task_types = [TaskType.STOCK_BASIC]
+        task_types = [TaskType.stock_basic]
         priority = TaskPriority.MEDIUM  # 显式指定优先级
 
         tasks = self.task_builder.build_tasks(symbols, task_types, priority)
@@ -88,7 +88,7 @@ class TestTaskBuilder:
     def test_build_tasks_returns_download_task_config_instances(self):
         """测试返回的任务都是 DownloadTaskConfig 实例"""
         symbols = ["000001.SZ", "000002.SZ"]
-        task_types = [TaskType.STOCK_BASIC]
+        task_types = [TaskType.stock_basic]
         priority = TaskPriority.LOW
 
         tasks = self.task_builder.build_tasks(symbols, task_types, priority)

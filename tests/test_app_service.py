@@ -16,7 +16,7 @@ class TestAppService:
         # 创建测试任务
         task = DownloadTaskConfig(
             symbol="000001.SZ",
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             priority=TaskPriority.HIGH,
         )
         tasks = [task]
@@ -32,12 +32,12 @@ class TestAppService:
         # 创建测试任务
         task1 = DownloadTaskConfig(
             symbol="000001.SZ",
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             priority=TaskPriority.HIGH,
         )
         task2 = DownloadTaskConfig(
             symbol="000002.SZ",
-            task_type=TaskType.STOCK_DAILY,
+            task_type=TaskType.stock_daily,
             priority=TaskPriority.MEDIUM,
         )
         tasks = [task1, task2]
@@ -56,7 +56,7 @@ class TestAppService:
         # 创建测试任务
         task = DownloadTaskConfig(
             symbol="000001.SZ",
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             priority=TaskPriority.HIGH,
         )
         tasks = [task]
@@ -77,12 +77,12 @@ class TestAppService:
         tasks = [
             DownloadTaskConfig(
                 symbol="000001.SZ",
-                task_type=TaskType.STOCK_BASIC,
+                task_type=TaskType.stock_basic,
                 priority=TaskPriority.HIGH,
             ),
             DownloadTaskConfig(
                 symbol="000002.SZ",
-                task_type=TaskType.STOCK_DAILY,
+                task_type=TaskType.stock_daily,
                 priority=TaskPriority.MEDIUM,
             ),
         ]

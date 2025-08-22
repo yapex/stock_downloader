@@ -46,7 +46,7 @@ def dl(
         # 将字符串转换为TaskType枚举（转换为大写）
         from neo.task_bus.types import TaskType
 
-        task_types = [TaskType[task_type.upper()]]
+        task_types = [getattr(TaskType, task_type)]
     else:
         task_types = group_handler.get_task_types_for_group(group)
 

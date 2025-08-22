@@ -87,9 +87,8 @@ class GroupHandler:
         task_types = []
         for name in task_type_names:
             try:
-                # 将小写的配置名转换为大写的枚举名
-                enum_name = name.upper()
-                task_type = getattr(TaskType, enum_name)
+                # 直接使用原始名称访问枚举
+                task_type = getattr(TaskType, name)
                 task_types.append(task_type)
             except AttributeError:
                 raise ValueError(f"未知的任务类型: {name}")

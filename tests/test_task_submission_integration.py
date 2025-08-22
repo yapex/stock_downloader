@@ -77,7 +77,7 @@ class TestTaskSubmissionIntegration:
         # 创建下载任务配置
         config = DownloadTaskConfig(
             symbol="000001.SZ",
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             priority=TaskPriority.HIGH,
             max_retries=3,
         )
@@ -97,7 +97,7 @@ class TestTaskSubmissionIntegration:
         # 验证调用参数
         call_args = mock_process_task.call_args[0][0]
         assert call_args["config"]["symbol"] == "000001.SZ"
-        assert call_args["config"]["task_type"] == TaskType.STOCK_BASIC.value
+        assert call_args["config"]["task_type"] == TaskType.stock_basic.value
         assert call_args["success"] is True
 
     @patch("neo.task_bus.huey_task_bus.process_task_result")
@@ -132,17 +132,17 @@ class TestTaskSubmissionIntegration:
         configs = [
             DownloadTaskConfig(
                 symbol="000001.SZ",
-                task_type=TaskType.STOCK_BASIC,
+                task_type=TaskType.stock_basic,
                 priority=TaskPriority.HIGH,
             ),
             DownloadTaskConfig(
                 symbol="000002.SZ",
-                task_type=TaskType.STOCK_BASIC,
+                task_type=TaskType.stock_basic,
                 priority=TaskPriority.MEDIUM,
             ),
             DownloadTaskConfig(
                 symbol="000003.SZ",
-                task_type=TaskType.STOCK_BASIC,
+                task_type=TaskType.stock_basic,
                 priority=TaskPriority.LOW,
             ),
         ]
@@ -196,7 +196,7 @@ class TestTaskSubmissionIntegration:
         # 创建任务配置
         config = DownloadTaskConfig(
             symbol="000001.SZ",
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             priority=TaskPriority.HIGH,
         )
 
@@ -215,7 +215,7 @@ class TestTaskSubmissionIntegration:
         # 验证调用参数
         call_args = mock_process_task.call_args[0][0]
         assert call_args["config"]["symbol"] == "000001.SZ"
-        assert call_args["config"]["task_type"] == TaskType.STOCK_BASIC.value
+        assert call_args["config"]["task_type"] == TaskType.stock_basic.value
         assert call_args["success"] is True
 
     @patch("neo.task_bus.huey_task_bus.process_task_result")
@@ -249,7 +249,7 @@ class TestTaskSubmissionIntegration:
         # 创建一个测试任务
         config = DownloadTaskConfig(
             symbol="000001.SZ",
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             priority=TaskPriority.HIGH,
         )
 
@@ -307,7 +307,7 @@ class TestTaskSubmissionIntegration:
         # 测试任务提交功能是否正常
         config = DownloadTaskConfig(
             symbol="000001.SZ",
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             priority=TaskPriority.HIGH,
         )
 

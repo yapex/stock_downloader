@@ -38,7 +38,7 @@ class TestDataProcessorStats:
         )
 
         config = DownloadTaskConfig(
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             symbol="000001.SZ",
             priority=TaskPriority.HIGH,
         )
@@ -65,8 +65,8 @@ class TestDataProcessorStats:
         assert stats["success_rate"] == 100.0
 
         # 验证任务类型统计
-        assert "STOCK_BASIC" in stats["task_type_stats"]
-        task_stats = stats["task_type_stats"]["STOCK_BASIC"]
+        assert "stock_basic" in stats["task_type_stats"]
+        task_stats = stats["task_type_stats"]["stock_basic"]
         assert task_stats["count"] == 1
         assert task_stats["success"] == 1
         assert task_stats["rows"] == 1
@@ -74,7 +74,7 @@ class TestDataProcessorStats:
     def test_failed_processing_stats(self):
         """测试失败处理的统计更新"""
         config = DownloadTaskConfig(
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             symbol="000001.SZ",
             priority=TaskPriority.HIGH,
         )
@@ -99,8 +99,8 @@ class TestDataProcessorStats:
         assert stats["success_rate"] == 0.0
 
         # 验证任务类型统计
-        assert "STOCK_BASIC" in stats["task_type_stats"]
-        task_stats = stats["task_type_stats"]["STOCK_BASIC"]
+        assert "stock_basic" in stats["task_type_stats"]
+        task_stats = stats["task_type_stats"]["stock_basic"]
         assert task_stats["count"] == 1
         assert task_stats["success"] == 0
         assert task_stats["rows"] == 0
@@ -128,7 +128,7 @@ class TestDataProcessorStats:
 
         # 处理股票基础信息任务
         stock_basic_config = DownloadTaskConfig(
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             symbol="000001.SZ",
             priority=TaskPriority.HIGH,
         )
@@ -141,7 +141,7 @@ class TestDataProcessorStats:
 
         # 处理日线数据任务
         daily_config = DownloadTaskConfig(
-            task_type=TaskType.STOCK_DAILY,
+            task_type=TaskType.stock_daily,
             symbol="000001.SZ",
             priority=TaskPriority.HIGH,
         )
@@ -162,15 +162,15 @@ class TestDataProcessorStats:
 
         # 验证任务类型统计
         assert len(stats["task_type_stats"]) == 2
-        assert "STOCK_BASIC" in stats["task_type_stats"]
-        assert "STOCK_DAILY" in stats["task_type_stats"]
+        assert "stock_basic" in stats["task_type_stats"]
+        assert "stock_daily" in stats["task_type_stats"]
 
-        basic_stats = stats["task_type_stats"]["STOCK_BASIC"]
+        basic_stats = stats["task_type_stats"]["stock_basic"]
         assert basic_stats["count"] == 1
         assert basic_stats["success"] == 1
         assert basic_stats["rows"] == 1
 
-        daily_stats = stats["task_type_stats"]["STOCK_DAILY"]
+        daily_stats = stats["task_type_stats"]["stock_daily"]
         assert daily_stats["count"] == 1
         assert daily_stats["success"] == 1
         assert daily_stats["rows"] == 1
@@ -187,7 +187,7 @@ class TestDataProcessorStats:
         )
 
         config = DownloadTaskConfig(
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             symbol="000001.SZ",
             priority=TaskPriority.HIGH,
         )
@@ -232,7 +232,7 @@ class TestDataProcessorStats:
         )
 
         config = DownloadTaskConfig(
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             symbol="000001.SZ",
             priority=TaskPriority.HIGH,
         )

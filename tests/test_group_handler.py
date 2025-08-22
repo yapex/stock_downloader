@@ -86,7 +86,7 @@ class TestGroupHandler:
         task_types = self.group_handler.get_task_types_for_group("test")
 
         assert len(task_types) == 1
-        assert task_types[0] == TaskType.STOCK_DAILY
+        assert task_types[0] == TaskType.stock_daily
 
     @patch("neo.helpers.group_handler.get_config")
     def test_get_task_types_for_group_multiple_types(self, mock_get_config):
@@ -98,8 +98,8 @@ class TestGroupHandler:
         task_types = self.group_handler.get_task_types_for_group("all")
 
         assert len(task_types) == 2
-        assert TaskType.STOCK_BASIC in task_types
-        assert TaskType.STOCK_DAILY in task_types
+        assert TaskType.stock_basic in task_types
+        assert TaskType.stock_daily in task_types
 
     @patch("neo.helpers.group_handler.get_config")
     def test_get_task_types_for_group_unknown_group(self, mock_get_config):

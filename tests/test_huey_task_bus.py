@@ -100,7 +100,7 @@ class TestHueyTaskBus:
 
         config = DownloadTaskConfig(
             symbol="000001.SZ",
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             priority=TaskPriority.HIGH,
             max_retries=3,
         )
@@ -112,7 +112,7 @@ class TestHueyTaskBus:
         serialized = self.task_bus._serialize_task_result(task_result)
 
         assert serialized["config"]["symbol"] == "000001.SZ"
-        assert serialized["config"]["task_type"] == TaskType.STOCK_BASIC.value
+        assert serialized["config"]["task_type"] == TaskType.stock_basic.value
         assert serialized["config"]["priority"] == TaskPriority.HIGH.value
         assert serialized["config"]["max_retries"] == 3
         assert serialized["success"] is True
@@ -124,7 +124,7 @@ class TestHueyTaskBus:
         """测试失败任务结果的序列化"""
         config = DownloadTaskConfig(
             symbol="000001.SZ",
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             priority=TaskPriority.MEDIUM,
         )
 
@@ -143,7 +143,7 @@ class TestHueyTaskBus:
         serialized_data = {
             "config": {
                 "symbol": "000001.SZ",
-                "task_type": TaskType.STOCK_BASIC.value,
+                "task_type": TaskType.stock_basic.value,
                 "priority": TaskPriority.HIGH.value,
                 "max_retries": 3,
             },
@@ -159,7 +159,7 @@ class TestHueyTaskBus:
         task_result = self.task_bus._deserialize_task_result(serialized_data)
 
         assert task_result.config.symbol == "000001.SZ"
-        assert task_result.config.task_type == TaskType.STOCK_BASIC
+        assert task_result.config.task_type == TaskType.stock_basic
         assert task_result.config.priority == TaskPriority.HIGH
         assert task_result.config.max_retries == 3
         assert task_result.success is True
@@ -173,7 +173,7 @@ class TestHueyTaskBus:
         serialized_data = {
             "config": {
                 "symbol": "000001.SZ",
-                "task_type": TaskType.STOCK_BASIC.value,
+                "task_type": TaskType.stock_basic.value,
                 "priority": TaskPriority.MEDIUM.value,
                 "max_retries": 3,
             },
@@ -195,7 +195,7 @@ class TestHueyTaskBus:
         """测试任务提交到队列"""
         config = DownloadTaskConfig(
             symbol="000001.SZ",
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             priority=TaskPriority.HIGH,
         )
 
@@ -212,7 +212,7 @@ class TestHueyTaskBus:
         # 获取调用参数
         call_args = mock_process_task.call_args[0][0]
         assert call_args["config"]["symbol"] == "000001.SZ"
-        assert call_args["config"]["task_type"] == TaskType.STOCK_BASIC.value
+        assert call_args["config"]["task_type"] == TaskType.stock_basic.value
         assert call_args["success"] is True
 
 
@@ -292,7 +292,7 @@ class TestHueyTaskBusIntegration:
         # 创建任务配置和结果
         config = DownloadTaskConfig(
             symbol="000001.SZ",
-            task_type=TaskType.STOCK_BASIC,
+            task_type=TaskType.stock_basic,
             priority=TaskPriority.HIGH,
         )
 
@@ -309,7 +309,7 @@ class TestHueyTaskBusIntegration:
         # 验证调用参数
         processed_task_result = mock_processor.process.call_args[0][0]
         assert processed_task_result.config.symbol == "000001.SZ"
-        assert processed_task_result.config.task_type == TaskType.STOCK_BASIC
+        assert processed_task_result.config.task_type == TaskType.stock_basic
         assert processed_task_result.success is True
         assert processed_task_result.data is not None
 
