@@ -16,7 +16,9 @@ class TestDataProcessorStats:
         """测试前设置"""
         self.mock_db_operator = Mock()
         # 在测试中禁用批量模式，确保统计信息立即更新
-        self.processor = SimpleDataProcessor(db_operator=self.mock_db_operator, enable_batch=False)
+        self.processor = SimpleDataProcessor(
+            db_operator=self.mock_db_operator, enable_batch=False
+        )
 
     def test_initial_stats(self):
         """测试初始统计状态"""

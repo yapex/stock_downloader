@@ -11,7 +11,6 @@ class ITaskBus(Protocol):
     """任务总线接口
 
     负责任务的提交和队列管理。
-    消费者的启动应该由外部系统（如命令行工具）负责。
     """
 
     def submit_task(self, task_result: TaskResult) -> None:
@@ -19,5 +18,13 @@ class ITaskBus(Protocol):
 
         Args:
             task_result: 任务执行结果
+        """
+        ...
+
+    def start_consumer(self) -> None:
+        """启动任务消费者
+
+        启动消费者进程来处理队列中的任务。
+        在测试环境中，可能会使用 immediate 模式立即执行任务。
         """
         ...

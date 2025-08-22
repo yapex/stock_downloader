@@ -13,6 +13,7 @@ from .interfaces import IDownloader
 from .types import DownloadTaskConfig, TaskResult, TaskType
 from .fetcher_builder import FetcherBuilder
 from ..database.operator import DBOperator
+from ..task_bus.interfaces import ITaskBus
 
 logger = logging.getLogger(__name__)
 
@@ -27,16 +28,19 @@ class SimpleDownloader(IDownloader):
         self,
         rate_limiters: Optional[Dict[str, Limiter]] = None,
         db_operator: Optional[DBOperator] = None,
+        task_bus: Optional[ITaskBus] = None,
     ):
         """初始化下载器
 
         Args:
             rate_limiters: 按任务类型分组的速率限制器字典，如果为None则使用默认配置
             db_operator: 数据库操作器，用于智能日期参数处理
+            task_bus: 任务总线，用于提交任务结果，如果为None则使用默认的HueyTaskBus
         """
         self.config = get_config()
         self.rate_limiters = rate_limiters or {}
         self.fetcher_builder = FetcherBuilder(db_operator=db_operator)
+        self.task_bus = task_bus
 
     def _get_rate_limiter(self, task_type: TaskType) -> Limiter:
         """获取指定任务类型的速率限制器
@@ -125,18 +129,17 @@ class SimpleDownloader(IDownloader):
             raise
 
     def _submit_to_queue(self, result: TaskResult) -> None:
-        """将 TaskResult 提交到 Huey 队列进行处理"""
-        from neo.task_bus.huey_task_bus import HueyTaskBus
+        """将 TaskResult 提交到队列进行处理"""
+        if self.task_bus is None:
+            logger.warning("TaskBus 未注入，跳过任务提交")
+            return
 
         try:
-            # 创建 HueyTaskBus 实例并提交任务
-            task_bus = HueyTaskBus()
-            task_bus.submit_task(result)
-
+            self.task_bus.submit_task(result)
             logger.info(
                 f"✅ TaskResult 已提交到队列: {result.config.task_type.value}, symbol: {result.config.symbol}"
             )
-
         except Exception as e:
             logger.error(f"提交 TaskResult 到队列失败: {e}")
-            # 不抛出异常，避免影响下载流程
+            # 报告错误但不中断下载流程
+            raise RuntimeError(f"提交任务到队列失败: {e}") from e

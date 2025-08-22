@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 from neo.helpers.app_service import AppService
-from neo.task_bus.types import TaskType, DownloadTaskConfig, TaskPriority
+from neo.task_bus.types import TaskType, DownloadTaskConfig, TaskPriority, TaskResult
 
 
 class TestAppService:
@@ -119,3 +119,45 @@ class TestAppService:
 
         # 不再检查日志输出内容
         mock_print.assert_called()
+
+    def test_task_bus_injection_to_downloader(self):
+        """测试 TaskBus 正确注入到下载器"""
+        mock_task_bus = MagicMock()
+        mock_db_operator = MagicMock()
+        
+        # 创建 AppService，不传入下载器让其自动创建
+        app_service = AppService(
+            db_operator=mock_db_operator,
+            task_bus=mock_task_bus
+        )
+        
+        # 验证下载器被正确创建并注入了 task_bus
+        assert app_service._downloader.task_bus is mock_task_bus
+        assert app_service._downloader.fetcher_builder.db_operator is mock_db_operator
+
+    def test_run_downloader_submits_task_to_bus(self):
+        """测试 run_downloader 成功后提交任务到队列"""
+        mock_task_bus = MagicMock()
+        mock_downloader = MagicMock()
+        
+        # 模拟下载成功，返回 TaskResult
+        task = DownloadTaskConfig(
+            symbol="000001.SZ",
+            task_type=TaskType.stock_basic,
+            priority=TaskPriority.HIGH,
+        )
+        mock_result = TaskResult(config=task, success=True, data=MagicMock())
+        mock_downloader.download.return_value = mock_result
+        
+        app_service = AppService(
+            downloader=mock_downloader,
+            task_bus=mock_task_bus
+        )
+        
+        # 执行测试
+        app_service.run_downloader([task])
+        
+        # 验证下载器被调用
+        mock_downloader.download.assert_called_once_with(task)
+        # 验证任务被提交到队列
+        mock_task_bus.submit_task.assert_called_once_with(mock_result)

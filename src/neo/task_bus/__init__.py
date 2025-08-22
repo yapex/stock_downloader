@@ -4,18 +4,16 @@
 """
 
 from .interfaces import ITaskBus
-from .huey_task_bus import HueyTaskBus, get_huey
+from .huey_task_bus import HueyTaskBus
 from .types import TaskResult, DownloadTaskConfig, TaskType, TaskPriority
 
 __all__ = [
     "ITaskBus",
     "HueyTaskBus",
-    "get_huey",
     "TaskResult",
     "DownloadTaskConfig",
     "TaskType",
     "TaskPriority",
 ]
 
-# 导出Huey实例供命令行使用
-huey = get_huey()
+# 注意：不再导出全局 Huey 实例，请使用 HueyTaskBus 类

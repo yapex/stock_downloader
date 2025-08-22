@@ -65,15 +65,13 @@ def is_interval_greater_than_7_days(start_date: str, end_date: str) -> bool:
 # 全局标志，防止重复配置日志
 
 
-
 def setup_logging(log_type: str = "download", log_level: str = "INFO"):
     """配置日志记录
-    
+
     Args:
         log_type: 日志类型，支持 'download' 或 'data_process'
         log_level: 日志级别，支持 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
     """
-    import logging
     import os
     from logging.handlers import TimedRotatingFileHandler
 
@@ -84,19 +82,19 @@ def setup_logging(log_type: str = "download", log_level: str = "INFO"):
 
     # 根据日志类型确定文件名
     log_filename = f"{log_type}.log"
-    
+
     # 将字符串日志级别转换为logging模块的级别常量
     level_mapping = {
         "DEBUG": logging.DEBUG,
         "INFO": logging.INFO,
         "WARNING": logging.WARNING,
         "ERROR": logging.ERROR,
-        "CRITICAL": logging.CRITICAL
+        "CRITICAL": logging.CRITICAL,
     }
-    
+
     # 获取日志级别，如果无效则默认为INFO
     numeric_level = level_mapping.get(log_level.upper(), logging.INFO)
-    
+
     # 配置根日志记录器
     root_logger = logging.getLogger()
     root_logger.setLevel(numeric_level)
@@ -137,7 +135,7 @@ def setup_logging(log_type: str = "download", log_level: str = "INFO"):
     # 屏蔽第三方模块的日志输出到控制台，只保留文件日志
     # 这样终端只会显示tqdm进度条信息
     logging.getLogger("tushare").setLevel(logging.CRITICAL)
-    
+
     # 屏蔽技术类日志的控制台输出
     logging.getLogger("huey").setLevel(logging.CRITICAL)
     logging.getLogger("huey.consumer").setLevel(logging.CRITICAL)
@@ -146,12 +144,12 @@ def setup_logging(log_type: str = "download", log_level: str = "INFO"):
     logging.getLogger("sqlite3").setLevel(logging.CRITICAL)
     logging.getLogger("urllib3").setLevel(logging.CRITICAL)
     logging.getLogger("requests").setLevel(logging.CRITICAL)
-    
+
     # 完全禁用huey的所有日志输出到控制台
     huey_logger = logging.getLogger("huey")
     huey_logger.handlers.clear()
     huey_logger.propagate = False
-    
+
     # 屏蔽 pandas 的 FutureWarning 和其他警告
     warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
     warnings.filterwarnings("ignore", category=FutureWarning, module="tushare")

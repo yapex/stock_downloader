@@ -55,7 +55,7 @@ class IAppService(Protocol):
         for task in tasks:
             try:
                 self._downloader.download(task)
-                print(f"✅ 下载完成")
+                print("✅ 下载完成")
             except Exception as e:
                 print(f"❌ 下载失败: {e}")
 
@@ -73,17 +73,27 @@ class AppService:
         # 使用依赖注入，如果没有提供则使用默认实现
         self._config = get_config()
         self._db_operator = db_operator or DBOperator()
+        self._data_processor = data_processor or SimpleDataProcessor(self._db_operator)
 
-        # 延迟导入避免循环导入
+        # 先创建或注入 task_bus
+        if task_bus is None:
+            # 创建默认的 HueyTaskBus 实例
+            self._task_bus = HueyTaskBus(
+                config=self._config, data_processor=self._data_processor
+            )
+        else:
+            self._task_bus = task_bus
+
+        # 延迟导入避免循环导入，现在 task_bus 已经可用
         if downloader is None:
             from neo.downloader import SimpleDownloader
 
-            self._downloader = SimpleDownloader()
+            self._downloader = SimpleDownloader(
+                task_bus=self._task_bus,
+                db_operator=self._db_operator
+            )
         else:
             self._downloader = downloader
-
-        self._data_processor = data_processor or SimpleDataProcessor(self._db_operator)
-        self._task_bus = task_bus or HueyTaskBus()
 
         # 配置日志
         setup_logging()
@@ -121,14 +131,16 @@ class AppService:
 
         try:
             # 启动 Huey 消费者进程
-            cmd = ["uv", "run", "huey_consumer", "neo.task_bus.huey_task_bus.huey"]
-            
+            cmd = ["uv", "run", "huey_consumer", "neo.task_bus.huey_config.huey"]
+
             # 设置环境变量来控制huey的日志输出
             env = os.environ.copy()
-            env['HUEY_LOGLEVEL'] = 'CRITICAL'
-            env['PYTHONPATH'] = os.getcwd() + ':' + env.get('PYTHONPATH', '')
-            
-            process = subprocess.Popen(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            env["HUEY_LOGLEVEL"] = "CRITICAL"
+            env["PYTHONPATH"] = os.getcwd() + ":" + env.get("PYTHONPATH", "")
+
+            process = subprocess.Popen(
+                cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
 
             print("数据处理器运行中，按 Ctrl+C 停止...")
             process.wait()
@@ -198,13 +210,18 @@ class AppService:
 
         for task in tasks:
             try:
-                self._downloader.download(task)
+                task_result = self._downloader.download(task)
                 task_name = (
                     f"{task.symbol}_{task.task_type.name}"
                     if task.symbol
                     else task.task_type.name
                 )
                 print(f"成功下载: {task_name}")
+                
+                # 如果下载成功，提交任务到队列
+                if task_result.success:
+                    self._task_bus.submit_task(task_result)
+                    
             except Exception as e:
                 task_name = (
                     f"{task.symbol}_{task.task_type.name}"

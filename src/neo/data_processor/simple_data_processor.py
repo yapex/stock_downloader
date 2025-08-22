@@ -89,7 +89,9 @@ class SimpleDataProcessor(IDataProcessor):
             }
         self.stats["task_type_stats"][task_type_name]["count"] += 1
 
-        logger.debug(f"处理任务: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}")
+        logger.debug(
+            f"处理任务: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}"
+        )
 
         # 检查是否需要输出统计信息
         self._maybe_output_stats()
@@ -107,7 +109,9 @@ class SimpleDataProcessor(IDataProcessor):
                 logger.warning("数据为空，跳过处理")
                 return False
 
-            logger.debug(f"数据维度: {len(task_result.data)} 行 x {len(task_result.data.columns)} 列")
+            logger.debug(
+                f"数据维度: {len(task_result.data)} 行 x {len(task_result.data.columns)} 列"
+            )
 
             # 数据清洗和验证
             cleaned_data = self._clean_data(
@@ -192,7 +196,7 @@ class SimpleDataProcessor(IDataProcessor):
         Returns:
             清洗后的数据，如果清洗失败返回None
         """
-        pass  # 先注释掉，暂不需要清洗数据
+        return data  # 暂不需要清洗数据
         try:
             cleaned_data = data.copy()
 

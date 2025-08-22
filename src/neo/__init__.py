@@ -9,7 +9,7 @@
 
 # 导入各层的主要接口和实现
 from .downloader import IDownloader, SimpleDownloader
-from .task_bus import ITaskBus, HueyTaskBus, get_huey
+from .task_bus import ITaskBus, HueyTaskBus
 from .data_processor import IDataProcessor, SimpleDataProcessor
 from .database import (
     IDBOperator,
@@ -39,7 +39,6 @@ __all__ = [
     # Task Bus层
     "ITaskBus",
     "HueyTaskBus",
-    "get_huey",
     # Data Processor层
     "IDataProcessor",
     "SimpleDataProcessor",

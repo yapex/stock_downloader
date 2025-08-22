@@ -1,10 +1,12 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import pandas as pd
 import argparse
 import sys
 import os
-from huey import MemoryHuey
+import tempfile
+from pathlib import Path
+from huey import MemoryHuey, SqliteHuey
 from neo.database.connection import get_memory_conn
 from neo.database.table_creator import SchemaTableCreator
 
@@ -57,11 +59,26 @@ def mock_storage():
 @pytest.fixture
 def huey_immediate():
     """为测试提供即时模式的 Huey 实例"""
-    test_huey = MemoryHuey(immediate=True)
+    return MemoryHuey(immediate=True)
 
-    # 使用 patch 替换 neo.task_bus.huey_task_bus 模块中的 huey 实例
-    with patch("neo.task_bus.huey_task_bus.huey", test_huey):
+
+@pytest.fixture
+def huey_sqlite_temp():
+    """为测试提供使用临时SQLite数据库的 Huey 实例"""
+    # 创建临时数据库文件
+    temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+    temp_db_path = temp_db.name
+    temp_db.close()
+
+    try:
+        # 创建使用临时SQLite数据库的Huey实例
+        test_huey = SqliteHuey(filename=temp_db_path, immediate=False)
         yield test_huey
+    finally:
+        # 清理临时数据库文件
+        temp_db_file = Path(temp_db_path)
+        if temp_db_file.exists():
+            temp_db_file.unlink()
 
 
 @pytest.fixture
