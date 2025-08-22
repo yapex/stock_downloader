@@ -13,69 +13,6 @@ from .huey_config import huey
 logger = logging.getLogger(__name__)
 
 
-def _deserialize_task_result_static(task_result_data: Dict[str, Any]) -> 'TaskResult':
-    """静态方法：反序列化任务结果
-    
-    Args:
-        task_result_data: 序列化的TaskResult数据
-        
-    Returns:
-        TaskResult: 反序列化后的任务结果
-    """
-    import pandas as pd
-    from ..downloader.types import DownloadTaskConfig, TaskType, TaskPriority
-    
-    # 反序列化配置
-    config_data = task_result_data["config"]
-    config = DownloadTaskConfig(
-        symbol=config_data["symbol"],
-        task_type=TaskType(config_data["task_type"]),
-        priority=TaskPriority(config_data["priority"]),
-    )
-    
-    # 反序列化数据
-    data = None
-    if task_result_data["data"]:
-        data = pd.DataFrame(task_result_data["data"])
-    
-    # 反序列化错误
-    error = None
-    if task_result_data["error"]:
-        error = Exception(task_result_data["error"])
-    
-    return TaskResult(
-        config=config,
-        success=task_result_data["success"],
-        data=data,
-        error=error,
-        retry_count=task_result_data.get("retry_count", 0),
-    )
-
-
-# 模块级别的任务定义
-@huey.task(retries=2, retry_delay=5)
-def process_task_result(task_result_data: Dict[str, Any]) -> None:
-    """处理任务结果
-
-    Args:
-        task_result_data: 序列化的TaskResult数据
-    """
-    try:
-        from . import tasks
-
-        # 反序列化任务结果
-        task_result = _deserialize_task_result_static(task_result_data)
-        logger.info(f"开始处理任务结果: {task_result.config.symbol}")
-
-        # 使用全局数据处理器获取函数
-        processor = tasks.get_data_processor()
-        processor.process(task_result)
-
-        logger.info(f"任务结果处理完成: {task_result.config.symbol}")
-
-    except Exception as e:
-        logger.error(f"处理TaskResult时出错: {e}")
-        raise
 
 
 class HueyTaskBus(ITaskBus):
@@ -106,6 +43,7 @@ class HueyTaskBus(ITaskBus):
             tasks.set_data_processor(data_processor)
 
         # 引用模块级别的任务函数
+        from .tasks import process_task_result
         self.process_task_result = process_task_result
 
 
@@ -123,6 +61,7 @@ class HueyTaskBus(ITaskBus):
             task_result_data = self._serialize_task_result(task_result)
 
             # 异步提交任务到队列
+            from .tasks import process_task_result
             process_task_result(task_result_data)
 
             logger.info(f"任务已提交到队列: {task_result.config.symbol}")
@@ -179,73 +118,3 @@ class HueyTaskBus(ITaskBus):
 
         return SimpleDataProcessor()
 
-    def _process_task_result_impl(self, task_result_data: Dict[str, Any]) -> None:
-        """处理TaskResult的实现函数
-
-        Args:
-            task_result_data: 序列化的TaskResult数据
-        """
-        try:
-            # 获取数据处理器
-            processor = self._get_data_processor()
-
-            # 反序列化TaskResult
-            task_result = self._deserialize_task_result(task_result_data)
-
-            logger.info(f"开始处理任务结果: {task_result.config.symbol}")
-
-            # 处理任务结果
-            processor.process(task_result)
-
-            logger.info(f"任务结果处理完成: {task_result.config.symbol}")
-
-        except Exception as e:
-            logger.error(f"处理TaskResult时出错: {e}")
-            raise
-
-    def _deserialize_task_result(self, task_result_data: Dict[str, Any]) -> TaskResult:
-        """反序列化TaskResult
-
-        Args:
-            task_result_data: 序列化的TaskResult数据
-
-        Returns:
-            TaskResult: 反序列化后的TaskResult对象
-        """
-        # 延迟导入避免循环导入
-        from .types import DownloadTaskConfig, TaskType, TaskPriority, TaskResult
-        import pandas as pd
-
-        config_data = task_result_data["config"]
-
-        # 处理TaskType
-        task_type = TaskType(config_data["task_type"])
-
-        # 处理TaskPriority
-        priority = TaskPriority(config_data["priority"])
-
-        config = DownloadTaskConfig(
-            symbol=config_data["symbol"],
-            task_type=task_type,
-            priority=priority,
-            max_retries=config_data["max_retries"],
-        )
-
-        # 处理数据
-        data = task_result_data["data"]
-        if data is not None:
-            # 数据已经是 'records' 格式，直接转换为 DataFrame
-            data = pd.DataFrame.from_records(data)
-
-        # 处理错误
-        error = None
-        if task_result_data["error"]:
-            error = Exception(task_result_data["error"])
-
-        return TaskResult(
-            config=config,
-            success=task_result_data["success"],
-            data=data,
-            error=error,
-            retry_count=task_result_data.get("retry_count", 0),
-        )

@@ -113,57 +113,8 @@ class TestHueyTaskBus:
         assert serialized["error"] == "Connection failed"
         assert serialized["retry_count"] == 0
 
-    def test_deserialize_task_result_success(self, task_bus_with_processor):
-        """测试成功任务结果的反序列化"""
-        serialized_data = {
-            "config": {
-                "symbol": "000001.SZ",
-                "task_type": TaskType.stock_basic.value,
-                "priority": TaskPriority.HIGH.value,
-                "max_retries": 3,
-            },
-            "success": True,
-            "data": {
-                "ts_code": {0: "000001.SZ", 1: "000002.SZ"},
-                "name": {0: "平安银行", 1: "万科A"},
-            },
-            "error": None,
-            "retry_count": 1,
-        }
-
-        task_result = task_bus_with_processor._deserialize_task_result(serialized_data)
-
-        assert task_result.config.symbol == "000001.SZ"
-        assert task_result.config.task_type == TaskType.stock_basic
-        assert task_result.config.priority == TaskPriority.HIGH
-        assert task_result.config.max_retries == 3
-        assert task_result.success is True
-        assert task_result.data is not None
-        assert len(task_result.data) == 2
-        assert task_result.error is None
-        assert task_result.retry_count == 1
-
-    def test_deserialize_task_result_failure(self, task_bus_with_processor):
-        """测试失败任务结果的反序列化"""
-        serialized_data = {
-            "config": {
-                "symbol": "000001.SZ",
-                "task_type": TaskType.stock_basic.value,
-                "priority": TaskPriority.MEDIUM.value,
-                "max_retries": 3,
-            },
-            "success": False,
-            "data": None,
-            "error": "Connection failed",
-            "retry_count": 2,
-        }
-
-        task_result = task_bus_with_processor._deserialize_task_result(serialized_data)
-
-        assert task_result.success is False
-        assert task_result.data is None
-        assert str(task_result.error) == "Connection failed"
-        assert task_result.retry_count == 2
+    # NOTE: 反序列化逻辑已移至 tasks.py，不再在 HueyTaskBus 类中测试
+    # 在实际使用中，反序列化由 Huey 任务函数处理
 
     def test_submit_task(self, task_bus_with_processor, mock_data_processor):
         """测试任务提交到队列"""

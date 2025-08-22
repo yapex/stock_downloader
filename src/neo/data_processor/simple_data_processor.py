@@ -15,6 +15,8 @@ from ..config import get_config
 from .interfaces import IDataProcessor
 from .types import TaskResult
 from ..database.operator import DBOperator
+from ..database.interfaces import ISchemaLoader
+from ..database.schema_loader import SchemaLoader
 
 logger = logging.getLogger(__name__)
 
@@ -26,17 +28,22 @@ class SimpleDataProcessor(IDataProcessor):
     """
 
     def __init__(
-        self, db_operator: Optional[DBOperator] = None, enable_batch: bool = True
+        self, 
+        db_operator: Optional[DBOperator] = None, 
+        enable_batch: bool = True,
+        schema_loader: Optional[ISchemaLoader] = None
     ):
         """初始化数据处理器
 
         Args:
             db_operator: 数据库操作器，用于保存数据
             enable_batch: 是否启用批量处理模式
+            schema_loader: Schema 加载器，用于获取表名映射
         """
         self.config = get_config()
         self.db_operator = db_operator or DBOperator()
         self.enable_batch = enable_batch
+        self.schema_loader = schema_loader or SchemaLoader()
 
         # 批量处理配置
         self.batch_size = self.config.data_processor.batch_size
@@ -62,6 +69,25 @@ class SimpleDataProcessor(IDataProcessor):
 
         # 统计输出间隔（秒）
         self.stats_output_interval = 30
+
+    def _get_table_name(self, task_type) -> Optional[str]:
+        """根据任务类型获取对应的表名
+        
+        Args:
+            task_type: 任务类型（可以是字符串或枚举）
+            
+        Returns:
+            对应的表名，如果找不到返回 None
+        """
+        try:
+            # 如果是枚举类型，使用其 name 属性
+            type_name = task_type.name if hasattr(task_type, 'name') else str(task_type)
+            schema = self.schema_loader.load_schema(type_name)
+            return schema.table_name
+        except KeyError:
+            type_name = task_type.name if hasattr(task_type, 'name') else str(task_type)
+            logger.warning(f"未找到任务类型 '{type_name}' 对应的表配置")
+            return None
 
     def process(self, task_result: TaskResult) -> bool:
         """处理任务结果
@@ -137,15 +163,15 @@ class SimpleDataProcessor(IDataProcessor):
             if self.enable_batch:
                 # 批量处理模式：添加到缓冲区
                 success = self._add_to_buffer(
-                    transformed_data, task_result.config.task_type.value.api_method
+                    transformed_data, task_result.config.task_type
                 )
                 if success:
                     logger.debug(
-                        f"数据已添加到缓冲区: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}, rows: {len(transformed_data)}"
+                        f"数据已添加到缓冲区: {task_result.config.task_type}, symbol: {task_result.config.symbol}, rows: {len(transformed_data)}"
                     )
 
                     # 检查是否需要刷新缓冲区
-                    task_type_key = task_result.config.task_type.value.api_method
+                    task_type_key = task_result.config.task_type.name if hasattr(task_result.config.task_type, 'name') else str(task_result.config.task_type)
                     if self._should_flush(task_type_key):
                         flush_success = self._flush_buffer(task_type_key)
                         if not flush_success:
@@ -156,7 +182,7 @@ class SimpleDataProcessor(IDataProcessor):
             else:
                 # 单条处理模式：直接保存
                 success = self._save_data(
-                    transformed_data, task_result.config.task_type.value.api_method
+                    transformed_data, task_result.config.task_type
                 )
 
             if success:
@@ -305,19 +331,8 @@ class SimpleDataProcessor(IDataProcessor):
             # 调试信息：打印 task_type 的类型和值
             logger.debug(f"task_type 类型: {type(task_type)}, 值: {task_type}")
 
-            # 根据任务类型确定表名
-            table_name_mapping = {
-                "stock_basic": "stock_basic",
-                "daily": "stock_daily",
-                "daily_basic": "daily_basic",
-                "weekly": "stock_weekly",
-                "monthly": "stock_monthly",
-                "income": "income_statement",
-                "cashflow": "cash_flow",
-                "balancesheet": "balance_sheet",
-            }
-
-            table_name = table_name_mapping.get(task_type)
+            # 根据任务类型动态获取表名
+            table_name = self._get_table_name(task_type)
             if not table_name:
                 logger.warning(f"未知的任务类型: {task_type}")
                 return False
@@ -332,28 +347,32 @@ class SimpleDataProcessor(IDataProcessor):
             logger.error(f"数据保存失败: {e}")
             return False
 
-    def _add_to_buffer(self, data: pd.DataFrame, task_type: str) -> bool:
+    def _add_to_buffer(self, data: pd.DataFrame, task_type) -> bool:
         """将数据添加到批量处理缓冲区
 
         Args:
             data: 要添加的数据
-            task_type: 任务类型
+            task_type: 任务类型（可以是字符串或枚举）
 
         Returns:
             bool: 添加是否成功
         """
         try:
+            # 转换任务类型为字符串键
+            type_key = task_type.name if hasattr(task_type, 'name') else str(task_type)
+            
             with self.buffer_lock:
-                self.batch_buffers[task_type].append(data.copy())
+                self.batch_buffers[type_key].append(data.copy())
                 self.stats["buffered_items"] += len(data)
 
             logger.debug(
-                f"数据已添加到缓冲区: {task_type}, {len(data)} 行, 缓冲区大小: {len(self.batch_buffers[task_type])}"
+                f"数据已添加到缓冲区: {type_key}, {len(data)} 行, 缓冲区大小: {len(self.batch_buffers[type_key])}"
             )
             return True
 
         except Exception as e:
-            logger.error(f"添加数据到缓冲区失败: {task_type} - {e}")
+            type_key = task_type.name if hasattr(task_type, 'name') else str(task_type)
+            logger.error(f"添加数据到缓冲区失败: {type_key} - {e}")
             return False
 
     def _flush_buffer(self, task_type: str, force: bool = False) -> bool:
@@ -385,19 +404,8 @@ class SimpleDataProcessor(IDataProcessor):
                 else:
                     combined_data = pd.concat(buffer_data, ignore_index=True)
 
-                # 获取表名映射
-                table_name_mapping = {
-                    "stock_basic": "stock_basic",
-                    "daily": "stock_daily",
-                    "daily_basic": "daily_basic",
-                    "weekly": "stock_weekly",
-                    "monthly": "stock_monthly",
-                    "income": "income_statement",
-                    "cashflow": "cash_flow",
-                    "balancesheet": "balance_sheet",
-                }
-
-                table_name = table_name_mapping.get(task_type)
+                # 根据任务类型动态获取表名
+                table_name = self._get_table_name(task_type)
                 if not table_name:
                     logger.warning(f"未知的任务类型: {task_type}")
                     return False
