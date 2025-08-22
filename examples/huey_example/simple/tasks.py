@@ -10,16 +10,14 @@ from config import huey
 def tprint(s, c=32):
     # Helper to print messages from within tasks using color, to make them
     # stand out in examples.
-    print("\x1b[1;%sm%s\x1b[0m" % (c, s))
+    print('\x1b[1;%sm%s\x1b[0m' % (c, s))
 
 
 # Tasks used in examples.
 
-
 @huey.task()
 def add(a, b):
     return a + b
-
 
 @huey.task()
 def mul(a, b):
@@ -28,9 +26,9 @@ def mul(a, b):
 
 @huey.task()
 def slow(n):
-    tprint("going to sleep for %s seconds" % n)
+    tprint('going to sleep for %s seconds' % n)
     time.sleep(n)
-    tprint("finished sleeping for %s seconds" % n)
+    tprint('finished sleeping for %s seconds' % n)
     return n
 
 
@@ -38,18 +36,16 @@ def slow(n):
 # retried. Also shows how to use the `context` parameter, which passes the task
 # instance into the decorated function.
 
-
 @huey.task(retries=1, retry_delay=5, context=True)
 def flaky_task(task=None):
     if task is not None and task.retries == 0:
-        tprint("flaky task succeeded on retry.")
-        return "succeeded on retry."
-    tprint("flaky task is about to raise an exception.", 31)
-    raise Exception("flaky task failed!")
+        tprint('flaky task succeeded on retry.')
+        return 'succeeded on retry.'
+    tprint('flaky task is about to raise an exception.', 31)
+    raise Exception('flaky task failed!')
 
 
 # Pipeline example.
-
 
 @huey.task()
 def add_pipeline(a, b, *nums):
@@ -62,89 +58,80 @@ def add_pipeline(a, b, *nums):
     for num in nums:
         task = task.then(add, num)
     result_group = huey.enqueue(task)
-    tprint("enqueued pipeline of add() tasks.")
+    tprint('enqueued pipeline of add() tasks.')
     return result_group.get(blocking=True)
 
 
 # Periodic tasks.
 
-
-@huey.periodic_task(crontab(minute="*/2"))
+@huey.periodic_task(crontab(minute='*/2'))
 def every_other_minute():
-    tprint("This task runs every 2 minutes.", 35)
+    tprint('This task runs every 2 minutes.', 35)
 
 
-@huey.periodic_task(crontab(minute="*/5"))
+@huey.periodic_task(crontab(minute='*/5'))
 def every_five_mins():
-    tprint("This task runs every 5 minutes.", 34)
+    tprint('This task runs every 5 minutes.', 34)
 
 
 # Example of using hooks.
-
 
 @huey.on_startup()
 def startup_hook():
     pid = os.getpid()
     tid = threading.get_ident()
-    tprint("process %s, thread %s - startup hook" % (pid, tid))
+    tprint('process %s, thread %s - startup hook' % (pid, tid))
 
 
 @huey.on_shutdown()
 def shutdown_hook():
     pid = os.getpid()
     tid = threading.get_ident()
-    tprint("process %s, thread %s - shutdown hook" % (pid, tid))
+    tprint('process %s, thread %s - shutdown hook' % (pid, tid))
 
 
 # Example of using a signal.
 
-
 @huey.signal(SIGNAL_COMPLETE)
 def on_complete(signal, task, exc=None):
-    tprint("received signal [%s] for task [%s]" % (signal, task))
-
+    tprint('received signal [%s] for task [%s]' % (signal, task))
 
 @huey.signal(SIGNAL_INTERRUPTED)
 def on_interrupted(signal, task, exc=None):
-    tprint("received interrupted task signal for task: %s" % task)
+    tprint('received interrupted task signal for task: %s' % task)
 
 
 # Example of retrying a task if it is *currently* running.
 
 from huey.constants import EmptyData
 from huey.exceptions import RetryTask
-
-
 @huey.task(context=True)
 def hold_on(a, task=None):
-    if task is not None and huey.storage.peek_data("hold_on") is not EmptyData:
-        print("appears to be running...will retry in 60s")
+    if task is not None and huey.storage.peek_data('hold_on') is not EmptyData:
+        print('appears to be running...will retry in 60s')
         raise RetryTask(delay=60)
 
-    huey.storage.put_data("hold_on", "1")
+    huey.storage.put_data('hold_on', '1')
     try:
-        print("in task, sleeping for %s" % a)
+        print('in task, sleeping for %s' % a)
         time.sleep(a)
     finally:
-        huey.storage.pop_data("hold_on")
+        huey.storage.pop_data('hold_on')
     return True
 
-
 # Example of limiting the time a task can run for (10s).
-
 
 @huey.task()
 def limit_time(n):
     s = time.time()
     evt = threading.Event()
-
     def run_computation():
         for i in range(n):
             # Here we would do some kind of computation, checking our event
             # along the way.
-            print(".", end="", flush=True)
+            print('.', end='', flush=True)
             if evt.wait(1):
-                print("CANCELED")
+                print('CANCELED')
                 return
 
         evt.set()
@@ -161,13 +148,11 @@ def limit_time(n):
         evt.set()
         t.join()
 
-    print("limit_time() completed in %0.2f" % (time.time() - s))
-
+    print('limit_time() completed in %0.2f' % (time.time() - s))
 
 # Task that blocks CPU, used for testing.
-
 
 @huey.task()
 def slow_cpu():
     for i in range(1000000000):
-        i % 13331
+        j = i % 13331

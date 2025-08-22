@@ -29,6 +29,15 @@ class ITaskBuilder(Protocol):
 class TaskBuilder:
     """任务构建器实现"""
 
+    @classmethod
+    def create_default(cls) -> 'TaskBuilder':
+        """创建默认的 TaskBuilder 实例
+        
+        Returns:
+            TaskBuilder: 默认的任务构建器实例
+        """
+        return cls()
+
     def build_tasks(
         self, symbols: List[str], task_types: List[TaskType], priority: TaskPriority
     ) -> List[DownloadTaskConfig]:

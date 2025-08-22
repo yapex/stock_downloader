@@ -12,11 +12,12 @@ class IDownloader(Protocol):
     专注于网络I/O和数据获取，不处理业务逻辑。
     """
 
-    def download(self, config: DownloadTaskConfig) -> TaskResult:
+    def download(self, task_type: str, symbol: str) -> TaskResult:
         """执行下载任务
 
         Args:
-            config: 任务配置
+            task_type: 任务类型字符串
+            symbol: 股票代码
 
         Returns:
             TaskResult: 任务执行结果

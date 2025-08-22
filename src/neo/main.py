@@ -7,11 +7,9 @@ import typer
 from typing import List, Optional
 
 from neo.task_bus.types import TaskPriority
-from neo.helpers import (
-    TaskBuilder,
-    GroupHandler,
-    AppService,
-)
+from neo.helpers import TaskBuilder
+from neo.helpers.group_handler import GroupHandler
+from neo.helpers.app_service import AppService
 
 app = typer.Typer(help="Neo 股票数据处理系统命令行工具")
 
@@ -41,15 +39,14 @@ def dl(
     # 初始化下载日志配置
     setup_logging("download", log_level)
 
-    task_builder = TaskBuilder()
-    db_operator = DBOperator()
-    group_handler = GroupHandler(db_operator=db_operator)
-    app_service = AppService()
+    task_builder = TaskBuilder.create_default()
+    group_handler = GroupHandler.create_default()
+    app_service = AppService.create_default()
 
     # 处理组配置，获取股票代码和任务类型
     if not group:
         raise ValueError("必须指定任务组 (-g/--group) 参数")
-        
+
     if stock_codes:
         symbols = stock_codes
     else:
@@ -79,29 +76,6 @@ def dl(
 
     # 运行下载器
     app_service.run_downloader(tasks, dry_run=dry_run)
-
-
-@app.command()
-def dp(
-    log_level: str = typer.Option(
-        "info",
-        "--log-level",
-        "-l",
-        help="日志级别 (debug, info, warning, error, critical)",
-    ),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="仅显示将要执行的操作，不实际执行"
-    ),
-):
-    """运行数据处理器"""
-    from neo.helpers.utils import setup_logging
-
-    # 初始化数据处理日志配置
-    setup_logging("data_process", log_level)
-
-    app_service = AppService()
-
-    app_service.run_data_processor()
 
 
 def main():

@@ -5,8 +5,6 @@ import time
 from unittest.mock import Mock, patch
 
 from neo.data_processor.simple_data_processor import SimpleDataProcessor
-from neo.data_processor.types import TaskResult
-from neo.downloader.types import DownloadTaskConfig, TaskType, TaskPriority
 
 
 class TestDataProcessorStats:
@@ -39,21 +37,11 @@ class TestDataProcessorStats:
             {"ts_code": ["000001.SZ"], "symbol": ["000001"], "name": ["平安银行"]}
         )
 
-        config = DownloadTaskConfig(
-            task_type=TaskType.stock_basic,
-            symbol="000001.SZ",
-            priority=TaskPriority.HIGH,
-        )
-
-        task_result = TaskResult(
-            config=config, success=True, data=test_data, error=None
-        )
-
         # 模拟数据库操作成功
         self.mock_db_operator.upsert.return_value = None
 
         # 处理任务
-        result = self.processor.process(task_result)
+        result = self.processor.process("stock_basic", test_data)
 
         # 验证处理结果
         assert result is True
@@ -75,19 +63,16 @@ class TestDataProcessorStats:
 
     def test_failed_processing_stats(self):
         """测试失败处理的统计更新"""
-        config = DownloadTaskConfig(
-            task_type=TaskType.stock_basic,
-            symbol="000001.SZ",
-            priority=TaskPriority.HIGH,
-        )
+        # 模拟数据库操作失败
+        self.mock_db_operator.upsert.side_effect = Exception("数据库操作失败")
 
-        # 创建失败的任务结果
-        task_result = TaskResult(
-            config=config, success=False, data=None, error="下载失败"
+        # 准备测试数据
+        test_data = pd.DataFrame(
+            {"ts_code": ["000001.SZ"], "symbol": ["000001"], "name": ["平安银行"]}
         )
 
         # 处理任务
-        result = self.processor.process(task_result)
+        result = self.processor.process("stock_basic", test_data)
 
         # 验证处理结果
         assert result is False
@@ -129,30 +114,10 @@ class TestDataProcessorStats:
         self.mock_db_operator.upsert.return_value = None
 
         # 处理股票基础信息任务
-        stock_basic_config = DownloadTaskConfig(
-            task_type=TaskType.stock_basic,
-            symbol="000001.SZ",
-            priority=TaskPriority.HIGH,
-        )
-
-        stock_basic_result = TaskResult(
-            config=stock_basic_config, success=True, data=stock_basic_data, error=None
-        )
-
-        self.processor.process(stock_basic_result)
+        self.processor.process("stock_basic", stock_basic_data)
 
         # 处理日线数据任务
-        daily_config = DownloadTaskConfig(
-            task_type=TaskType.stock_daily,
-            symbol="000001.SZ",
-            priority=TaskPriority.HIGH,
-        )
-
-        daily_result = TaskResult(
-            config=daily_config, success=True, data=daily_data, error=None
-        )
-
-        self.processor.process(daily_result)
+        self.processor.process("stock_daily", daily_data)
 
         # 验证统计信息
         stats = self.processor.get_stats()
@@ -188,21 +153,11 @@ class TestDataProcessorStats:
             {"ts_code": ["000001.SZ"], "symbol": ["000001"], "name": ["平安银行"]}
         )
 
-        config = DownloadTaskConfig(
-            task_type=TaskType.stock_basic,
-            symbol="000001.SZ",
-            priority=TaskPriority.HIGH,
-        )
-
-        task_result = TaskResult(
-            config=config, success=True, data=test_data, error=None
-        )
-
         # 模拟数据库操作成功
         self.mock_db_operator.upsert.return_value = None
 
         # 第一次处理，不应该输出统计信息
-        self.processor.process(task_result)
+        self.processor.process("stock_basic", test_data)
 
         # 检查是否没有输出统计信息（只有处理信息）
         stats_calls = [
@@ -216,7 +171,7 @@ class TestDataProcessorStats:
         time.sleep(0.2)
 
         # 第二次处理，应该输出统计信息
-        self.processor.process(task_result)
+        self.processor.process("stock_basic", test_data)
 
         # 检查是否输出了统计信息
         stats_calls = [
@@ -233,22 +188,12 @@ class TestDataProcessorStats:
             {"ts_code": ["000001.SZ"], "symbol": ["000001"], "name": ["平安银行"]}
         )
 
-        config = DownloadTaskConfig(
-            task_type=TaskType.stock_basic,
-            symbol="000001.SZ",
-            priority=TaskPriority.HIGH,
-        )
-
-        task_result = TaskResult(
-            config=config, success=True, data=test_data, error=None
-        )
-
         # 模拟数据库操作成功
         self.mock_db_operator.upsert.return_value = None
 
         # 处理多个任务
         for _ in range(3):
-            self.processor.process(task_result)
+            self.processor.process("stock_basic", test_data)
             time.sleep(0.1)  # 模拟处理时间
 
         # 验证处理速率

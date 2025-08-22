@@ -41,6 +41,17 @@ class GroupHandler:
     def __init__(self, db_operator: Optional[IDBOperator] = None):
         self._db_operator = db_operator
 
+    @classmethod
+    def create_default(cls) -> 'GroupHandler':
+        """创建默认的 GroupHandler 实例
+        
+        Returns:
+            GroupHandler: 带有默认 DBOperator 的 GroupHandler 实例
+        """
+        from neo.database.operator import DBOperator
+        db_operator = DBOperator()
+        return cls(db_operator=db_operator)
+
     def get_symbols_for_group(self, group_name: str) -> List[str]:
         """获取指定组的股票代码列表
 
@@ -57,7 +68,7 @@ class GroupHandler:
 
         # 获取组的任务类型
         task_type_names = config.task_groups[group_name]
-        
+
         # 如果组包含 stock_basic 任务，不需要具体的股票代码
         if "stock_basic" in task_type_names:
             return []
@@ -66,8 +77,8 @@ class GroupHandler:
         if self._db_operator:
             return self._get_all_symbols_from_db()
         else:
-            # 如果没有数据库操作器，返回测试用的股票代码
-            return ["000001.SZ", "600519.SH"]
+            # 如果没有数据库操作器，抛出异常
+            raise ValueError("数据库异常，无法获取股票代码")
 
     def get_task_types_for_group(self, group_name: str) -> List[TaskType]:
         """获取指定组的任务类型列表

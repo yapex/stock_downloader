@@ -28,10 +28,10 @@ class SimpleDataProcessor(IDataProcessor):
     """
 
     def __init__(
-        self, 
-        db_operator: Optional[DBOperator] = None, 
+        self,
+        db_operator: Optional[DBOperator] = None,
         enable_batch: bool = True,
-        schema_loader: Optional[ISchemaLoader] = None
+        schema_loader: Optional[ISchemaLoader] = None,
     ):
         """初始化数据处理器
 
@@ -72,170 +72,115 @@ class SimpleDataProcessor(IDataProcessor):
 
     def _get_table_name(self, task_type) -> Optional[str]:
         """根据任务类型获取对应的表名
-        
+
         Args:
             task_type: 任务类型（可以是字符串或枚举）
-            
+
         Returns:
             对应的表名，如果找不到返回 None
         """
         try:
             # 如果是枚举类型，使用其 name 属性
-            type_name = task_type.name if hasattr(task_type, 'name') else str(task_type)
+            type_name = task_type.name if hasattr(task_type, "name") else str(task_type)
             schema = self.schema_loader.load_schema(type_name)
             return schema.table_name
         except KeyError:
-            type_name = task_type.name if hasattr(task_type, 'name') else str(task_type)
+            type_name = task_type.name if hasattr(task_type, "name") else str(task_type)
             logger.warning(f"未找到任务类型 '{type_name}' 对应的表配置")
             return None
 
-    def process(self, task_result: TaskResult) -> bool:
+    def process(self, task_type: str, data: pd.DataFrame) -> bool:
         """处理任务结果
 
         Args:
-            task_result: 任务执行结果
+            task_type: 任务类型字符串
+            data: 要处理的数据
 
         Returns:
             bool: 处理是否成功
         """
-        task_name = (
-            f"{task_result.config.symbol}_{task_result.config.task_type.name}"
-            if task_result.config.symbol
-            else task_result.config.task_type.name
-        )
-
-        task_type_name = task_result.config.task_type.name
-        
         # 确保任务类型统计结构存在
-        if task_type_name not in self.stats["task_type_stats"]:
-            self.stats["task_type_stats"][task_type_name] = {
+        if task_type not in self.stats["task_type_stats"]:
+            self.stats["task_type_stats"][task_type] = {
                 "count": 0,
                 "success": 0,
                 "rows": 0,
             }
 
-        logger.debug(
-            f"处理任务: {task_result.config.task_type.value}, symbol: {task_result.config.symbol}"
-        )
+        logger.debug(f"处理任务: {task_type}")
 
         # 检查是否需要输出统计信息
         self._maybe_output_stats()
 
         try:
-            # 检查任务是否成功
-            if not task_result.success:
-                logger.warning(f"任务执行失败，跳过处理: {task_result.error}")
-                # 更新统计信息：总处理数和失败数
-                self.stats["total_processed"] += 1
-                self.stats["failed_processed"] += 1
-                self.stats["task_type_stats"][task_type_name]["count"] += 1
-                return False
-
             # 检查数据是否存在
-            if task_result.data is None or task_result.data.empty:
+            if data is None or data.empty:
                 logger.warning("数据为空，跳过处理")
                 # 更新统计信息：总处理数和失败数
                 self.stats["total_processed"] += 1
                 self.stats["failed_processed"] += 1
-                self.stats["task_type_stats"][task_type_name]["count"] += 1
+                self.stats["task_type_stats"][task_type]["count"] += 1
                 return False
 
             logger.debug(
-                f"数据维度: {len(task_result.data)} 行 x {len(task_result.data.columns)} 列"
+                f"数据维度: {len(data)} 行 x {len(data.columns)} 列"
             )
-
-            # 数据清洗和验证
-            cleaned_data = self._clean_data(
-                task_result.data, task_result.config.task_type.value
-            )
-            if cleaned_data is None:
-                logger.warning("数据清洗失败")
-                # 更新统计信息：总处理数和失败数
-                self.stats["total_processed"] += 1
-                self.stats["failed_processed"] += 1
-                self.stats["task_type_stats"][task_type_name]["count"] += 1
-                return False
-
-            logger.debug(f"数据清洗完成，清洗后 {len(cleaned_data)} 行")
-
-            # 数据转换
-            transformed_data = self._transform_data(
-                cleaned_data, task_result.config.task_type.value
-            )
-            if transformed_data is None:
-                logger.warning("数据转换失败")
-                # 更新统计信息：总处理数和失败数
-                self.stats["total_processed"] += 1
-                self.stats["failed_processed"] += 1
-                self.stats["task_type_stats"][task_type_name]["count"] += 1
-                return False
-
-            logger.debug("数据转换完成")
 
             # 根据模式选择处理方式
             if self.enable_batch:
                 # 批量处理模式：添加到缓冲区
-                success = self._add_to_buffer(
-                    transformed_data, task_result.config.task_type
-                )
+                success = self._add_to_buffer(data, task_type)
                 if success:
                     logger.debug(
-                        f"数据已添加到缓冲区: {task_result.config.task_type}, symbol: {task_result.config.symbol}, rows: {len(transformed_data)}"
+                        f"数据已添加到缓冲区: {task_type}, rows: {len(data)}"
                     )
 
                     # 检查是否需要刷新缓冲区
-                    task_type_key = task_result.config.task_type.name if hasattr(task_result.config.task_type, 'name') else str(task_result.config.task_type)
                     individual_flushed = False
-                    if self._should_flush(task_type_key):
-                        flush_success = self._flush_buffer(task_type_key)
+                    if self._should_flush(task_type):
+                        flush_success = self._flush_buffer(task_type)
                         if not flush_success:
                             success = False
                         else:
                             individual_flushed = True
                             # 单独刷新成功后，更新最后刷新时间，避免定时刷新立即触发
                             self.last_flush_time = time.time()
-                    
+
                     # 只有在没有进行单独刷新时才检查定时刷新
                     if not individual_flushed:
                         self._check_and_flush_all_buffers()
             else:
                 # 单条处理模式：直接保存
-                success = self._save_data(
-                    transformed_data, task_result.config.task_type
-                )
+                success = self._save_data(data, task_type)
 
             # 更新统计信息：总处理数和任务类型计数
             self.stats["total_processed"] += 1
-            self.stats["task_type_stats"][task_type_name]["count"] += 1
-            
+            self.stats["task_type_stats"][task_type]["count"] += 1
+
             if success:
                 if not self.enable_batch:
-                    print(f"✅ 成功保存 {len(transformed_data)} 行数据")
+                    print(f"✅ 成功保存 {len(data)} 行数据")
                     # 在批量模式下，行数统计在刷新时更新
-                    self.stats["total_rows_processed"] += len(transformed_data)
+                    self.stats["total_rows_processed"] += len(data)
 
                 # 更新成功统计
                 self.stats["successful_processed"] += 1
-                self.stats["task_type_stats"][task_type_name]["success"] += 1
+                self.stats["task_type_stats"][task_type]["success"] += 1
                 if not self.enable_batch:
-                    self.stats["task_type_stats"][task_type_name]["rows"] += len(
-                        transformed_data
-                    )
+                    self.stats["task_type_stats"][task_type]["rows"] += len(data)
             else:
-                logger.warning(
-                    f"数据处理失败: {task_result.config.task_type}, symbol: {task_result.config.symbol}"
-                )
+                logger.warning(f"数据处理失败: {task_type}")
                 self.stats["failed_processed"] += 1
 
             return success
 
         except Exception as e:
-            print(f"💥 处理异常: {task_name} - {str(e)}")
-            logger.error(f"处理TaskResult时出错: {e}")
+            print(f"💥 处理异常: {task_type} - {str(e)}")
+            logger.error(f"处理数据时出错: {e}")
             # 更新统计信息：总处理数和失败数
             self.stats["total_processed"] += 1
             self.stats["failed_processed"] += 1
-            self.stats["task_type_stats"][task_type_name]["count"] += 1
+            self.stats["task_type_stats"][task_type]["count"] += 1
             return False
 
     def _clean_data(self, data: pd.DataFrame, task_type: str) -> Optional[pd.DataFrame]:
@@ -248,7 +193,6 @@ class SimpleDataProcessor(IDataProcessor):
         Returns:
             清洗后的数据，如果清洗失败返回None
         """
-        return data  # 暂不需要清洗数据
         try:
             cleaned_data = data.copy()
 
@@ -385,8 +329,8 @@ class SimpleDataProcessor(IDataProcessor):
         """
         try:
             # 转换任务类型为字符串键
-            type_key = task_type.name if hasattr(task_type, 'name') else str(task_type)
-            
+            type_key = task_type.name if hasattr(task_type, "name") else str(task_type)
+
             with self.buffer_lock:
                 self.batch_buffers[type_key].append(data.copy())
                 self.stats["buffered_items"] += len(data)
@@ -397,7 +341,7 @@ class SimpleDataProcessor(IDataProcessor):
             return True
 
         except Exception as e:
-            type_key = task_type.name if hasattr(task_type, 'name') else str(task_type)
+            type_key = task_type.name if hasattr(task_type, "name") else str(task_type)
             logger.error(f"添加数据到缓冲区失败: {type_key} - {e}")
             return False
 
@@ -489,7 +433,7 @@ class SimpleDataProcessor(IDataProcessor):
                         if total_rows < self.batch_size:  # 未达到批量大小
                             if self._flush_buffer(task_type, force=True):
                                 flushed_any = True
-            
+
             if flushed_any:
                 self.last_flush_time = current_time
 
