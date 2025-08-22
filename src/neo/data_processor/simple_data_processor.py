@@ -144,8 +144,7 @@ class SimpleDataProcessor(IDataProcessor):
             清洗后的数据，如果清洗失败返回None
         """
         try:
-            # 移除空值行
-            cleaned_data = data.dropna()
+            cleaned_data = data.copy()
             
             # 根据任务类型进行特定清洗
             if task_type == "stock_basic":
@@ -154,6 +153,8 @@ class SimpleDataProcessor(IDataProcessor):
                 if not all(col in cleaned_data.columns for col in required_columns):
                     logger.warning(f"股票基础信息缺少必要字段: {required_columns}")
                     return None
+                # 只移除关键字段为空的行
+                cleaned_data = cleaned_data.dropna(subset=required_columns)
             elif task_type in ["daily", "weekly", "monthly"]:
                 # 行情数据清洗
                 required_columns = ['ts_code', 'trade_date', 'open', 'high', 'low', 'close']
@@ -161,11 +162,25 @@ class SimpleDataProcessor(IDataProcessor):
                     logger.warning(f"行情数据缺少必要字段: {required_columns}")
                     return None
                 
+                # 只移除关键字段为空的行
+                cleaned_data = cleaned_data.dropna(subset=required_columns)
+                
                 # 确保价格数据为正数
                 price_columns = ['open', 'high', 'low', 'close']
                 for col in price_columns:
                     if col in cleaned_data.columns:
                         cleaned_data = cleaned_data[cleaned_data[col] > 0]
+            elif task_type in ["income", "balancesheet", "cashflow"]:
+                # 财务数据清洗 - 只检查关键字段
+                required_columns = ['ts_code', 'end_date']
+                if not all(col in cleaned_data.columns for col in required_columns):
+                    logger.warning(f"财务数据缺少必要字段: {required_columns}")
+                    return None
+                # 只移除关键字段为空的行
+                cleaned_data = cleaned_data.dropna(subset=required_columns)
+            else:
+                # 其他类型数据，保持原样，不进行严格的空值清洗
+                pass
             
             logger.debug(f"数据清洗完成: {len(data)} -> {len(cleaned_data)} rows")
             return cleaned_data
@@ -227,7 +242,10 @@ class SimpleDataProcessor(IDataProcessor):
                 'daily': 'stock_daily',
                 'daily_basic': 'daily_basic',
                 'weekly': 'stock_weekly',
-                'monthly': 'stock_monthly'
+                'monthly': 'stock_monthly',
+                'income': 'income_statement',
+                'cashflow': 'cash_flow',
+                'balancesheet': 'balance_sheet'
             }
             
             table_name = table_name_mapping.get(task_type)
