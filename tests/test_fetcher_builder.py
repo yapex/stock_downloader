@@ -63,13 +63,11 @@ class TestTushareApiManager:
         assert manager1 is manager2
 
     @patch("neo.downloader.fetcher_builder.ts")
-    @patch("neo.downloader.fetcher_builder.get_config")
-    def test_get_api_function_pro(self, mock_get_config, mock_ts):
+    @patch("os.environ.get")
+    def test_get_api_function_pro(self, mock_environ_get, mock_ts):
         """测试获取 pro API 函数"""
-        # Mock 配置
-        mock_config = Mock()
-        mock_config.tushare.token = "test_token"
-        mock_get_config.return_value = mock_config
+        # Mock 环境变量
+        mock_environ_get.return_value = "test_token"
 
         # Mock pro API
         mock_pro = Mock()
@@ -85,17 +83,16 @@ class TestTushareApiManager:
         result = manager.get_api_function("pro", "stock_basic")
 
         assert result is mock_api_func
+        mock_environ_get.assert_called_once_with("TUSHARE_TOKEN")
         mock_ts.set_token.assert_called_once_with("test_token")
         mock_ts.pro_api.assert_called_once()
 
     @patch("neo.downloader.fetcher_builder.ts")
-    @patch("neo.downloader.fetcher_builder.get_config")
-    def test_get_api_function_direct(self, mock_get_config, mock_ts):
+    @patch("os.environ.get")
+    def test_get_api_function_direct(self, mock_environ_get, mock_ts):
         """测试获取直接 API 函数"""
-        # Mock 配置
-        mock_config = Mock()
-        mock_config.tushare.token = "test_token"
-        mock_get_config.return_value = mock_config
+        # Mock 环境变量
+        mock_environ_get.return_value = "test_token"
 
         # Mock ts API
         mock_api_func = Mock()
@@ -110,6 +107,8 @@ class TestTushareApiManager:
         result = manager.get_api_function("ts", "get_hist_data")
 
         assert result is mock_api_func
+        mock_environ_get.assert_called_once_with("TUSHARE_TOKEN")
+        mock_ts.set_token.assert_called_once_with("test_token")
 
 
 class TestFetcherBuilder:

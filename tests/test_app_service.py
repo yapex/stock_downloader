@@ -28,18 +28,12 @@ class TestAppService:
         assert app_service.db_operator is mock_db_operator
         assert app_service.downloader is mock_downloader
 
-    @patch("neo.helpers.app_service.get_config")
     @patch("neo.helpers.app_service.DBOperator")
     @patch("neo.downloader.simple_downloader.SimpleDownloader")
     def test_create_default(
-        self, mock_simple_downloader, mock_db_operator, mock_get_config
+        self, mock_simple_downloader, mock_db_operator
     ):
         """测试 create_default 工厂方法"""
-        # 设置模拟配置
-        mock_config = Mock()
-        mock_config.database.path = ":memory:"
-        mock_get_config.return_value = mock_config
-
         # 设置模拟实例
         mock_db_instance = Mock(spec=IDBOperator)
         mock_downloader_instance = Mock(spec=IDownloader)
@@ -49,8 +43,7 @@ class TestAppService:
         # 调用工厂方法
         app_service = AppService.create_default()
 
-        # 验证配置被正确调用
-        mock_get_config.assert_called_once()
+        # 验证工厂方法被正确调用
         mock_db_operator.create_default.assert_called_once()
         mock_simple_downloader.create_default.assert_called_once()
 

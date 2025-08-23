@@ -10,6 +10,7 @@ from typing import Callable, Any, Optional
 import pandas as pd
 import logging
 from threading import Lock
+import os
 
 from neo.configs import get_config
 from neo.helpers import normalize_stock_code
@@ -51,8 +52,7 @@ class TushareApiManager:
 
     def _initialize(self):
         """初始化 Tushare API"""
-        config = get_config()
-        ts.set_token(config.tushare.token)
+        ts.set_token(os.environ.get("TUSHARE_TOKEN"))
         self.pro = ts.pro_api()
         self.ts = ts
         self.api_objects = {"pro": self.pro, "ts": self.ts}

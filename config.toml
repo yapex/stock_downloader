@@ -1,0 +1,54 @@
+[huey]
+max_workers = 4
+
+[database]
+type = "duckdb"
+path = "data/stock.db"
+schema_file_path = "stock_schema.toml" # 相对于项目根目录
+
+[data_processor]
+batch_size = 1000
+flush_interval_seconds = 30
+
+[download_tasks]
+[download_tasks.stock_basic]
+rate_limit_per_minute = 195  # 基础数据访问频率较低
+# update_interval_hours = 24*7
+[download_tasks.stock_daily]
+
+rate_limit_per_minute = 195  # 日线数据访问频率较高
+[download_tasks.stock_adj_qfq]
+
+rate_limit_per_minute = 195  # 复权数据访问频率较高
+[download_tasks.daily_basic]
+rate_limit_per_minute = 195  # 每日基本面数据访问频率较高
+[download_tasks.balance_sheet]
+
+rate_limit_per_minute = 195  # 财务数据访问频率中等
+[download_tasks.income_statement]
+
+rate_limit_per_minute = 195  # 财务数据访问频率中等
+[download_tasks.cash_flow]
+
+rate_limit_per_minute = 195  # 财务数据访问频率中等
+
+[task_groups]
+sys=[
+    "stock_basic"
+]
+all = [
+    "stock_daily",
+    "stock_adj_qfq",
+    "daily_basic",
+    "balance_sheet",
+    "income_statement",
+    "cash_flow",
+]
+financial=[
+    "balance_sheet",
+    "income_statement",
+    "cash_flow",
+]
+test=[
+    "daily_basic"
+]
