@@ -159,11 +159,6 @@ class AppService:
         # 延迟导入以避免循环导入
         from neo.downloader.simple_downloader import SimpleDownloader
 
-        get_config()
-
-        # 创建默认的数据库操作器
-        db_operator = DBOperator.create_default()
-
         downloader = SimpleDownloader.create_default()
 
         # 创建进度管理器（如果需要）
@@ -175,7 +170,7 @@ class AppService:
             progress_manager = ProgressManager(factory)
 
         return cls(
-            db_operator=db_operator,
+            db_operator=DBOperator.create_default(),
             downloader=downloader,
             progress_manager=progress_manager,
         )

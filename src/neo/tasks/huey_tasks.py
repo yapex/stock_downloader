@@ -3,13 +3,14 @@
 定义带 @huey_task 装饰器的下载任务函数。
 """
 
+import asyncio
 import logging
 
 from ..configs import huey
 from ..task_bus.types import TaskType
 
 # 延迟导入 SimpleDownloader 以避免循环导入
-from ..data_processor.simple_data_processor import SimpleDataProcessor
+from ..data_processor.simple_data_processor import AsyncSimpleDataProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -43,14 +44,17 @@ def download_task(task_type: TaskType, symbol: str) -> bool:
             if success and result is not None:
                 logger.info(f"🔄 触发数据处理任务: {symbol}")
                 # 直接处理数据，避免重复下载
-                data_processor = SimpleDataProcessor.create_default()
-                try:
-                    process_success = data_processor.process(task_type.name, result)
-                    logger.info(f"数据处理完成: {symbol}, 成功: {process_success}")
-                    return process_success
-                finally:
-                    # 确保数据处理器正确关闭，刷新所有缓冲区数据
-                    data_processor.shutdown()
+                async def process_async():
+                    data_processor = AsyncSimpleDataProcessor.create_default()
+                    try:
+                        process_success = await data_processor.process(task_type.name, result)
+                        logger.info(f"数据处理完成: {symbol}, 成功: {process_success}")
+                        return process_success
+                    finally:
+                        # 确保数据处理器正确关闭，刷新所有缓冲区数据
+                        await data_processor.shutdown()
+                
+                return asyncio.run(process_async())
 
             return success
         finally:
@@ -76,29 +80,32 @@ def process_data_task(task_type: TaskType, symbol: str) -> bool:
     try:
         logger.info(f"开始处理数据: {symbol}")
 
-        # 创建数据处理器
-        data_processor = SimpleDataProcessor.create_default()
+        # 创建异步数据处理器并运行
+        async def process_async():
+            data_processor = AsyncSimpleDataProcessor.create_default()
+            
+            # 重新下载数据进行处理
+            from ..downloader.simple_downloader import SimpleDownloader
 
-        # 重新下载数据进行处理
-        from ..downloader.simple_downloader import SimpleDownloader
+            downloader = SimpleDownloader.create_default()
+            try:
+                result = downloader.download(task_type.name, symbol)
 
-        downloader = SimpleDownloader.create_default()
-        try:
-            result = downloader.download(task_type.name, symbol)
-
-            success = result is not None and not result.empty if result is not None else False
-            if success and result is not None:
-                process_success = data_processor.process(task_type.name, result)
-                logger.info(f"数据处理完成: {symbol}, 成功: {process_success}")
-                return process_success
-            else:
-                logger.warning(f"数据处理失败，无有效数据: {symbol}")
-                return False
-        finally:
-            # 确保清理速率限制器资源
-            downloader.cleanup()
-            # 确保数据处理器正确关闭，刷新所有缓冲区数据
-            data_processor.shutdown()
+                success = result is not None and not result.empty if result is not None else False
+                if success and result is not None:
+                    process_success = await data_processor.process(task_type.name, result)
+                    logger.info(f"数据处理完成: {symbol}, 成功: {process_success}")
+                    return process_success
+                else:
+                    logger.warning(f"数据处理失败，无有效数据: {symbol}")
+                    return False
+            finally:
+                # 确保清理速率限制器资源
+                downloader.cleanup()
+                # 确保数据处理器正确关闭，刷新所有缓冲区数据
+                await data_processor.shutdown()
+        
+        return asyncio.run(process_async())
 
     except Exception as e:
         logger.error(f"数据处理任务执行失败: {symbol}, 错误: {e}")
