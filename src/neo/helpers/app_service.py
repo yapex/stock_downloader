@@ -138,13 +138,13 @@ class AppService:
 
     def cleanup(self):
         """清理应用服务资源"""
-        if hasattr(self.downloader, 'cleanup'):
-            try:
-                self.downloader.cleanup()
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Failed to cleanup downloader: {e}")
+        try:
+            self.downloader.cleanup()
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to cleanup downloader: {e}")
 
     @classmethod
     def create_default(cls, with_progress: bool = True) -> "AppService":
@@ -152,7 +152,7 @@ class AppService:
 
         Args:
             with_progress: 是否启用进度管理器
-            
+
         Returns:
             AppService: 配置好的应用服务实例
         """
@@ -165,15 +165,20 @@ class AppService:
         db_operator = DBOperator.create_default()
 
         downloader = SimpleDownloader.create_default()
-        
+
         # 创建进度管理器（如果需要）
         progress_manager = None
         if with_progress:
             from neo.tqmd import ProgressManager, ProgressTrackerFactory
+
             factory = ProgressTrackerFactory()
             progress_manager = ProgressManager(factory)
 
-        return cls(db_operator=db_operator, downloader=downloader, progress_manager=progress_manager)
+        return cls(
+            db_operator=db_operator,
+            downloader=downloader,
+            progress_manager=progress_manager,
+        )
 
     def run_data_processor(self) -> None:
         """运行数据处理器"""
@@ -211,42 +216,45 @@ class AppService:
         try:
             # 判断是否为组任务（多个任务）
             is_group_task = len(tasks) > 1
-            
+
             if self.progress_manager and is_group_task:
                 # 重置进度条位置计数器
                 from neo.tqmd.progress_manager import TqdmProgressTracker
+
                 TqdmProgressTracker.reset_positions()
-                
+
                 # 按任务类型分组任务
                 task_groups = self._group_tasks_by_type(tasks)
-                
+
                 # 启动母进度条
                 self.progress_manager.start_group_progress(len(tasks), "处理下载任务")
-                
+
                 # 为每个任务类型启动子进度条
                 for task_type, type_tasks in task_groups.items():
-                    self.progress_manager.start_task_type_progress(task_type, len(type_tasks))
-                
+                    self.progress_manager.start_task_type_progress(
+                        task_type, len(type_tasks)
+                    )
+
                 # 提交所有任务并收集任务结果
                 task_results = []
                 task_info_list = []  # 存储任务信息用于后续进度更新
-                
+
                 for task in tasks:
                     result = self._execute_download_task_with_submission(task)
                     if result:
                         task_results.append(result)
                         task_info_list.append(task)
-                
+
                 # 初始化完成计数器
                 completed_by_type = {task_type: 0 for task_type in task_groups.keys()}
-                    
+
             elif self.progress_manager:
                 # 单任务：直接启动任务进度条
                 self.progress_manager.start_task_progress(1, "执行下载任务")
-                
+
                 result = self._execute_download_task_with_submission(tasks[0])
                 task_results = [result] if result else []
-                
+
                 self.progress_manager.update_task_progress(1)
             else:
                 print("🚀 开始执行下载任务...")
@@ -258,7 +266,7 @@ class AppService:
 
             if not self.progress_manager:
                 print("⏳ 等待任务执行完成...")
-            
+
             # 异步等待所有任务完成并实时更新进度条
             import asyncio
             from huey.contrib.asyncio import aget_result
@@ -266,26 +274,32 @@ class AppService:
             try:
                 if self.progress_manager and is_group_task and task_results:
                     # 逐个等待任务完成并更新进度条
-                    for i, (result, task) in enumerate(zip(task_results, task_info_list)):
+                    for i, (result, task) in enumerate(
+                        zip(task_results, task_info_list)
+                    ):
                         await aget_result(result)  # 等待单个任务完成
-                        
+
                         # 更新对应任务类型的进度条
                         task_type_name = task.task_type.name
                         completed_by_type[task_type_name] += 1
                         total_for_type = len(task_groups[task_type_name])
-                        
+
                         self.progress_manager.update_task_type_progress(
-                            task_type_name, 
-                            increment=1, 
-                            completed=completed_by_type[task_type_name], 
-                            total=total_for_type
+                            task_type_name,
+                            increment=1,
+                            completed=completed_by_type[task_type_name],
+                            total=total_for_type,
                         )
-                        
+
                         # 更新母进度条
-                        self.progress_manager.update_group_progress(1, f"已完成 {i+1}/{len(task_results)} 个任务")
+                        self.progress_manager.update_group_progress(
+                            1, f"已完成 {i + 1}/{len(task_results)} 个任务"
+                        )
                 else:
                     # 没有进度管理器或单任务，直接等待所有任务完成
-                    await asyncio.gather(*[aget_result(result) for result in task_results])
+                    await asyncio.gather(
+                        *[aget_result(result) for result in task_results]
+                    )
             except Exception as e:
                 if self.progress_manager:
                     self.progress_manager.finish_all()
@@ -334,12 +348,14 @@ class AppService:
                 pass
             print("🛑 Huey Consumer 已停止")
 
-    def _group_tasks_by_type(self, tasks: List[DownloadTaskConfig]) -> dict[str, List[DownloadTaskConfig]]:
+    def _group_tasks_by_type(
+        self, tasks: List[DownloadTaskConfig]
+    ) -> dict[str, List[DownloadTaskConfig]]:
         """按任务类型分组任务
-        
+
         Args:
             tasks: 任务列表
-            
+
         Returns:
             dict: 按任务类型分组的任务字典
         """
@@ -350,7 +366,7 @@ class AppService:
                 task_groups[task_type_name] = []
             task_groups[task_type_name].append(task)
         return task_groups
-    
+
     def _get_task_name(self, task: DownloadTaskConfig) -> str:
         """获取任务名称
 
@@ -387,13 +403,14 @@ class AppService:
             任务结果对象，可用于等待任务完成
         """
         import logging
+
         logger = logging.getLogger(__name__)
-        
+
         task_name = self._get_task_name(task)
         try:
             # 提交任务到 Huey 队列进行异步处理
             result = download_task(task.task_type, task.symbol)
-            
+
             # 当启用进度管理器时使用logging，否则使用print
             if self.progress_manager:
                 logger.debug(f"成功提交下载任务: {task_name}")
@@ -417,7 +434,9 @@ class ServiceFactory:
 
     @staticmethod
     def create_app_service(
-        db_operator: IDBOperator = None, downloader: IDownloader = None, with_progress: bool = True
+        db_operator: IDBOperator = None,
+        downloader: IDownloader = None,
+        with_progress: bool = True,
     ) -> AppService:
         """创建 AppService 实例
 
@@ -437,6 +456,11 @@ class ServiceFactory:
             progress_manager = None
             if with_progress:
                 from neo.tqmd import ProgressManager, ProgressTrackerFactory
+
                 factory = ProgressTrackerFactory()
                 progress_manager = ProgressManager(factory)
-            return AppService(db_operator=db_operator, downloader=downloader, progress_manager=progress_manager)
+            return AppService(
+                db_operator=db_operator,
+                downloader=downloader,
+                progress_manager=progress_manager,
+            )

@@ -339,3 +339,62 @@ columns = [
         finally:
             # 清理临时文件
             os.unlink(partial_schema_file)
+
+    def test_drop_table_success(self, creator):
+        """测试成功删除表"""
+        # 先创建一个表
+        creator.create_table(TableName.STOCK_BASIC.value)
+        
+        # 删除表
+        result = creator.drop_table(TableName.STOCK_BASIC.value)
+        assert result is True
+        
+        # 验证表已被删除
+        with creator.conn() as conn:
+            tables_result = conn.execute("SHOW TABLES").fetchall()
+            table_names = [row[0] for row in tables_result]
+            assert "stock_basic" not in table_names
+
+    def test_drop_table_non_existent(self, creator):
+        """测试删除不存在的表"""
+        # 删除不存在的表应该返回True（幂等操作）
+        result = creator.drop_table(TableName.STOCK_BASIC.value)
+        assert result is True
+
+    def test_drop_table_with_invalid_table_name(self, creator):
+        """测试使用无效表名删除表"""
+        result = creator.drop_table("invalid_table")
+        assert result is False
+
+    def test_drop_all_tables(self, creator):
+        """测试删除所有表"""
+        # 先创建几个表
+        creator.create_table(TableName.STOCK_BASIC.value)
+        creator.create_table(TableName.STOCK_DAILY.value)
+        
+        # 删除所有表
+        results = creator.drop_all_tables()
+        
+        # 验证返回结果
+        assert isinstance(results, dict)
+        assert "stock_basic" in results
+        assert "stock_daily" in results
+        assert results["stock_basic"] is True
+        assert results["stock_daily"] is True
+        
+        # 验证表已被删除
+        with creator.conn() as conn:
+            tables_result = conn.execute("SHOW TABLES").fetchall()
+            table_names = [row[0] for row in tables_result]
+            assert "stock_basic" not in table_names
+            assert "stock_daily" not in table_names
+
+    def test_drop_table_sql_execution_error(self, creator):
+        """测试删除表时SQL执行错误"""
+        with patch.object(creator, "conn") as mock_conn:
+            mock_context = MagicMock()
+            mock_conn.return_value.__enter__.return_value = mock_context
+            mock_context.execute.side_effect = Exception("SQL execution failed")
+
+            result = creator.drop_table(TableName.STOCK_BASIC.value)
+            assert result is False

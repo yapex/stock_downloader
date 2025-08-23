@@ -59,6 +59,25 @@ class ISchemaTableCreator(Protocol):
         """
         ...
 
+    def drop_table(self, table_name: str) -> bool:
+        """删除表
+
+        Args:
+            table_name: 表名
+
+        Returns:
+            删除是否成功
+        """
+        ...
+
+    def drop_all_tables(self) -> Dict[str, bool]:
+        """删除所有表
+
+        Returns:
+            每个表的删除结果
+        """
+        ...
+
     def table_exists(self, table_name: str) -> bool:
         """检查表是否存在
 

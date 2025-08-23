@@ -249,6 +249,54 @@ class SchemaTableCreator(ISchemaTableCreator):
             logger.debug(f"检查表 {table_name} 是否存在时出错: {e}")
             return False
 
+    def drop_table(self, table_name: str) -> bool:
+        """删除表
+
+        Args:
+            table_name: 表名
+
+        Returns:
+            删除是否成功
+        """
+        try:
+            if not self._table_exists_in_schema(table_name):
+                logger.error(f"表 '{table_name}' 在 schema 中不存在")
+                return False
+
+            sql = f"DROP TABLE IF EXISTS {table_name}"
+            logger.debug(f"删除表 SQL: {sql}")
+
+            if callable(self.conn):
+                with self.conn() as conn:
+                    conn.execute(sql)
+            else:
+                self.conn.execute(sql)
+
+            logger.info(f"表 '{table_name}' 删除成功")
+            return True
+
+        except Exception as e:
+            logger.error(f"删除表 '{table_name}' 失败: {e}")
+            return False
+
+    def drop_all_tables(self) -> Dict[str, bool]:
+        """删除所有表
+
+        Returns:
+            每个表的删除结果
+        """
+        results = {}
+
+        if self._has_tables_section:
+            tables = self.stock_schema.tables
+        else:
+            tables = self.stock_schema
+
+        for table_name in tables.keys():
+            results[table_name] = self.drop_table(table_name)
+
+        return results
+
     def create_all_tables(self) -> Dict[str, bool]:
         """创建所有表
 

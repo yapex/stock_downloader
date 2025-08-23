@@ -24,36 +24,55 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    """创建所有表"""
+    """删除并重新创建所有表"""
     try:
-        logger.info("开始创建数据库表...")
+        logger.info("开始重新创建数据库表...")
 
         # 创建表创建器实例
         creator = SchemaTableCreator()
 
-        # 创建所有表
-        results = creator.create_all_tables()
+        # 先删除所有表
+        logger.info("删除现有表...")
+        drop_results = creator.drop_all_tables()
+        
+        # 统计删除结果
+        successful_drops = [table for table, success in drop_results.items() if success]
+        failed_drops = [table for table, success in drop_results.items() if not success]
+        
+        if successful_drops:
+            logger.info(
+                f"成功删除 {len(successful_drops)} 个表: {', '.join(successful_drops)}"
+            )
+        
+        if failed_drops:
+            logger.warning(
+                f"删除失败 {len(failed_drops)} 个表: {', '.join(failed_drops)}"
+            )
 
-        # 统计结果
-        successful_tables = [table for table, success in results.items() if success]
-        failed_tables = [table for table, success in results.items() if not success]
+        # 创建所有表
+        logger.info("创建新表...")
+        create_results = creator.create_all_tables()
+
+        # 统计创建结果
+        successful_creates = [table for table, success in create_results.items() if success]
+        failed_creates = [table for table, success in create_results.items() if not success]
 
         logger.info("表创建完成！")
         logger.info(
-            f"成功创建 {len(successful_tables)} 个表: {', '.join(successful_tables)}"
+            f"成功创建 {len(successful_creates)} 个表: {', '.join(successful_creates)}"
         )
 
-        if failed_tables:
+        if failed_creates:
             logger.warning(
-                f"创建失败 {len(failed_tables)} 个表: {', '.join(failed_tables)}"
+                f"创建失败 {len(failed_creates)} 个表: {', '.join(failed_creates)}"
             )
             return 1
 
-        logger.info("所有表创建成功！")
+        logger.info("所有表重新创建成功！")
         return 0
 
     except Exception as e:
-        logger.error(f"创建表时发生错误: {e}")
+        logger.error(f"重新创建表时发生错误: {e}")
         return 1
 
 

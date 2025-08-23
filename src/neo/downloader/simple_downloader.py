@@ -110,3 +110,10 @@ class SimpleDownloader(IDownloader):
         except Exception as e:
             logger.error(f"数据获取失败: {e}")
             raise
+
+    def cleanup(self):
+        """清理下载器资源
+        
+        目前没有需要清理的资源，但提供接口以供AppService调用。
+        """
+        logger.debug("SimpleDownloader cleanup completed")
