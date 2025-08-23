@@ -1,15 +1,14 @@
 """进度管理器测试
 
-测试ProgressManager及相关类的功能。
+测试ProgressTracker及相关类的功能。
 """
 
-import pytest
 from unittest.mock import Mock, patch
 
-from src.neo.tqmd import (
+from neo.tqmd import (
     IProgressTracker,
     IProgressTrackerFactory,
-    ProgressManager,
+    ProgressTracker,
     ProgressTrackerFactory,
     TqdmProgressTracker,
 )
@@ -18,7 +17,7 @@ from src.neo.tqmd import (
 class TestTqdmProgressTracker:
     """TqdmProgressTracker测试"""
     
-    @patch('src.neo.tqmd.progress_manager.tqdm')
+    @patch('neo.tqmd.progress_tracker.tqdm')
     def test_start_tracking_main_progress(self, mock_tqdm):
         """测试开始主进度跟踪"""
         tracker = TqdmProgressTracker(is_nested=False)
@@ -35,7 +34,7 @@ class TestTqdmProgressTracker:
             ncols=80
         )
     
-    @patch('src.neo.tqmd.progress_manager.tqdm')
+    @patch('neo.tqmd.progress_tracker.tqdm')
     def test_start_tracking_nested_progress(self, mock_tqdm):
         """测试开始嵌套进度跟踪"""
         tracker = TqdmProgressTracker(is_nested=True)
@@ -52,7 +51,7 @@ class TestTqdmProgressTracker:
             ncols=80
         )
     
-    @patch('src.neo.tqmd.progress_manager.tqdm')
+    @patch('neo.tqmd.progress_tracker.tqdm')
     def test_update_progress(self, mock_tqdm):
         """测试更新进度"""
         tracker = TqdmProgressTracker()
@@ -65,7 +64,7 @@ class TestTqdmProgressTracker:
         mock_pbar.update.assert_called_once_with(2)
         mock_pbar.set_description.assert_called_once_with("更新描述")
     
-    @patch('src.neo.tqmd.progress_manager.tqdm')
+    @patch('neo.tqmd.progress_tracker.tqdm')
     def test_update_progress_without_description(self, mock_tqdm):
         """测试不带描述的进度更新"""
         tracker = TqdmProgressTracker()
@@ -84,7 +83,7 @@ class TestTqdmProgressTracker:
         # 不应该抛出异常
         tracker.update_progress(1)
     
-    @patch('src.neo.tqmd.progress_manager.tqdm')
+    @patch('neo.tqmd.progress_tracker.tqdm')
     def test_finish_tracking(self, mock_tqdm):
         """测试完成进度跟踪"""
         tracker = TqdmProgressTracker()
@@ -121,13 +120,13 @@ class TestProgressTrackerFactory:
         assert isinstance(tracker, TqdmProgressTracker)
 
 
-class TestProgressManager:
-    """ProgressManager测试"""
+class TestProgressTracker:
+    """ProgressTracker测试"""
     
     def setup_method(self):
         """测试前置设置"""
         self.mock_factory = Mock(spec=IProgressTrackerFactory)
-        self.manager = ProgressManager(self.mock_factory)
+        self.manager = ProgressTracker(self.mock_factory)
     
     def test_start_group_progress(self):
         """测试开始组进度跟踪"""

@@ -4,15 +4,11 @@
 """
 
 import logging
-from typing import Optional, Dict, Any, List, Callable
+from typing import Optional, Dict
 import pandas as pd
-import time
-import queue
-import asyncio
 
 from ..configs import get_config
 from .interfaces import IDataProcessor, IDataBuffer
-from .data_buffer import get_data_buffer
 from ..database.operator import DBOperator
 from ..database.interfaces import ISchemaLoader
 from ..database.schema_loader import SchemaLoader

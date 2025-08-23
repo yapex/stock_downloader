@@ -4,8 +4,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Dict, Any
-import pandas as pd
+from typing import Dict, Any
 
 
 @dataclass(frozen=True)

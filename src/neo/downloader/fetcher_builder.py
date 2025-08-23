@@ -12,10 +12,8 @@ import logging
 from threading import Lock
 import os
 
-from neo.configs import get_config
 from neo.helpers import normalize_stock_code
 from neo.task_bus.types import TaskType
-from neo.database.operator import DBOperator
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +59,8 @@ class TushareApiManager:
 class FetcherBuilder:
     """数据获取器构建器"""
 
-    def __init__(self, db_operator: Optional[DBOperator] = None):
+    def __init__(self):
         self.api_manager = TushareApiManager.get_instance()
-        self.db_operator = db_operator
 
     def build_by_task(
         self, task_type: TaskType, symbol: str = "", **overrides: Any
@@ -124,7 +121,7 @@ class FetcherBuilder:
 
 if __name__ == "__main__":
     # 最精简的用法示例
-    task_type = TaskType.STOCK_BASIC
+    task_type = TaskType.stock_daily
     # print(task_type)
     fetcher = FetcherBuilder().build_by_task(task_type, "600519")
     df = fetcher()

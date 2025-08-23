@@ -3,9 +3,7 @@
 
 import asyncio
 import time
-from typing import List, Dict, Any
 from tqdm.asyncio import tqdm
-from tqdm import tqdm as sync_tqdm
 from huey.contrib.asyncio import aget_result
 from huey.consumer import Consumer
 from config import huey
@@ -144,7 +142,7 @@ async def demo_error_handling_with_progress():
             
             exec_pbar.update(1)
     
-    print(f"\n📊 错误处理统计:")
+    print("\n📊 错误处理统计:")
     print(f"  ✅ 成功: {success_count}/{len(tasks)} ({success_count/len(tasks)*100:.1f}%)")
     print(f"  ❌ 失败: {error_count}/{len(tasks)} ({error_count/len(tasks)*100:.1f}%)")
     
@@ -255,7 +253,7 @@ async def demo_pipeline_progress():
     if analysis_result.get("status") == "completed":
         analysis = analysis_result.get("analysis", {})
         print(f"  📊 分析结果: 平均价格 ${analysis.get('avg_price', 0)}, 总成交量 {analysis.get('total_volume', 0):,}")
-    print(f"  📄 报告状态: 已生成")
+    print("  📄 报告状态: 已生成")
 
 
 async def main():

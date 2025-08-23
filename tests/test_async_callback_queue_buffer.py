@@ -6,7 +6,6 @@
 import pytest
 import pandas as pd
 import asyncio
-import time
 from unittest.mock import Mock, AsyncMock
 from src.neo.data_processor.data_buffer import AsyncCallbackQueueBuffer, get_async_data_buffer
 

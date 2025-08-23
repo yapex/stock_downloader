@@ -7,7 +7,7 @@ import pytest
 import pandas as pd
 import threading
 import time
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from src.neo.data_processor.data_buffer import CallbackQueueBuffer, get_data_buffer
 
 

@@ -32,12 +32,14 @@ class SimpleDownloader(IDownloader):
         from neo.helpers.rate_limit_manager import get_rate_limit_manager
 
         return cls(
+            fetcher_builder=FetcherBuilder(),
             rate_limit_manager=get_rate_limit_manager(),
             db_operator=DBOperator.create_default(),
         )
 
     def __init__(
         self,
+        fetcher_builder: FetcherBuilder,
         rate_limit_manager: IRateLimitManager,
         db_operator: Optional[DBOperator] = None,
     ):
@@ -48,7 +50,7 @@ class SimpleDownloader(IDownloader):
             db_operator: 数据库操作器，用于智能日期参数处理
         """
         self.rate_limit_manager = rate_limit_manager
-        self.fetcher_builder = FetcherBuilder(db_operator=db_operator)
+        self.fetcher_builder = fetcher_builder
 
     def download(self, task_type: str, symbol: str) -> Optional[pd.DataFrame]:
         """执行下载任务
@@ -113,7 +115,7 @@ class SimpleDownloader(IDownloader):
 
     def cleanup(self):
         """清理下载器资源
-        
+
         目前没有需要清理的资源，但提供接口以供AppService调用。
         """
         logger.debug("SimpleDownloader cleanup completed")

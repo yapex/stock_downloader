@@ -30,6 +30,7 @@ dependencies = [
     "python-box>=7.3.2",
     "tomli-w>=1.2.0",
     "huey>=2.5.3",
+    "dependency-injector>=4.48.1",
 ]
 
 [project.scripts]

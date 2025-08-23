@@ -6,6 +6,8 @@
 import signal
 import sys
 from typing import List, Optional
+
+from neo.tqmd import ProgressTracker
 from neo.configs import get_config
 from neo.database.interfaces import IDBOperator
 from neo.database.operator import DBOperator
@@ -119,7 +121,7 @@ class AppService:
         self,
         db_operator: IDBOperator,
         downloader: IDownloader,
-        progress_manager: Optional["ProgressManager"] = None,
+        progress_manager: Optional["ProgressTracker"] = None,
     ):
         """初始化应用服务
 
@@ -164,10 +166,10 @@ class AppService:
         # 创建进度管理器（如果需要）
         progress_manager = None
         if with_progress:
-            from neo.tqmd import ProgressManager, ProgressTrackerFactory
+            from neo.tqmd import ProgressTracker, ProgressTrackerFactory
 
             factory = ProgressTrackerFactory()
-            progress_manager = ProgressManager(factory)
+            progress_manager = ProgressTracker(factory)
 
         return cls(
             db_operator=DBOperator.create_default(),
@@ -214,7 +216,7 @@ class AppService:
 
             if self.progress_manager and is_group_task:
                 # 重置进度条位置计数器
-                from neo.tqmd.progress_manager import TqdmProgressTracker
+                from neo.tqmd import TqdmProgressTracker
 
                 TqdmProgressTracker.reset_positions()
 
@@ -450,10 +452,10 @@ class ServiceFactory:
             # 使用提供的实现
             progress_manager = None
             if with_progress:
-                from neo.tqmd import ProgressManager, ProgressTrackerFactory
+                from neo.tqmd import ProgressTracker, ProgressTrackerFactory
 
                 factory = ProgressTrackerFactory()
-                progress_manager = ProgressManager(factory)
+                progress_manager = ProgressTracker(factory)
             return AppService(
                 db_operator=db_operator,
                 downloader=downloader,

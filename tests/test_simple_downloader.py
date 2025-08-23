@@ -2,11 +2,11 @@
 
 import pandas as pd
 from unittest.mock import Mock, patch
-import pytest
 
 from neo.downloader.simple_downloader import SimpleDownloader
 from neo.database.operator import DBOperator
 from neo.helpers.interfaces import IRateLimitManager
+from neo.downloader.fetcher_builder import FetcherBuilder
 from neo.task_bus.types import TaskType
 
 
@@ -35,15 +35,21 @@ class TestSimpleDownloader:
         """测试前设置"""
         self.mock_db_operator = Mock(spec=DBOperator)
         self.mock_rate_limit_manager = Mock(spec=IRateLimitManager)
+        self.mock_fetcher_builder = Mock(spec=FetcherBuilder)
         self.downloader = SimpleDownloader(
             db_operator=self.mock_db_operator,
-            rate_limit_manager=self.mock_rate_limit_manager
+            rate_limit_manager=self.mock_rate_limit_manager,
+            fetcher_builder=self.mock_fetcher_builder
         )
 
     def test_init_with_default_params(self):
         """测试使用默认参数初始化"""
         mock_rate_limit_manager = Mock(spec=IRateLimitManager)
-        downloader = SimpleDownloader(rate_limit_manager=mock_rate_limit_manager)
+        mock_fetcher_builder = Mock(spec=FetcherBuilder)
+        downloader = SimpleDownloader(
+            rate_limit_manager=mock_rate_limit_manager,
+            fetcher_builder=mock_fetcher_builder
+        )
 
         assert isinstance(downloader, SimpleDownloader)
         assert downloader.rate_limit_manager is not None
@@ -171,7 +177,7 @@ class TestSimpleDownloader:
             self.downloader.fetcher_builder.build_by_task = Mock(return_value=mock_fetcher)
             
             # 执行下载
-            result = self.downloader.download(task_type, '000001.SZ')
+            self.downloader.download(task_type, '000001.SZ')
             
             # 验证速率限制调用了正确的枚举
             self.mock_rate_limit_manager.apply_rate_limiting.assert_called_once_with(expected_enum)
@@ -192,7 +198,7 @@ class TestSimpleDownloader:
             self.downloader.fetcher_builder.build_by_task = Mock(return_value=mock_fetcher)
             
             # 执行下载
-            result = self.downloader.download(task_type, '000001.SZ')
+            self.downloader.download(task_type, '000001.SZ')
             
             # 验证fetcher构建调用了正确的枚举
             self.downloader.fetcher_builder.build_by_task.assert_called_with(
@@ -203,10 +209,12 @@ class TestSimpleDownloader:
         """测试使用自定义 db_operator 初始化"""
         mock_db_operator = Mock(spec=DBOperator)
         mock_rate_limit_manager = Mock(spec=IRateLimitManager)
+        mock_fetcher_builder = Mock(spec=FetcherBuilder)
 
         downloader = SimpleDownloader(
             db_operator=mock_db_operator,
-            rate_limit_manager=mock_rate_limit_manager
+            rate_limit_manager=mock_rate_limit_manager,
+            fetcher_builder=mock_fetcher_builder
         )
 
         assert downloader.rate_limit_manager is not None

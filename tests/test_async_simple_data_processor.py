@@ -8,8 +8,6 @@ import pytest
 from unittest.mock import Mock, patch, AsyncMock
 
 from src.neo.data_processor.simple_data_processor import AsyncSimpleDataProcessor
-from src.neo.database.operator import DBOperator
-from src.neo.database.interfaces import ISchemaLoader
 
 
 class TestAsyncSimpleDataProcessor:

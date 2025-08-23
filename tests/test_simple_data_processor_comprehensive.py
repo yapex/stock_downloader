@@ -6,7 +6,6 @@
 import pandas as pd
 import time
 from unittest.mock import Mock, patch
-import pytest
 
 from neo.data_processor.simple_data_processor import SimpleDataProcessor
 from neo.database.operator import DBOperator

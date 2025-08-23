@@ -1,10 +1,9 @@
 """测试 tqdm 进度条集成"""
-import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from neo.helpers.app_service import AppService
 from neo.helpers.task_builder import DownloadTaskConfig
-from neo.tqmd import ProgressManager, ProgressTrackerFactory
+from neo.tqmd import ProgressTracker, ProgressTrackerFactory
 
 
 class TestTqdmIntegration:
@@ -17,10 +16,10 @@ class TestTqdmIntegration:
         
         # 验证进度管理器已正确设置
         assert app_service.progress_manager is not None
-        assert isinstance(app_service.progress_manager, ProgressManager)
+        assert isinstance(app_service.progress_manager, ProgressTracker)
 
     def test_app_service_without_progress_manager(self):
-        """测试 AppService 可以不使用 ProgressManager"""
+        """测试 AppService 可以不使用 ProgressTracker"""
         # 创建不带进度管理器的 AppService
         app_service = AppService.create_default(with_progress=False)
         
@@ -115,9 +114,9 @@ class TestTqdmIntegration:
         app_service.progress_manager.finish_all.assert_called_once()
 
     def test_progress_manager_factory_integration(self):
-        """测试 ProgressManager 工厂集成"""
+        """测试 ProgressTracker 工厂集成"""
         factory = ProgressTrackerFactory()
-        progress_manager = ProgressManager(factory)
+        progress_manager = ProgressTracker(factory)
         
         # 验证工厂可以创建进度跟踪器
         tracker = factory.create_tracker("test", is_nested=False)

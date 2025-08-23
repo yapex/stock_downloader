@@ -1,7 +1,6 @@
 """测试 RateLimitManager 类"""
 
 from unittest.mock import Mock, patch
-import pytest
 
 from neo.helpers.rate_limit_manager import RateLimitManager, get_rate_limit_manager
 from neo.helpers.interfaces import IRateLimitManager

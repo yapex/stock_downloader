@@ -4,7 +4,6 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import Protocol, runtime_checkable
 
 from pyrate_limiter import Limiter
 

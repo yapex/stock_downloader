@@ -1,3 +1,3 @@
 # Neo package
 
-from . import downloader
+from . import downloader as downloader

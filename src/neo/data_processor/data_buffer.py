@@ -5,7 +5,6 @@
 
 import asyncio
 import threading
-import time
 from collections import defaultdict, deque
 from typing import Dict, Callable, Optional, Deque, Union, Awaitable
 import pandas as pd
@@ -375,7 +374,7 @@ def get_data_buffer(flush_interval: float = 30.0) -> AsyncCallbackQueueBuffer:
     """
     # 使用asyncio.run来获取实例，确保返回的是实际对象而不是协程
     try:
-        loop = asyncio.get_running_loop()
+        asyncio.get_running_loop()
         # 如果已经在事件循环中，创建一个任务
         if AsyncCallbackQueueBuffer._instance is None:
             AsyncCallbackQueueBuffer._instance = AsyncCallbackQueueBuffer(flush_interval)

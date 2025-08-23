@@ -4,12 +4,12 @@
 """
 
 from .interfaces import IProgressTracker, IProgressTrackerFactory
-from .progress_manager import ProgressManager, ProgressTrackerFactory, TqdmProgressTracker
+from .progress_tracker import ProgressTracker, ProgressTrackerFactory, TqdmProgressTracker
 
 __all__ = [
     "IProgressTracker",
     "IProgressTrackerFactory", 
-    "ProgressManager",
+    "ProgressTracker",
     "ProgressTrackerFactory",
     "TqdmProgressTracker",
 ]
