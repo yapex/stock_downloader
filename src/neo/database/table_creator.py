@@ -9,7 +9,7 @@ import tomllib
 from box import Box
 from typing import Dict
 
-from ..config import get_config
+from ..configs import get_config
 from .connection import get_conn
 from .interfaces import ISchemaTableCreator
 

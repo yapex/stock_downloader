@@ -4,7 +4,7 @@
 """
 
 from typing import List, Optional, Protocol
-from neo.config import get_config
+from neo.configs import get_config
 from neo.database.interfaces import IDBOperator
 from neo.task_bus.types import TaskType
 
@@ -42,13 +42,14 @@ class GroupHandler:
         self._db_operator = db_operator
 
     @classmethod
-    def create_default(cls) -> 'GroupHandler':
+    def create_default(cls) -> "GroupHandler":
         """创建默认的 GroupHandler 实例
-        
+
         Returns:
             GroupHandler: 带有默认 DBOperator 的 GroupHandler 实例
         """
         from neo.database.operator import DBOperator
+
         db_operator = DBOperator()
         return cls(db_operator=db_operator)
 

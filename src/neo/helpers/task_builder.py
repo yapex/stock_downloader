@@ -30,9 +30,9 @@ class TaskBuilder:
     """任务构建器实现"""
 
     @classmethod
-    def create_default(cls) -> 'TaskBuilder':
+    def create_default(cls) -> "TaskBuilder":
         """创建默认的 TaskBuilder 实例
-        
+
         Returns:
             TaskBuilder: 默认的任务构建器实例
         """

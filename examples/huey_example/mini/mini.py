@@ -1,5 +1,6 @@
-from gevent import monkey; monkey.patch_all()
-import gevent
+from gevent import monkey
+
+monkey.patch_all()
 
 from huey.contrib.mini import MiniHuey
 
@@ -16,10 +17,11 @@ huey.start()
 def add(a, b):
     return a + b
 
+
 res = add(1, 2)
 print(res())  # Result is calculated in separate greenlet.
 
-print('Scheduling task for execution in 2 seconds.')
+print("Scheduling task for execution in 2 seconds.")
 res = add.schedule(args=(10, 20), delay=2)
 print(res())
 

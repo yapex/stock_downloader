@@ -1,4 +1,5 @@
-import time
+"""使用 asyncio 的任务定义"""
+
 import random
 from typing import Dict, Any
 from config import huey
@@ -12,6 +13,8 @@ def download_task(symbol: str) -> Dict[str, Any]:
     print(f"📥 开始下载: {symbol} (预计耗时: {download_time:.1f}s)")
 
     # 模拟下载过程
+    import time
+
     time.sleep(download_time)
 
     # 模拟下载结果
@@ -39,6 +42,8 @@ def process_data_task(download_result: Dict[str, Any]) -> bool:
     # 随机处理时间：0.2-1.0秒
     process_time = random.uniform(0.2, 1.0)
     print(f"🔄 开始处理: {symbol} (预计耗时: {process_time:.1f}s)")
+    import time
+
     time.sleep(process_time)
 
     # 模拟保存到数据库
@@ -46,3 +51,15 @@ def process_data_task(download_result: Dict[str, Any]) -> bool:
     print(f"✅ 处理完成: {symbol}")
 
     return True
+
+
+@huey.task()
+def slow_task(duration: int) -> str:
+    """慢任务：用于测试 asyncio 并发执行"""
+    import time
+
+    print(f"⏳ 开始执行慢任务，耗时 {duration} 秒")
+    time.sleep(duration)
+    result = f"任务完成，耗时 {duration} 秒"
+    print(f"✅ {result}")
+    return result

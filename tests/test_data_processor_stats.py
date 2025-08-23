@@ -18,6 +18,29 @@ class TestDataProcessorStats:
             db_operator=self.mock_db_operator, enable_batch=False
         )
 
+    def test_create_default(self):
+        """测试 create_default 工厂方法"""
+        processor = SimpleDataProcessor.create_default()
+
+        # 验证实例创建成功
+        assert isinstance(processor, SimpleDataProcessor)
+
+        # 验证实例具有预期的属性和方法
+        assert hasattr(processor, "db_operator")
+        assert hasattr(processor, "schema_loader")
+        assert hasattr(processor, "enable_batch")
+        assert hasattr(processor, "process")
+        assert hasattr(processor, "get_stats")
+
+        # 验证批量处理默认启用
+        assert processor.enable_batch is True
+
+        # 验证初始统计状态
+        stats = processor.get_stats()
+        assert stats["total_processed"] == 0
+        assert stats["successful_processed"] == 0
+        assert stats["failed_processed"] == 0
+
     def test_initial_stats(self):
         """测试初始统计状态"""
         stats = self.processor.get_stats()

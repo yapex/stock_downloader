@@ -31,6 +31,19 @@ class DBOperator(SchemaTableCreator, IDBOperator):
         """
         super().__init__(schema_file_path, conn)
 
+    @classmethod
+    def create_default(cls) -> "DBOperator":
+        """创建默认的数据库操作器实例
+
+        使用默认配置创建 DBOperator 实例，包括：
+        - 默认的 schema 文件路径（从配置中获取）
+        - 默认的数据库连接函数
+
+        Returns:
+            DBOperator: 默认配置的数据库操作器实例
+        """
+        return cls()
+
     def upsert(
         self,
         table_name: str,

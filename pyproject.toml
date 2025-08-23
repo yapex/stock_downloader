@@ -36,7 +36,6 @@ dependencies = [
     "tomli-w>=1.2.0",
     "huey>=2.5.3",
     "pysnooper>=1.2.3",
-    "gevent>=25.0.0",
 ]
 
 [project.scripts]

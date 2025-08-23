@@ -297,3 +297,20 @@ class TestDBOperator:
         # stock_basic 表未创建
         with pytest.raises(Exception):  # 应该抛出数据库相关异常
             db_operator.get_all_symbols()
+
+    def test_create_default(self):
+        """测试 create_default 工厂方法"""
+        # 创建默认实例
+        db_operator = DBOperator.create_default()
+
+        # 验证实例类型
+        assert isinstance(db_operator, DBOperator)
+
+        # 验证实例可以正常工作（通过调用一个简单方法）
+        assert hasattr(db_operator, "upsert")
+        assert hasattr(db_operator, "get_all_symbols")
+        assert hasattr(db_operator, "get_max_date")
+
+        # 验证 schema 已正确加载
+        assert hasattr(db_operator, "stock_schema")
+        assert db_operator.stock_schema is not None

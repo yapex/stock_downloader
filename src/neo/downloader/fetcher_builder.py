@@ -11,7 +11,7 @@ import pandas as pd
 import logging
 from threading import Lock
 
-from neo.config import get_config
+from neo.configs import get_config
 from neo.helpers import normalize_stock_code
 from neo.task_bus.types import TaskType
 from neo.database.operator import DBOperator

@@ -18,109 +18,106 @@ class TestGroupHandler:
         handler = GroupHandler()
         assert handler._db_operator is None
 
-    @patch('neo.database.operator.DBOperator')
+    @patch("neo.database.operator.DBOperator")
     def test_create_default(self, mock_db_operator_class):
         """测试 create_default 工厂方法"""
         # 设置 mock
         mock_db_operator_instance = Mock(spec=IDBOperator)
         mock_db_operator_class.return_value = mock_db_operator_instance
-        
+
         # 调用工厂方法
         handler = GroupHandler.create_default()
-        
+
         # 验证结果
         assert isinstance(handler, GroupHandler)
         assert handler._db_operator is mock_db_operator_instance
         mock_db_operator_class.assert_called_once_with()
 
-    @patch('neo.helpers.group_handler.get_config')
+    @patch("neo.helpers.group_handler.get_config")
     def test_get_task_types_for_group_valid_group(self, mock_get_config):
         """测试获取有效组的任务类型"""
         # 设置 mock 配置
         mock_config = Mock()
-        mock_config.task_groups = {
-            'test_group': ['stock_basic', 'stock_daily']
-        }
+        mock_config.task_groups = {"test_group": ["stock_basic", "stock_daily"]}
         mock_get_config.return_value = mock_config
-        
+
         handler = GroupHandler()
-        task_types = handler.get_task_types_for_group('test_group')
-        
+        task_types = handler.get_task_types_for_group("test_group")
+
         # 验证结果
         assert len(task_types) == 2
         from neo.task_bus.types import TaskType
+
         assert TaskType.stock_basic in task_types
         assert TaskType.stock_daily in task_types
 
-    @patch('neo.helpers.group_handler.get_config')
+    @patch("neo.helpers.group_handler.get_config")
     def test_get_task_types_for_group_invalid_group(self, mock_get_config):
         """测试获取无效组的任务类型"""
         # 设置 mock 配置
         mock_config = Mock()
         mock_config.task_groups = {}
         mock_get_config.return_value = mock_config
-        
-        handler = GroupHandler()
-        
-        with pytest.raises(ValueError, match="未找到组配置: invalid_group"):
-            handler.get_task_types_for_group('invalid_group')
 
-    @patch('neo.helpers.group_handler.get_config')
+        handler = GroupHandler()
+
+        with pytest.raises(ValueError, match="未找到组配置: invalid_group"):
+            handler.get_task_types_for_group("invalid_group")
+
+    @patch("neo.helpers.group_handler.get_config")
     def test_get_task_types_for_group_invalid_task_type(self, mock_get_config):
         """测试获取包含无效任务类型的组"""
         # 设置 mock 配置
         mock_config = Mock()
-        mock_config.task_groups = {
-            'test_group': ['invalid_task_type']
-        }
+        mock_config.task_groups = {"test_group": ["invalid_task_type"]}
         mock_get_config.return_value = mock_config
-        
-        handler = GroupHandler()
-        
-        with pytest.raises(ValueError, match="未知的任务类型: invalid_task_type"):
-            handler.get_task_types_for_group('test_group')
 
-    @patch('neo.helpers.group_handler.get_config')
+        handler = GroupHandler()
+
+        with pytest.raises(ValueError, match="未知的任务类型: invalid_task_type"):
+            handler.get_task_types_for_group("test_group")
+
+    @patch("neo.helpers.group_handler.get_config")
     def test_get_symbols_for_group_with_db_operator(self, mock_get_config):
         """测试使用 db_operator 获取组的股票代码"""
         # 设置 mock 配置
         mock_config = Mock()
         mock_config.task_groups = {
-            'test_group': ['stock_daily']  # 不包含 stock_basic
+            "test_group": ["stock_daily"]  # 不包含 stock_basic
         }
         mock_get_config.return_value = mock_config
-        
+
         mock_db_operator = Mock(spec=IDBOperator)
-        mock_db_operator.get_all_symbols.return_value = ['000001.SZ', '000002.SZ']
-        
+        mock_db_operator.get_all_symbols.return_value = ["000001.SZ", "000002.SZ"]
+
         handler = GroupHandler(db_operator=mock_db_operator)
-        symbols = handler.get_symbols_for_group('test_group')
-        
-        assert symbols == ['000001.SZ', '000002.SZ']
+        symbols = handler.get_symbols_for_group("test_group")
+
+        assert symbols == ["000001.SZ", "000002.SZ"]
         mock_db_operator.get_all_symbols.assert_called_once()
 
-    @patch('neo.helpers.group_handler.get_config')
+    @patch("neo.helpers.group_handler.get_config")
     def test_get_symbols_for_group_without_db_operator(self, mock_get_config):
         """测试没有 db_operator 时获取组的股票代码"""
         # 设置 mock 配置
         mock_config = Mock()
         mock_config.task_groups = {
-            'test_group': ['stock_daily']  # 不包含 stock_basic
+            "test_group": ["stock_daily"]  # 不包含 stock_basic
         }
         mock_get_config.return_value = mock_config
-        
+
         handler = GroupHandler()
-        
+
         with pytest.raises(ValueError, match="数据库异常，无法获取股票代码"):
-            handler.get_symbols_for_group('test_group')
+            handler.get_symbols_for_group("test_group")
 
     def test_get_all_symbols_from_db_no_symbols(self):
         """测试数据库中没有股票代码的情况"""
         mock_db_operator = Mock(spec=IDBOperator)
         mock_db_operator.get_all_symbols.return_value = []
-        
+
         handler = GroupHandler(db_operator=mock_db_operator)
-        
+
         with pytest.raises(ValueError, match="数据库中没有找到股票代码"):
             handler._get_all_symbols_from_db()
 
@@ -128,8 +125,8 @@ class TestGroupHandler:
         """测试从数据库获取股票代码时发生异常"""
         mock_db_operator = Mock(spec=IDBOperator)
         mock_db_operator.get_all_symbols.side_effect = Exception("数据库连接失败")
-        
+
         handler = GroupHandler(db_operator=mock_db_operator)
-        
+
         with pytest.raises(ValueError, match="从数据库获取股票代码失败"):
             handler._get_all_symbols_from_db()

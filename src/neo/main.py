@@ -34,7 +34,6 @@ def dl(
 ):
     """下载股票数据"""
     from neo.helpers.utils import setup_logging
-    from neo.database.operator import DBOperator
 
     # 初始化下载日志配置
     setup_logging("download", log_level)

@@ -10,7 +10,7 @@ from typing import Generator
 import duckdb
 import logging
 import threading
-from ..config import get_config
+from ..configs import get_config
 
 logger = logging.getLogger(__name__)
 

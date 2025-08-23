@@ -11,9 +11,8 @@ from datetime import timedelta
 import threading
 from collections import defaultdict
 
-from ..config import get_config
+from ..configs import get_config
 from .interfaces import IDataProcessor
-from .types import TaskResult
 from ..database.operator import DBOperator
 from ..database.interfaces import ISchemaLoader
 from ..database.schema_loader import SchemaLoader
@@ -26,6 +25,19 @@ class SimpleDataProcessor(IDataProcessor):
 
     专注于数据清洗、转换和验证。
     """
+
+    @classmethod
+    def create_default(cls) -> "SimpleDataProcessor":
+        """创建使用默认配置的 SimpleDataProcessor 实例
+
+        Returns:
+            使用默认配置的 SimpleDataProcessor 实例
+        """
+        return cls(
+            db_operator=DBOperator.create_default(),
+            enable_batch=True,
+            schema_loader=SchemaLoader(),
+        )
 
     def __init__(
         self,
@@ -122,18 +134,14 @@ class SimpleDataProcessor(IDataProcessor):
                 self.stats["task_type_stats"][task_type]["count"] += 1
                 return False
 
-            logger.debug(
-                f"数据维度: {len(data)} 行 x {len(data.columns)} 列"
-            )
+            logger.debug(f"数据维度: {len(data)} 行 x {len(data.columns)} 列")
 
             # 根据模式选择处理方式
             if self.enable_batch:
                 # 批量处理模式：添加到缓冲区
                 success = self._add_to_buffer(data, task_type)
                 if success:
-                    logger.debug(
-                        f"数据已添加到缓冲区: {task_type}, rows: {len(data)}"
-                    )
+                    logger.debug(f"数据已添加到缓冲区: {task_type}, rows: {len(data)}")
 
                     # 检查是否需要刷新缓冲区
                     individual_flushed = False

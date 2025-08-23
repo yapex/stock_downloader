@@ -3,7 +3,7 @@ from huey import RedisHuey
 
 
 DEBUG = True
-SECRET_KEY = 'shhh, secret'
+SECRET_KEY = "shhh, secret"
 
 app = Flask(__name__)
 app.config.from_object(__name__)

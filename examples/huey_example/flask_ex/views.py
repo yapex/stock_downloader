@@ -5,15 +5,15 @@ from app import app
 from tasks import example_task
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route("/", methods=["GET", "POST"])
 def home():
-    if request.method == 'POST' and request.form.get('n'):
-        n = request.form['n']
+    if request.method == "POST" and request.form.get("n"):
+        n = request.form["n"]
 
         # Enqueue our task, the consumer will pick it up and run it.
         example_task(n)
-        message = 'Enqueued example_task(%s) - see consumer output' % n
+        message = "Enqueued example_task(%s) - see consumer output" % n
     else:
         message = None
 
-    return render_template('home.html', message=message)
+    return render_template("home.html", message=message)

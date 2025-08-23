@@ -3,7 +3,7 @@
 定义下载器相关的接口规范。"""
 
 from typing import Protocol
-from .types import DownloadTaskConfig, TaskResult
+from .types import TaskResult
 
 
 class IDownloader(Protocol):

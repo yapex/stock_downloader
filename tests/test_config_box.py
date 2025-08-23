@@ -25,12 +25,12 @@ class TestConfig:
         # 重新导入配置模块以触发配置加载
         import importlib
 
-        if "neo.config" in sys.modules:
-            importlib.reload(sys.modules["neo.config"])
+        if "neo.configs.app_config" in sys.modules:
+            importlib.reload(sys.modules["neo.configs.app_config"])
         else:
             pass
 
-        from neo.config import get_config
+        from neo.configs import get_config
 
         # 测试点号访问
         config = get_config()
@@ -53,12 +53,12 @@ class TestConfig:
         # 重新导入配置模块
         import importlib
 
-        if "neo.config" in sys.modules:
-            importlib.reload(sys.modules["neo.config"])
+        if "neo.configs.app_config" in sys.modules:
+            importlib.reload(sys.modules["neo.configs.app_config"])
         else:
             pass
 
-        from neo.config import get_config
+        from neo.configs import get_config
 
         # 测试 get 方法
         config = get_config()
@@ -87,12 +87,12 @@ class TestConfig:
         # 重新导入配置模块
         import importlib
 
-        if "neo.config" in sys.modules:
-            importlib.reload(sys.modules["neo.config"])
+        if "neo.configs.app_config" in sys.modules:
+            importlib.reload(sys.modules["neo.configs.app_config"])
         else:
             pass
 
-        from neo.config import get_config
+        from neo.configs import get_config
 
         # 测试列表访问
         config = get_config()
@@ -118,12 +118,12 @@ class TestConfig:
         # 重新导入配置模块
         import importlib
 
-        if "neo.config" in sys.modules:
-            importlib.reload(sys.modules["neo.config"])
+        if "neo.configs.app_config" in sys.modules:
+            importlib.reload(sys.modules["neo.configs.app_config"])
         else:
             pass
 
-        from neo.config import get_config
+        from neo.configs import get_config
 
         # 测试深层嵌套访问
         config = get_config()
@@ -137,12 +137,12 @@ class TestConfig:
         # 重新导入配置模块
         import importlib
 
-        if "neo.config" in sys.modules:
-            importlib.reload(sys.modules["neo.config"])
+        if "neo.configs.app_config" in sys.modules:
+            importlib.reload(sys.modules["neo.configs.app_config"])
         else:
             pass
 
-        from neo.config import get_config
+        from neo.configs import get_config
 
         # 验证 config 是 Box 对象
         config = get_config()
