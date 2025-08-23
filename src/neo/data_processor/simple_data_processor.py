@@ -7,7 +7,6 @@ import logging
 from typing import Optional, Dict, Any, List
 import pandas as pd
 import time
-from datetime import timedelta
 import threading
 from collections import defaultdict
 
@@ -66,22 +65,6 @@ class SimpleDataProcessor(IDataProcessor):
         self.buffer_lock = threading.Lock()  # 线程安全锁
         self.last_flush_time = time.time()
 
-        # 统计信息跟踪
-        self.stats = {
-            "total_processed": 0,
-            "successful_processed": 0,
-            "failed_processed": 0,
-            "total_rows_processed": 0,
-            "start_time": time.time(),
-            "last_stats_output": time.time(),
-            "task_type_stats": {},  # 按任务类型统计
-            "batch_flushes": 0,  # 批量刷新次数
-            "buffered_items": 0,  # 当前缓冲区项目数
-        }
-
-        # 统计输出间隔（秒）
-        self.stats_output_interval = 30
-
     def _get_table_name(self, task_type) -> Optional[str]:
         """根据任务类型获取对应的表名
 
@@ -111,27 +94,12 @@ class SimpleDataProcessor(IDataProcessor):
         Returns:
             bool: 处理是否成功
         """
-        # 确保任务类型统计结构存在
-        if task_type not in self.stats["task_type_stats"]:
-            self.stats["task_type_stats"][task_type] = {
-                "count": 0,
-                "success": 0,
-                "rows": 0,
-            }
-
         logger.debug(f"处理任务: {task_type}")
-
-        # 检查是否需要输出统计信息
-        self._maybe_output_stats()
 
         try:
             # 检查数据是否存在
             if data is None or data.empty:
                 logger.warning("数据为空，跳过处理")
-                # 更新统计信息：总处理数和失败数
-                self.stats["total_processed"] += 1
-                self.stats["failed_processed"] += 1
-                self.stats["task_type_stats"][task_type]["count"] += 1
                 return False
 
             logger.debug(f"数据维度: {len(data)} 行 x {len(data.columns)} 列")
@@ -161,137 +129,20 @@ class SimpleDataProcessor(IDataProcessor):
                 # 单条处理模式：直接保存
                 success = self._save_data(data, task_type)
 
-            # 更新统计信息：总处理数和任务类型计数
-            self.stats["total_processed"] += 1
-            self.stats["task_type_stats"][task_type]["count"] += 1
-
             if success:
                 if not self.enable_batch:
-                    print(f"✅ 成功保存 {len(data)} 行数据")
-                    # 在批量模式下，行数统计在刷新时更新
-                    self.stats["total_rows_processed"] += len(data)
-
-                # 更新成功统计
-                self.stats["successful_processed"] += 1
-                self.stats["task_type_stats"][task_type]["success"] += 1
-                if not self.enable_batch:
-                    self.stats["task_type_stats"][task_type]["rows"] += len(data)
+                    logger.info(f"✅ 成功保存 {len(data)} 行数据")
             else:
                 logger.warning(f"数据处理失败: {task_type}")
-                self.stats["failed_processed"] += 1
 
             return success
 
         except Exception as e:
             print(f"💥 处理异常: {task_type} - {str(e)}")
             logger.error(f"处理数据时出错: {e}")
-            # 更新统计信息：总处理数和失败数
-            self.stats["total_processed"] += 1
-            self.stats["failed_processed"] += 1
-            self.stats["task_type_stats"][task_type]["count"] += 1
             return False
 
-    def _clean_data(self, data: pd.DataFrame, task_type: str) -> Optional[pd.DataFrame]:
-        """数据清洗
 
-        Args:
-            data: 原始数据
-            task_type: 任务类型
-
-        Returns:
-            清洗后的数据，如果清洗失败返回None
-        """
-        try:
-            cleaned_data = data.copy()
-
-            # 根据任务类型进行特定清洗
-            if task_type == "stock_basic":
-                # 股票基础信息清洗
-                required_columns = ["ts_code", "symbol", "name"]
-                if not all(col in cleaned_data.columns for col in required_columns):
-                    logger.warning(f"股票基础信息缺少必要字段: {required_columns}")
-                    return None
-                # 只移除关键字段为空的行
-                cleaned_data = cleaned_data.dropna(subset=required_columns)
-            elif task_type in ["daily", "weekly", "monthly"]:
-                # 行情数据清洗
-                required_columns = [
-                    "ts_code",
-                    "trade_date",
-                    "open",
-                    "high",
-                    "low",
-                    "close",
-                ]
-                if not all(col in cleaned_data.columns for col in required_columns):
-                    logger.warning(f"行情数据缺少必要字段: {required_columns}")
-                    return None
-
-                # 只移除关键字段为空的行
-                cleaned_data = cleaned_data.dropna(subset=required_columns)
-
-                # 确保价格数据为正数
-                price_columns = ["open", "high", "low", "close"]
-                for col in price_columns:
-                    if col in cleaned_data.columns:
-                        cleaned_data = cleaned_data[cleaned_data[col] > 0]
-            elif task_type in ["income", "balancesheet", "cashflow"]:
-                # 财务数据清洗 - 只检查关键字段
-                required_columns = ["ts_code", "end_date"]
-                if not all(col in cleaned_data.columns for col in required_columns):
-                    logger.warning(f"财务数据缺少必要字段: {required_columns}")
-                    return None
-                # 只移除关键字段为空的行
-                cleaned_data = cleaned_data.dropna(subset=required_columns)
-            else:
-                # 其他类型数据，保持原样，不进行严格的空值清洗
-                pass
-
-            logger.debug(f"数据清洗完成: {len(data)} -> {len(cleaned_data)} rows")
-            return cleaned_data
-
-        except Exception as e:
-            logger.error(f"数据清洗失败: {e}")
-            return None
-
-    def _transform_data(
-        self, data: pd.DataFrame, task_type: str
-    ) -> Optional[pd.DataFrame]:
-        """数据转换
-
-        Args:
-            data: 清洗后的数据
-            task_type: 任务类型
-
-        Returns:
-            转换后的数据，如果转换失败返回None
-        """
-        try:
-            transformed_data = data.copy()
-
-            # 根据任务类型进行特定转换
-            if task_type in ["daily", "weekly", "monthly"]:
-                # 行情数据转换
-                if "trade_date" in transformed_data.columns:
-                    # 确保交易日期格式正确
-                    transformed_data["trade_date"] = pd.to_datetime(
-                        transformed_data["trade_date"], format="%Y%m%d"
-                    )
-
-                # 计算涨跌幅（如果有前收盘价）
-                if "pre_close" in transformed_data.columns:
-                    transformed_data["pct_chg"] = (
-                        (transformed_data["close"] - transformed_data["pre_close"])
-                        / transformed_data["pre_close"]
-                        * 100
-                    ).round(2)
-
-            logger.debug(f"数据转换完成: {len(transformed_data)} rows")
-            return transformed_data
-
-        except Exception as e:
-            logger.error(f"数据转换失败: {e}")
-            return None
 
     def _save_data(self, data: pd.DataFrame, task_type: str) -> bool:
         """数据保存
@@ -341,7 +192,6 @@ class SimpleDataProcessor(IDataProcessor):
 
             with self.buffer_lock:
                 self.batch_buffers[type_key].append(data.copy())
-                self.stats["buffered_items"] += len(data)
 
             logger.debug(
                 f"数据已添加到缓冲区: {type_key}, {len(data)} 行, 缓冲区大小: {len(self.batch_buffers[type_key])}"
@@ -390,20 +240,12 @@ class SimpleDataProcessor(IDataProcessor):
 
                 # 批量保存到数据库
                 self.db_operator.upsert(table_name, combined_data)
-                logger.info(f"批量刷新成功: {table_name}, {len(combined_data)} 行数据")
-
-                # 更新统计信息
-                self.stats["batch_flushes"] += 1
-                self.stats["total_rows_processed"] += len(combined_data)
-
-                # 计算要减少的缓冲项目数（按行数计算）
-                buffered_rows = sum(len(df) for df in buffer_data)
+                logger.info(f"批量保存成功: {table_name}, {len(combined_data)} 行数据")
 
                 # 清空缓冲区
                 self.batch_buffers[task_type].clear()
-                self.stats["buffered_items"] -= buffered_rows
 
-                print(f"✅ 批量保存 {len(combined_data)} 行数据到 {table_name}")
+                logger.info(f"✅ 批量保存 {len(combined_data)} 行数据到 {table_name}")
                 return True
 
             except Exception as e:
@@ -445,74 +287,7 @@ class SimpleDataProcessor(IDataProcessor):
             if flushed_any:
                 self.last_flush_time = current_time
 
-    def _maybe_output_stats(self) -> None:
-        """检查是否需要输出统计信息"""
-        current_time = time.time()
-        if current_time - self.stats["last_stats_output"] >= self.stats_output_interval:
-            self._output_stats()
-            self.stats["last_stats_output"] = current_time
 
-    def _output_stats(self) -> None:
-        """输出当前统计信息"""
-        current_time = time.time()
-        elapsed_time = current_time - self.stats["start_time"]
-
-        # 计算处理速率
-        processing_rate = (
-            self.stats["total_processed"] / elapsed_time if elapsed_time > 0 else 0
-        )
-        success_rate = (
-            (self.stats["successful_processed"] / self.stats["total_processed"] * 100)
-            if self.stats["total_processed"] > 0
-            else 0
-        )
-
-        print("\n" + "=" * 60)
-        print("📈 数据处理统计信息")
-        print("=" * 60)
-        print(f"⏱️  运行时间: {timedelta(seconds=int(elapsed_time))}")
-        print(f"📊 总处理任务: {self.stats['total_processed']}")
-        print(f"✅ 成功处理: {self.stats['successful_processed']}")
-        print(f"❌ 失败处理: {self.stats['failed_processed']}")
-        print(f"📈 成功率: {success_rate:.1f}%")
-        print(f"🚀 处理速率: {processing_rate:.2f} 任务/秒")
-        print(f"📋 总处理行数: {self.stats['total_rows_processed']}")
-
-        # 批量处理统计
-        if self.enable_batch:
-            print(f"🔄 批量刷新次数: {self.stats['batch_flushes']}")
-            print(f"📦 当前缓冲项目: {self.stats['buffered_items']}")
-
-            # 显示各缓冲区状态
-            if self.batch_buffers:
-                print("\n📦 缓冲区状态:")
-                with self.buffer_lock:
-                    for task_type, buffer_data in self.batch_buffers.items():
-                        if buffer_data:
-                            total_rows = sum(len(df) for df in buffer_data)
-                            print(
-                                f"  {task_type}: {len(buffer_data)} 个任务, {total_rows} 行数据"
-                            )
-
-        # 按任务类型统计
-        if self.stats["task_type_stats"]:
-            print("\n📋 按任务类型统计:")
-            for task_type, stats in self.stats["task_type_stats"].items():
-                task_success_rate = (
-                    (stats["success"] / stats["count"] * 100)
-                    if stats["count"] > 0
-                    else 0
-                )
-                print(
-                    f"  {task_type}: {stats['count']} 任务, {stats['success']} 成功 ({task_success_rate:.1f}%), {stats['rows']} 行"
-                )
-
-        print("=" * 60 + "\n")
-
-        # 同时记录到日志
-        logger.info(
-            f"统计信息 - 总任务: {self.stats['total_processed']}, 成功: {self.stats['successful_processed']}, 失败: {self.stats['failed_processed']}, 成功率: {success_rate:.1f}%, 处理速率: {processing_rate:.2f} 任务/秒, 总行数: {self.stats['total_rows_processed']}, 批量刷新: {self.stats['batch_flushes']}, 缓冲项目: {self.stats['buffered_items']}"
-        )
 
     def flush_all(self, force: bool = True) -> bool:
         """刷新所有缓冲区数据到数据库
@@ -551,49 +326,3 @@ class SimpleDataProcessor(IDataProcessor):
             logger.debug(f"批量刷新完成: {', '.join(flushed_types)}")
 
         return success
-
-    def get_stats(self) -> Dict[str, Any]:
-        """获取当前统计信息
-
-        Returns:
-            包含统计信息的字典
-        """
-        current_time = time.time()
-        elapsed_time = current_time - self.stats["start_time"]
-        processing_rate = (
-            self.stats["total_processed"] / elapsed_time if elapsed_time > 0 else 0
-        )
-        success_rate = (
-            (self.stats["successful_processed"] / self.stats["total_processed"] * 100)
-            if self.stats["total_processed"] > 0
-            else 0
-        )
-
-        # 获取缓冲区状态
-        buffer_status = {}
-        if self.enable_batch:
-            with self.buffer_lock:
-                for task_type, buffer_data in self.batch_buffers.items():
-                    if buffer_data:
-                        total_rows = sum(len(df) for df in buffer_data)
-                        buffer_status[task_type] = {
-                            "tasks": len(buffer_data),
-                            "rows": total_rows,
-                        }
-
-        return {
-            "elapsed_time": elapsed_time,
-            "total_processed": self.stats["total_processed"],
-            "successful_processed": self.stats["successful_processed"],
-            "failed_processed": self.stats["failed_processed"],
-            "success_rate": success_rate,
-            "processing_rate": processing_rate,
-            "total_rows_processed": self.stats["total_rows_processed"],
-            "task_type_stats": self.stats["task_type_stats"].copy(),
-            "batch_enabled": self.enable_batch,
-            "batch_flushes": self.stats["batch_flushes"],
-            "buffered_items": self.stats["buffered_items"],
-            "buffer_status": buffer_status,
-            "batch_size": self.batch_size,
-            "flush_interval_seconds": self.flush_interval_seconds,
-        }

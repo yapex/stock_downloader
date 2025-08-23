@@ -6,7 +6,7 @@
 import typer
 from typing import List, Optional
 
-from neo.task_bus.types import TaskPriority
+
 from neo.helpers import TaskBuilder
 from neo.helpers.group_handler import GroupHandler
 from neo.helpers.app_service import AppService
@@ -21,7 +21,7 @@ def dl(
     ),
     group: Optional[str] = typer.Option(None, "--group", "-g", help="任务组名称"),
     task_type: Optional[str] = typer.Option(None, "--type", "-t", help="任务类型"),
-    priority: int = typer.Option(1, "--priority", "-p", help="任务优先级"),
+
     log_level: str = typer.Option(
         "info",
         "--log-level",
@@ -40,7 +40,7 @@ def dl(
 
     task_builder = TaskBuilder.create_default()
     group_handler = GroupHandler.create_default()
-    app_service = AppService.create_default()
+    app_service = AppService.create_default(with_progress=True)
 
     # 处理组配置，获取股票代码和任务类型
     if not group:
@@ -59,18 +59,9 @@ def dl(
     else:
         task_types = group_handler.get_task_types_for_group(group)
 
-    # 转换优先级为枚举类型
-    task_priority = TaskPriority.MEDIUM  # 默认中等优先级
-    if priority == 1:
-        task_priority = TaskPriority.LOW
-    elif priority == 2:
-        task_priority = TaskPriority.MEDIUM
-    elif priority == 3:
-        task_priority = TaskPriority.HIGH
-
     # 构建任务列表
     tasks = task_builder.build_tasks(
-        symbols=symbols, task_types=task_types, priority=task_priority
+        symbols=symbols, task_types=task_types
     )
 
     # 运行下载器

@@ -1,18 +1,17 @@
 """简单下载器实现
 
-专注网络IO和数据获取的下载器层实现。
+提供基础的数据下载功能，支持速率限制和数据库操作。
 """
 
 import logging
+from typing import Optional
 import pandas as pd
-from typing import Dict, Optional
-from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate
 
-from ..configs import get_config
-from .interfaces import IDownloader
-from .types import TaskResult, TaskType
+from neo.database.operator import DBOperator
+from neo.helpers.interfaces import IRateLimitManager
+from neo.task_bus.types import TaskType
 from .fetcher_builder import FetcherBuilder
-from ..database.operator import DBOperator
+from .interfaces import IDownloader
 
 logger = logging.getLogger(__name__)
 
@@ -25,46 +24,33 @@ class SimpleDownloader(IDownloader):
 
     @classmethod
     def create_default(cls) -> "SimpleDownloader":
-        """创建使用默认配置的 SimpleDownloader 实例
+        """创建使用默认配置的下载器
 
         Returns:
             使用默认配置的 SimpleDownloader 实例
         """
-        return cls(db_operator=DBOperator.create_default())
+        from neo.helpers.rate_limit_manager import get_rate_limit_manager
+
+        return cls(
+            rate_limit_manager=get_rate_limit_manager(),
+            db_operator=DBOperator.create_default(),
+        )
 
     def __init__(
         self,
+        rate_limit_manager: IRateLimitManager,
         db_operator: Optional[DBOperator] = None,
     ):
         """初始化下载器
 
         Args:
+            rate_limit_manager: 速率限制管理器
             db_operator: 数据库操作器，用于智能日期参数处理
         """
-        self.config = get_config()
-        self.rate_limiters: Dict[str, Limiter] = {}  # 按需创建的速率限制器缓存
+        self.rate_limit_manager = rate_limit_manager
         self.fetcher_builder = FetcherBuilder(db_operator=db_operator)
 
-    def _get_rate_limiter(self, task_type: TaskType) -> Limiter:
-        """获取指定任务类型的速率限制器
-
-        Args:
-            task_type: 任务类型
-
-        Returns:
-            Limiter: 对应的速率限制器
-        """
-        task_key = str(task_type.value)  # 转换为字符串以确保可哈希
-        if task_key not in self.rate_limiters:
-            # 为每个任务类型创建独立的速率限制器
-            self.rate_limiters[task_key] = Limiter(
-                InMemoryBucket([Rate(190, Duration.MINUTE)]),
-                raise_when_fail=False,
-                max_delay=Duration.MINUTE * 2,
-            )
-        return self.rate_limiters[task_key]
-
-    def download(self, task_type: str, symbol: str) -> TaskResult:
+    def download(self, task_type: str, symbol: str) -> Optional[pd.DataFrame]:
         """执行下载任务
 
         Args:
@@ -72,7 +58,7 @@ class SimpleDownloader(IDownloader):
             symbol: 股票代码
 
         Returns:
-            TaskResult: 任务执行结果
+            Optional[pd.DataFrame]: 下载的数据，失败时返回 None
         """
         try:
             # 应用速率限制 - 直接使用字符串
@@ -81,28 +67,23 @@ class SimpleDownloader(IDownloader):
             # 获取数据
             data = self._fetch_data(task_type, symbol)
 
-            result = TaskResult(config=None, success=True, data=data)
-
             logger.debug(
                 f"下载任务成功: {task_type}, symbol: {symbol}, rows: {len(data) if data is not None else 0}"
             )
-            return result
+            return data
 
         except Exception as e:
             logger.warning(f"下载任务失败: {task_type}, symbol: {symbol}, error: {e}")
-
-            return TaskResult(config=None, success=False, error=e)
+            return None
 
     def _apply_rate_limiting(self, task_type: str) -> None:
         """应用速率限制
 
         每个任务类型（表名）有独立的速率限制器
         """
-        logger.debug(f"Rate limiting check for task: {task_type}")
-        # 转换为枚举以获取速率限制器
-        task_type_enum = TaskType(task_type)
-        rate_limiter = self._get_rate_limiter(task_type_enum)
-        rate_limiter.try_acquire(task_type, 1)
+        # 转换为枚举并应用速率限制
+        task_type_enum = TaskType[task_type]
+        self.rate_limit_manager.apply_rate_limiting(task_type_enum)
 
     def _fetch_data(self, task_type: str, symbol: str) -> Optional[pd.DataFrame]:
         """获取数据
@@ -111,7 +92,7 @@ class SimpleDownloader(IDownloader):
         """
         try:
             # 转换为枚举以构建数据获取器
-            task_type_enum = TaskType(task_type)
+            task_type_enum = TaskType[task_type]
             # 使用 FetcherBuilder 构建数据获取器
             fetcher = self.fetcher_builder.build_by_task(
                 task_type=task_type_enum, symbol=symbol

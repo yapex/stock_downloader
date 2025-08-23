@@ -1,49 +1,52 @@
-"""Mock TaskBus 实现
+"""任务总线模拟类
 
-用于测试的 TaskBus Mock 实现。
+用于测试的任务总线模拟实现。
 """
 
-from typing import List
-from neo.task_bus.interfaces import ITaskBus
-from neo.task_bus.types import TaskResult
+from typing import List, Protocol, Optional
+import pandas as pd
 
 
-class MockTaskBus(ITaskBus):
-    """Mock TaskBus 实现
+class ITaskBus(Protocol):
+    """任务总线接口"""
 
-    用于测试，记录所有提交的任务。
-    """
+    def submit_data(self, task_type: str, symbol: str, data: Optional[pd.DataFrame]) -> None:
+        """提交数据"""
+        ...
+
+
+class MockTaskBus:
+    """模拟任务总线"""
 
     def __init__(self):
-        """初始化 Mock TaskBus"""
-        self.submitted_tasks: List[TaskResult] = []
-        self.submit_count = 0
+        self.submitted_data: List[tuple[str, str, Optional[pd.DataFrame]]] = []
 
-    def submit_task(self, task_result: TaskResult) -> None:
-        """提交任务到队列
+    def submit_data(self, task_type: str, symbol: str, data: Optional[pd.DataFrame]) -> None:
+        """提交数据
 
         Args:
-            task_result: 任务执行结果
+            task_type: 任务类型
+            symbol: 股票代码
+            data: 数据
         """
-        self.submitted_tasks.append(task_result)
-        self.submit_count += 1
-
-    def start_consumer(self) -> None:
-        """启动任务消费者
-
-        在 Mock 实现中，这是一个空操作。
-        """
-        pass
-
-    def get_submitted_count(self) -> int:
-        """获取提交的任务数量"""
-        return self.submit_count
-
-    def get_submitted_tasks(self) -> List[TaskResult]:
-        """获取所有提交的任务"""
-        return self.submitted_tasks.copy()
+        self.submitted_data.append((task_type, symbol, data))
 
     def clear(self) -> None:
-        """清空记录的任务"""
-        self.submitted_tasks.clear()
-        self.submit_count = 0
+        """清空已提交的数据"""
+        self.submitted_data.clear()
+
+    def get_data_count(self) -> int:
+        """获取已提交的数据数量
+
+        Returns:
+            数据数量
+        """
+        return len(self.submitted_data)
+
+    def get_submitted_data(self) -> List[tuple[str, str, Optional[pd.DataFrame]]]:
+        """获取所有已提交的数据
+
+        Returns:
+            数据列表
+        """
+        return self.submitted_data.copy()

@@ -2,8 +2,8 @@
 
 定义下载器相关的接口规范。"""
 
-from typing import Protocol
-from .types import TaskResult
+from typing import Protocol, Optional
+import pandas as pd
 
 
 class IDownloader(Protocol):
@@ -12,7 +12,7 @@ class IDownloader(Protocol):
     专注于网络I/O和数据获取，不处理业务逻辑。
     """
 
-    def download(self, task_type: str, symbol: str) -> TaskResult:
+    def download(self, task_type: str, symbol: str) -> Optional[pd.DataFrame]:
         """执行下载任务
 
         Args:
@@ -20,6 +20,6 @@ class IDownloader(Protocol):
             symbol: 股票代码
 
         Returns:
-            TaskResult: 任务执行结果
+            Optional[pd.DataFrame]: 下载的数据，失败时返回 None
         """
         ...

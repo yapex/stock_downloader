@@ -4,21 +4,20 @@
 """
 
 from typing import List, Protocol
-from neo.task_bus.types import DownloadTaskConfig, TaskType, TaskPriority
+from neo.task_bus.types import DownloadTaskConfig, TaskType
 
 
 class ITaskBuilder(Protocol):
     """任务构建器接口"""
 
     def build_tasks(
-        self, symbols: List[str], task_types: List[TaskType], priority: TaskPriority
+        self, symbols: List[str], task_types: List[TaskType]
     ) -> List[DownloadTaskConfig]:
         """构建任务列表
 
         Args:
             symbols: 股票代码列表
             task_types: 任务类型列表
-            priority: 任务优先级
 
         Returns:
             构建的任务列表
@@ -39,14 +38,13 @@ class TaskBuilder:
         return cls()
 
     def build_tasks(
-        self, symbols: List[str], task_types: List[TaskType], priority: TaskPriority
+        self, symbols: List[str], task_types: List[TaskType]
     ) -> List[DownloadTaskConfig]:
         """构建任务列表
 
         Args:
             symbols: 股票代码列表，如果为空则表示不需要具体股票代码的任务（如stock_basic）
             task_types: 任务类型列表
-            priority: 任务优先级
 
         Returns:
             构建的任务列表
@@ -63,7 +61,7 @@ class TaskBuilder:
                 for task_type in task_types:
                     tasks.append(
                         DownloadTaskConfig(
-                            symbol=symbol, task_type=task_type, priority=priority
+                            symbol=symbol, task_type=task_type
                         )
                     )
         else:
@@ -73,7 +71,6 @@ class TaskBuilder:
                     DownloadTaskConfig(
                         symbol="",  # stock_basic任务不需要具体的股票代码
                         task_type=task_type,
-                        priority=priority,
                     )
                 )
 

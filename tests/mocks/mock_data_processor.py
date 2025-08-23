@@ -1,61 +1,44 @@
-"""Mock 数据处理器用于测试
+"""数据处理器模拟类
 
-提供一个简单的数据处理器实现，用于测试任务处理流程。
+用于测试的数据处理器模拟实现。
 """
 
-from typing import List
+from typing import List, Optional
+import pandas as pd
 from neo.data_processor.interfaces import IDataProcessor
-from neo.task_bus.types import TaskResult
 
 
 class MockDataProcessor(IDataProcessor):
-    """Mock 数据处理器
+    """模拟数据处理器
 
-    记录所有处理的任务结果，用于测试验证。
+    用于测试，记录所有处理的数据。
     """
 
     def __init__(self):
-        self.processed_tasks: List[TaskResult] = []
-        self.process_success = True  # 控制处理是否成功
-        self.process_call_count = 0
+        """初始化模拟数据处理器"""
+        self.processed_data: List[tuple[str, str, Optional[pd.DataFrame]]] = []
+        self.process_count = 0
 
-    def process(self, task_result: TaskResult) -> bool:
-        """处理任务结果
+    def process_data(self, task_type: str, symbol: str, data: Optional[pd.DataFrame]) -> None:
+        """处理数据
 
         Args:
-            task_result: 任务执行结果
-
-        Returns:
-            bool: 处理是否成功
+            task_type: 任务类型
+            symbol: 股票代码
+            data: 数据
         """
-        self.process_call_count += 1
-        self.processed_tasks.append(task_result)
-
-        # 模拟处理逻辑
-        if task_result.success and task_result.data is not None:
-            return self.process_success
-        else:
-            return False
+        self.processed_data.append((task_type, symbol, data))
+        self.process_count += 1
 
     def get_processed_count(self) -> int:
-        """获取已处理的任务数量"""
-        return len(self.processed_tasks)
+        """获取处理的数据数量"""
+        return self.process_count
 
-    def get_processed_tasks(self) -> List[TaskResult]:
-        """获取所有已处理的任务结果"""
-        return self.processed_tasks.copy()
+    def get_processed_data(self) -> List[tuple[str, str, Optional[pd.DataFrame]]]:
+        """获取所有处理的数据"""
+        return self.processed_data.copy()
 
-    def get_processed_symbols(self) -> List[str]:
-        """获取所有已处理的股票代码"""
-        return [
-            task.config.symbol for task in self.processed_tasks if task.config.symbol
-        ]
-
-    def clear(self):
-        """清空处理记录"""
-        self.processed_tasks.clear()
-        self.process_call_count = 0
-
-    def set_process_success(self, success: bool):
-        """设置处理是否成功"""
-        self.process_success = success
+    def clear(self) -> None:
+        """清空记录的数据"""
+        self.processed_data.clear()
+        self.process_count = 0

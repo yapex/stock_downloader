@@ -33,20 +33,24 @@ def download_task(task_type: TaskType, symbol: str) -> bool:
 
         # 创建下载器并执行下载
         downloader = SimpleDownloader.create_default()
-        result = downloader.download(task_type, symbol)
+        try:
+            result = downloader.download(task_type, symbol)
 
-        logger.info(f"下载任务完成: {symbol}, 成功: {result.success}")
+            logger.info(f"下载任务完成: {symbol}, 成功: {result.success}")
 
-        # 🔗 链式调用：下载完成后自动触发数据处理
-        if result.success and result.data is not None:
-            logger.info(f"🔄 触发数据处理任务: {symbol}")
-            # 直接处理数据，避免重复下载
-            data_processor = SimpleDataProcessor.create_default()
-            success = data_processor.process(task_type.name, result.data)
-            logger.info(f"数据处理完成: {symbol}, 成功: {success}")
-            return success
+            # 🔗 链式调用：下载完成后自动触发数据处理
+            if result.success and result.data is not None:
+                logger.info(f"🔄 触发数据处理任务: {symbol}")
+                # 直接处理数据，避免重复下载
+                data_processor = SimpleDataProcessor.create_default()
+                success = data_processor.process(task_type.name, result.data)
+                logger.info(f"数据处理完成: {symbol}, 成功: {success}")
+                return success
 
-        return result.success
+            return result.success
+        finally:
+            # 确保清理速率限制器资源
+            downloader.cleanup()
 
     except Exception as e:
         logger.error(f"下载任务执行失败: {symbol}, 错误: {e}")
@@ -75,15 +79,19 @@ def process_data_task(task_type: TaskType, symbol: str) -> bool:
         from ..downloader.simple_downloader import SimpleDownloader
 
         downloader = SimpleDownloader.create_default()
-        result = downloader.download(task_type, symbol)
+        try:
+            result = downloader.download(task_type, symbol)
 
-        if result.success and result.data is not None:
-            success = data_processor.process(task_type.name, result.data)
-            logger.info(f"数据处理完成: {symbol}, 成功: {success}")
-            return success
-        else:
-            logger.warning(f"数据处理失败，无有效数据: {symbol}")
-            return False
+            if result.success and result.data is not None:
+                success = data_processor.process(task_type.name, result.data)
+                logger.info(f"数据处理完成: {symbol}, 成功: {success}")
+                return success
+            else:
+                logger.warning(f"数据处理失败，无有效数据: {symbol}")
+                return False
+        finally:
+            # 确保清理速率限制器资源
+            downloader.cleanup()
 
     except Exception as e:
         logger.error(f"数据处理任务执行失败: {symbol}, 错误: {e}")
