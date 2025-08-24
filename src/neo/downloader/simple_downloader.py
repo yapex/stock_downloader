@@ -83,9 +83,9 @@ class SimpleDownloader(IDownloader):
 
         每个任务类型（表名）有独立的速率限制器
         """
-        # 转换为枚举并应用速率限制
-        task_type_enum = TaskType[task_type]
-        self.rate_limit_manager.apply_rate_limiting(task_type_enum)
+        # 获取任务类型常量并应用速率限制
+        task_type_const = getattr(TaskType, task_type)
+        self.rate_limit_manager.apply_rate_limiting(task_type_const)
 
     def _fetch_data(self, task_type: str, symbol: str) -> Optional[pd.DataFrame]:
         """获取数据
@@ -93,11 +93,11 @@ class SimpleDownloader(IDownloader):
         使用 FetcherBuilder 获取真实的 Tushare 数据。
         """
         try:
-            # 转换为枚举以构建数据获取器
-            task_type_enum = TaskType[task_type]
+            # 获取任务类型常量以构建数据获取器
+            task_type_const = getattr(TaskType, task_type)
             # 使用 FetcherBuilder 构建数据获取器
             fetcher = self.fetcher_builder.build_by_task(
-                task_type=task_type_enum, symbol=symbol
+                task_type=task_type_const, symbol=symbol
             )
 
             # 执行数据获取

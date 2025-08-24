@@ -1,36 +1,48 @@
 from dependency_injector import containers, providers
-from neo.helpers import TomlConfigProvider
 from neo.downloader.fetcher_builder import FetcherBuilder
-from neo.task_bus.types import TaskType
 from neo.helpers.rate_limit_manager import RateLimitManager
 from neo.downloader.simple_downloader import SimpleDownloader
+from neo.tqmd.progress_tracker import ProgressTrackerFactory, TasksProgressTracker
+from neo.database.operator import DBOperator
+from neo.helpers.app_service import AppService
+from neo.helpers.task_builder import TaskBuilder
+from neo.helpers.group_handler import GroupHandler
 
 
 class AppContainer(containers.DeclarativeContainer):
     """应用的核心服务容器"""
 
-    # 在初始化时加载配置
-    config = TomlConfigProvider()
-
     fetcher_builder = providers.Factory(FetcherBuilder)
-    rate_limit_manager = providers.Factory(RateLimitManager)
+    rate_limit_manager = providers.Singleton(RateLimitManager)
     downloader = providers.Factory(
         SimpleDownloader,
         fetcher_builder=fetcher_builder,
         rate_limit_manager=rate_limit_manager,
     )
+    progress_tracker_factory = providers.Singleton(ProgressTrackerFactory)
+    tasks_progress_tracker = providers.Factory(
+        TasksProgressTracker,
+        factory=progress_tracker_factory,
+    )
+
+    db_operator = providers.Factory(DBOperator)
+
+    app_service = providers.Factory(
+        AppService,
+        tasks_progress_tracker=tasks_progress_tracker,
+    )
+
+    task_builder = providers.Singleton(TaskBuilder)
+    group_handler = providers.Singleton(GroupHandler)
 
 
 if __name__ == "__main__":
     c = AppContainer()
-    config = c.config()
-    print(config.database.path)
 
-    # task_type = TaskType.stock_daily
-    # fetcher_builder = c.fetcher_builder_provider()
-    # fetcher = fetcher_builder.build_by_task(task_type, "600519")
-    # print(fetcher().head())
+    # downloader = c.downloader()
+    # df = downloader.download(TaskType.stock_basic.name, "600519.SH")
+    # print(df.head(1))
 
-    downloader = c.downloader()
-    df = downloader.download(TaskType.stock_basic.name, "600519.SH")
-    print(df.head(1))
+    db_operator = c.db_operator()
+    db_operator.drop_all_tables()
+    db_operator.create_all_tables()

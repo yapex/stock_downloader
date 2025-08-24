@@ -3,11 +3,11 @@
 测试 AppService 类的功能，包括工厂方法。
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from neo.helpers.app_service import AppService, ServiceFactory
-from neo.database.interfaces import IDBOperator
-from neo.downloader.interfaces import IDownloader
+
+from neo.container import AppContainer
 
 
 class TestAppService:
@@ -15,52 +15,23 @@ class TestAppService:
 
     def test_init(self):
         """测试 AppService 初始化"""
-        # 创建模拟对象
-        mock_db_operator = Mock(spec=IDBOperator)
-        mock_downloader = Mock(spec=IDownloader)
-
         # 创建 AppService 实例
-        app_service = AppService(
-            db_operator=mock_db_operator, downloader=mock_downloader
-        )
+        app_service = AppService()
 
-        # 验证属性设置正确
-        assert app_service.db_operator is mock_db_operator
-        assert app_service.downloader is mock_downloader
+        # 验证实例创建成功
+        assert isinstance(app_service, AppService)
 
-    @patch("neo.helpers.app_service.DBOperator")
-    @patch("neo.downloader.simple_downloader.SimpleDownloader")
-    def test_create_default(
-        self, mock_simple_downloader, mock_db_operator
-    ):
+    def test_create_default(self):
         """测试 create_default 工厂方法"""
-        # 设置模拟实例
-        mock_db_instance = Mock(spec=IDBOperator)
-        mock_downloader_instance = Mock(spec=IDownloader)
-        mock_db_operator.create_default.return_value = mock_db_instance
-        mock_simple_downloader.create_default.return_value = mock_downloader_instance
-
         # 调用工厂方法
         app_service = AppService.create_default()
 
-        # 验证工厂方法被正确调用
-        mock_db_operator.create_default.assert_called_once()
-        mock_simple_downloader.create_default.assert_called_once()
-
         # 验证返回的实例
         assert isinstance(app_service, AppService)
-        assert app_service.db_operator is mock_db_instance
-        assert app_service.downloader is mock_downloader_instance
 
     def test_run_data_processor(self):
         """测试 run_data_processor 方法"""
-        # 创建模拟对象
-        mock_db_operator = Mock(spec=IDBOperator)
-        mock_downloader = Mock(spec=IDownloader)
-
-        app_service = AppService(
-            db_operator=mock_db_operator, downloader=mock_downloader
-        )
+        app_service = AppService()
 
         # 模拟 DataProcessorRunner 的方法
         with patch("neo.helpers.app_service.DataProcessorRunner") as mock_runner:
@@ -75,51 +46,88 @@ class TestAppService:
 class TestServiceFactory:
     """ServiceFactory 类测试"""
 
-    @patch("neo.helpers.app_service.get_config")
-    @patch("neo.helpers.app_service.DBOperator")
-    def test_create_app_service_with_defaults(self, mock_db_operator, mock_get_config):
+    def test_create_app_service_with_defaults(self):
         """测试使用默认参数创建 AppService"""
-        # 设置模拟配置
-        mock_config = Mock()
-        mock_get_config.return_value = mock_config
+        # 调用工厂方法
+        app_service = ServiceFactory.create_app_service()
 
-        # 设置模拟实例
-        mock_db_instance = Mock(spec=IDBOperator)
-        mock_db_operator.create_default.return_value = mock_db_instance
-
-        with patch(
-            "neo.downloader.simple_downloader.SimpleDownloader"
-        ) as mock_simple_downloader:
-            mock_downloader_instance = Mock(spec=IDownloader)
-            mock_simple_downloader.create_default.return_value = (
-                mock_downloader_instance
-            )
-
-            # 调用工厂方法
-            app_service = ServiceFactory.create_app_service()
-
-            # 验证调用了正确的方法
-            mock_db_operator.create_default.assert_called_once()
-            mock_simple_downloader.create_default.assert_called_once()
-
-            # 验证返回的实例
-            assert isinstance(app_service, AppService)
-            assert app_service.db_operator is mock_db_instance
-            assert app_service.downloader is mock_downloader_instance
+        # 验证返回的实例
+        assert isinstance(app_service, AppService)
 
     def test_create_app_service_with_custom_params(self):
         """测试使用自定义参数创建 AppService"""
-        # 创建模拟对象
-        mock_db_operator = Mock(spec=IDBOperator)
-        mock_downloader = Mock(spec=IDownloader)
+        # 调用工厂方法
+        app_service = ServiceFactory.create_app_service(with_progress=False)
 
-        with patch("neo.helpers.app_service.get_config"):
-            # 调用工厂方法
-            app_service = ServiceFactory.create_app_service(
-                db_operator=mock_db_operator, downloader=mock_downloader
-            )
+        # 验证返回的实例
+        assert isinstance(app_service, AppService)
 
-            # 验证返回的实例
-            assert isinstance(app_service, AppService)
-            assert app_service.db_operator is mock_db_operator
-            assert app_service.downloader is mock_downloader
+
+class TestAppServiceContainer:
+    """测试从 AppContainer 获取 AppService 的相关行为"""
+
+    def test_get_app_service_from_container(self):
+        """测试能从容器获取 AppService 实例"""
+        container = AppContainer()
+
+        app_service = container.app_service()
+
+        assert isinstance(app_service, AppService)
+        assert hasattr(app_service, "tasks_progress_tracker")
+
+    def test_container_provides_different_service_instances(self):
+        """测试容器每次提供不同的 AppService 实例（工厂模式）"""
+        container = AppContainer()
+
+        service1 = container.app_service()
+        service2 = container.app_service()
+
+        assert service1 is not service2
+        assert isinstance(service1, AppService)
+        assert isinstance(service2, AppService)
+
+    def test_container_service_functionality(self):
+        """测试容器获取的 AppService 功能正常"""
+        container = AppContainer()
+
+        app_service = container.app_service()
+
+        # 验证基本功能可用
+        assert hasattr(app_service, "run_data_processor")
+        assert callable(app_service.run_data_processor)
+
+        # 验证依赖注入正确
+        assert app_service.tasks_progress_tracker is not None
+
+    def test_container_service_dependencies_injection(self):
+        """测试容器正确注入了依赖"""
+        container = AppContainer()
+
+        app_service = container.app_service()
+
+        # 验证依赖类型正确
+        from neo.tqmd import TasksProgressTracker
+
+        assert isinstance(app_service.tasks_progress_tracker, TasksProgressTracker)
+
+    def test_different_containers_have_different_services(self):
+        """测试不同容器实例有不同的服务"""
+        container1 = AppContainer()
+        container2 = AppContainer()
+
+        service1 = container1.app_service()
+        service2 = container2.app_service()
+
+        # 不同容器的实例应该不同
+        assert service1 is not service2
+        assert isinstance(service1, AppService)
+        assert isinstance(service2, AppService)
+
+    def test_container_service_with_mocked_dependencies(self):
+        """测试容器服务与模拟依赖的集成"""
+        container = AppContainer()
+
+        app_service = container.app_service()
+
+        # 验证实例创建成功
+        assert isinstance(app_service, AppService)

@@ -13,7 +13,7 @@ from threading import Lock
 import os
 
 from neo.helpers import normalize_stock_code
-from neo.task_bus.types import TaskType
+from neo.task_bus.types import TaskType, TaskTemplateRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +75,10 @@ class FetcherBuilder:
         Returns:
             可执行的数据获取函数
         """
-        # 检查任务类型是否有效
-        if not hasattr(task_type, "template"):
+        # 获取任务模板配置
+        try:
+            template = TaskTemplateRegistry.get_template(task_type)
+        except KeyError:
             raise ValueError(f"不支持的任务类型: {task_type}")
 
         # 标准化股票代码
@@ -84,7 +86,6 @@ class FetcherBuilder:
             overrides["ts_code"] = normalize_stock_code(symbol)
 
         # 合并参数：必需参数 + 覆盖参数
-        template = task_type.template
         merged_params = {}
 
         # 合并必需参数

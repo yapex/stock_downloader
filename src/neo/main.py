@@ -7,9 +7,9 @@ import typer
 from typing import List, Optional
 
 
-from neo.helpers import TaskBuilder
-from neo.helpers.group_handler import GroupHandler
 from neo.helpers.app_service import AppService
+from neo.container import AppContainer
+from dependency_injector.wiring import Provide
 
 app = typer.Typer(help="Neo 股票数据处理系统命令行工具")
 
@@ -21,7 +21,6 @@ def dl(
     ),
     group: Optional[str] = typer.Option(None, "--group", "-g", help="任务组名称"),
     task_type: Optional[str] = typer.Option(None, "--type", "-t", help="任务类型"),
-
     log_level: str = typer.Option(
         "info",
         "--log-level",
@@ -38,9 +37,10 @@ def dl(
     # 初始化下载日志配置
     setup_logging("download", log_level)
 
-    task_builder = TaskBuilder.create_default()
-    group_handler = GroupHandler.create_default()
-    app_service = AppService.create_default(with_progress=True)
+    container = AppContainer()
+    task_builder = container.task_builder()
+    group_handler = container.group_handler()
+    app_service = container.app_service()
 
     # 处理组配置，获取股票代码和任务类型
     if not group:
@@ -60,15 +60,13 @@ def dl(
         task_types = group_handler.get_task_types_for_group(group)
 
     # 构建任务列表
-    tasks = task_builder.build_tasks(
-        symbols=symbols, task_types=task_types
-    )
+    tasks = task_builder.build_tasks(symbols=symbols, task_types=task_types)
 
     # 运行下载器
     app_service.run_downloader(tasks, dry_run=dry_run)
 
 
-def main():
+def main(app_service: AppService = Provide[AppContainer.app_service]):
     """主函数"""
     app()
 

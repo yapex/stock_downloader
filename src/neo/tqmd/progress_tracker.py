@@ -4,6 +4,7 @@
 """
 
 from typing import Optional
+
 from tqdm import tqdm
 
 from .interfaces import IProgressTracker, IProgressTrackerFactory
@@ -92,11 +93,13 @@ class ProgressTrackerFactory:
         return TqdmProgressTracker(is_nested=is_nested)
 
 
-class ProgressTracker:
+class TasksProgressTracker:
     """进度管理器
 
     管理母子进度条的生命周期，支持按任务类型分组的进度显示。
     1个母进度条 + 多个任务类型子进度条的架构。
+
+    实现 ITasksProgressTracker 接口。
     """
 
     def __init__(self, factory: IProgressTrackerFactory):

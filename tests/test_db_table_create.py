@@ -344,11 +344,11 @@ columns = [
         """测试成功删除表"""
         # 先创建一个表
         creator.create_table(TableName.STOCK_BASIC.value)
-        
+
         # 删除表
         result = creator.drop_table(TableName.STOCK_BASIC.value)
         assert result is True
-        
+
         # 验证表已被删除
         with creator.conn() as conn:
             tables_result = conn.execute("SHOW TABLES").fetchall()
@@ -371,17 +371,17 @@ columns = [
         # 先创建几个表
         creator.create_table(TableName.STOCK_BASIC.value)
         creator.create_table(TableName.STOCK_DAILY.value)
-        
+
         # 删除所有表
         results = creator.drop_all_tables()
-        
+
         # 验证返回结果
         assert isinstance(results, dict)
         assert "stock_basic" in results
         assert "stock_daily" in results
         assert results["stock_basic"] is True
         assert results["stock_daily"] is True
-        
+
         # 验证表已被删除
         with creator.conn() as conn:
             tables_result = conn.execute("SHOW TABLES").fetchall()

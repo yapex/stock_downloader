@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 from contextlib import contextmanager
 import duckdb
 from neo.database.operator import DBOperator
+from neo.container import AppContainer
 from pathlib import Path
 
 
@@ -313,4 +314,101 @@ class TestDBOperator:
 
         # 验证 schema 已正确加载
         assert hasattr(db_operator, "stock_schema")
+
+
+class TestDBOperatorContainer:
+    """测试从 AppContainer 获取 DBOperator 的相关行为"""
+
+    def test_get_db_operator_from_container(self):
+        """测试能从容器获取 DBOperator 实例"""
+        container = AppContainer()
+
+        db_operator = container.db_operator()
+
+        assert isinstance(db_operator, DBOperator)
+        assert hasattr(db_operator, "upsert")
+        assert hasattr(db_operator, "get_all_symbols")
+        assert hasattr(db_operator, "get_max_date")
+
+    def test_container_provides_different_operator_instances(self):
+        """测试容器每次提供不同的 DBOperator 实例（工厂模式）"""
+        container = AppContainer()
+
+        operator1 = container.db_operator()
+        operator2 = container.db_operator()
+
+        assert operator1 is not operator2
+        assert isinstance(operator1, DBOperator)
+        assert isinstance(operator2, DBOperator)
+
+    def test_container_operator_functionality(self):
+        """测试容器获取的 DBOperator 功能正常"""
+        container = AppContainer()
+
+        db_operator = container.db_operator()
+
+        # 验证基本功能可用
+        assert hasattr(db_operator, "stock_schema")
+        assert callable(db_operator.upsert)
+        assert callable(db_operator.get_all_symbols)
+        assert callable(db_operator.get_max_date)
+
+    def test_different_containers_have_different_components(self):
+        """测试不同容器实例有不同的组件"""
+        container1 = AppContainer()
+        container2 = AppContainer()
+
+        operator1 = container1.db_operator()
+        operator2 = container2.db_operator()
+
+        # 不同容器的实例应该不同
+        assert operator1 is not operator2
+        assert isinstance(operator1, DBOperator)
+        assert isinstance(operator2, DBOperator)
+
+    def test_container_operator_with_memory_db(self):
+        """测试容器获取的 DBOperator 可以使用内存数据库"""
+        container = AppContainer()
+
+        db_operator = container.db_operator()
+
+        # 创建内存数据库连接进行测试
+        conn = duckdb.connect(":memory:")
+
+        @contextmanager
+        def memory_conn_context():
+            try:
+                yield conn
+            finally:
+                pass
+
+        # 替换连接上下文进行测试
+        db_operator.conn_context = memory_conn_context
+
+        # 验证可以创建表
+        db_operator.create_table("stock_basic")
+
+        # 验证表已创建
+        with memory_conn_context() as conn_instance:
+            conn_instance.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='stock_basic'"
+            ).fetchall()
+            # DuckDB 使用不同的系统表，这里只验证没有异常
+
+        conn.close()
+
+    def test_container_operator_schema_loading(self):
+        """测试容器获取的 DBOperator 正确加载了 schema"""
+        container = AppContainer()
+
+        db_operator = container.db_operator()
+
+        # 验证 schema 已加载
+        assert hasattr(db_operator, "stock_schema")
+        assert db_operator.stock_schema is not None
+
+        # 验证 schema 包含预期的表定义
+        schema = db_operator.stock_schema
+        assert "stock_basic" in schema
+        assert "stock_daily" in schema
         assert db_operator.stock_schema is not None

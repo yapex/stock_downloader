@@ -59,11 +59,7 @@ class TaskBuilder:
             # 有股票代码的情况
             for symbol in symbols:
                 for task_type in task_types:
-                    tasks.append(
-                        DownloadTaskConfig(
-                            symbol=symbol, task_type=task_type
-                        )
-                    )
+                    tasks.append(DownloadTaskConfig(symbol=symbol, task_type=task_type))
         else:
             # stock_basic组的情况，不需要指定股票代码
             for task_type in task_types:

@@ -34,16 +34,16 @@ def main():
         # 先删除所有表
         logger.info("删除现有表...")
         drop_results = creator.drop_all_tables()
-        
+
         # 统计删除结果
         successful_drops = [table for table, success in drop_results.items() if success]
         failed_drops = [table for table, success in drop_results.items() if not success]
-        
+
         if successful_drops:
             logger.info(
                 f"成功删除 {len(successful_drops)} 个表: {', '.join(successful_drops)}"
             )
-        
+
         if failed_drops:
             logger.warning(
                 f"删除失败 {len(failed_drops)} 个表: {', '.join(failed_drops)}"
@@ -54,8 +54,12 @@ def main():
         create_results = creator.create_all_tables()
 
         # 统计创建结果
-        successful_creates = [table for table, success in create_results.items() if success]
-        failed_creates = [table for table, success in create_results.items() if not success]
+        successful_creates = [
+            table for table, success in create_results.items() if success
+        ]
+        failed_creates = [
+            table for table, success in create_results.items() if not success
+        ]
 
         logger.info("表创建完成！")
         logger.info(

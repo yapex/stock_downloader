@@ -3,13 +3,18 @@
 提供基于tqdm的进度跟踪功能，支持单任务和组任务的母子进度条显示。
 """
 
-from .interfaces import IProgressTracker, IProgressTrackerFactory
-from .progress_tracker import ProgressTracker, ProgressTrackerFactory, TqdmProgressTracker
+from .interfaces import IProgressTracker, IProgressTrackerFactory, ITasksProgressTracker
+from .progress_tracker import (
+    TasksProgressTracker,
+    ProgressTrackerFactory,
+    TqdmProgressTracker,
+)
 
 __all__ = [
     "IProgressTracker",
-    "IProgressTrackerFactory", 
-    "ProgressTracker",
+    "IProgressTrackerFactory",
+    "ITasksProgressTracker",
+    "TasksProgressTracker",
     "ProgressTrackerFactory",
     "TqdmProgressTracker",
 ]

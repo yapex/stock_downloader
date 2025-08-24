@@ -33,7 +33,15 @@ class IDataBuffer(Protocol):
     支持同步和异步两种模式的操作。
     """
 
-    def register_type(self, data_type: str, callback: Union[Callable[[str, pd.DataFrame], bool], Callable[[str, pd.DataFrame], Awaitable[bool]]], max_size: int = 100) -> None:
+    def register_type(
+        self,
+        data_type: str,
+        callback: Union[
+            Callable[[str, pd.DataFrame], bool],
+            Callable[[str, pd.DataFrame], Awaitable[bool]],
+        ],
+        max_size: int = 100,
+    ) -> None:
         """注册数据类型和对应的回调函数
 
         Args:
@@ -49,7 +57,7 @@ class IDataBuffer(Protocol):
         Args:
             data_type: 数据类型标识
             item: 要添加的数据
-            
+
         Returns:
             同步实现返回None，异步实现返回Awaitable[None]
         """
@@ -68,7 +76,7 @@ class IDataBuffer(Protocol):
 
     def shutdown(self) -> Union[None, Awaitable[None]]:
         """关闭缓冲器，清理资源
-        
+
         Returns:
             同步实现返回None，异步实现返回Awaitable[None]
         """

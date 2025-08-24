@@ -10,7 +10,9 @@ import pandas as pd
 class ITaskBus(Protocol):
     """任务总线接口"""
 
-    def submit_data(self, task_type: str, symbol: str, data: Optional[pd.DataFrame]) -> None:
+    def submit_data(
+        self, task_type: str, symbol: str, data: Optional[pd.DataFrame]
+    ) -> None:
         """提交数据"""
         ...
 
@@ -21,7 +23,9 @@ class MockTaskBus:
     def __init__(self):
         self.submitted_data: List[tuple[str, str, Optional[pd.DataFrame]]] = []
 
-    def submit_data(self, task_type: str, symbol: str, data: Optional[pd.DataFrame]) -> None:
+    def submit_data(
+        self, task_type: str, symbol: str, data: Optional[pd.DataFrame]
+    ) -> None:
         """提交数据
 
         Args:

@@ -19,7 +19,9 @@ class MockDataProcessor(IDataProcessor):
         self.processed_data: List[tuple[str, str, Optional[pd.DataFrame]]] = []
         self.process_count = 0
 
-    def process_data(self, task_type: str, symbol: str, data: Optional[pd.DataFrame]) -> None:
+    def process_data(
+        self, task_type: str, symbol: str, data: Optional[pd.DataFrame]
+    ) -> None:
         """处理数据
 
         Args:

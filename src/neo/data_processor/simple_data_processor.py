@@ -16,7 +16,6 @@ from ..database.schema_loader import SchemaLoader
 logger = logging.getLogger(__name__)
 
 
-
 class SimpleDataProcessor(IDataProcessor):
     """简化的数据处理器实现
 
@@ -75,14 +74,17 @@ class SimpleDataProcessor(IDataProcessor):
 
         # 数据缓冲器：负责缓冲区管理和异步刷新
         from .data_buffer import get_sync_data_buffer
-        self.data_buffer = data_buffer or get_sync_data_buffer(self.flush_interval_seconds)
-        
+
+        self.data_buffer = data_buffer or get_sync_data_buffer(
+            self.flush_interval_seconds
+        )
+
         # 注册已知的数据类型（如果有的话）
         self._register_known_types()
 
     def _register_known_types(self) -> None:
         """注册已知的数据类型到缓冲器
-        
+
         这里可以预先注册一些已知的数据类型，避免运行时注册。
         目前为空实现，数据类型会在首次使用时动态注册。
         """
@@ -131,8 +133,10 @@ class SimpleDataProcessor(IDataProcessor):
             if self.enable_batch:
                 # 批量处理模式：使用数据缓冲器
                 # 确保数据类型已注册
-                self.data_buffer.register_type(task_type, self._save_data_callback, self.batch_size)
-                
+                self.data_buffer.register_type(
+                    task_type, self._save_data_callback, self.batch_size
+                )
+
                 # 添加数据到缓冲器
                 self.data_buffer.add(task_type, data)
                 logger.debug(f"数据已添加到缓冲区: {task_type}, rows: {len(data)}")
@@ -156,13 +160,13 @@ class SimpleDataProcessor(IDataProcessor):
 
     def _save_data_callback(self, data_type: str, data: pd.DataFrame) -> bool:
         """数据保存回调函数
-        
+
         供数据缓冲器调用的回调函数，用于保存合并后的数据。
-        
+
         Args:
             data_type: 数据类型标识
             data: 要保存的合并数据
-            
+
         Returns:
             保存是否成功
         """
@@ -218,20 +222,20 @@ class SimpleDataProcessor(IDataProcessor):
 
     def get_buffer_status(self) -> Dict[str, int]:
         """获取缓冲区状态
-        
+
         Returns:
             各数据类型的缓冲区大小
         """
-        if hasattr(self.data_buffer, 'get_buffer_sizes'):
+        if hasattr(self.data_buffer, "get_buffer_sizes"):
             return self.data_buffer.get_buffer_sizes()
         return {}
-        
+
     def shutdown(self) -> None:
         """关闭数据处理器，清理资源
-        
+
         确保所有缓冲的数据都被刷新到数据库，并停止后台线程。
         """
-        if hasattr(self, 'data_buffer'):
+        if hasattr(self, "data_buffer"):
             self.data_buffer.shutdown()
 
 
@@ -300,13 +304,13 @@ class AsyncSimpleDataProcessor:
         else:
             self.data_buffer = data_buffer
             self._data_buffer_initialized = True
-        
+
         # 注册已知的数据类型（如果有的话）
         self._register_known_types()
 
     def _register_known_types(self) -> None:
         """注册已知的数据类型到缓冲器
-        
+
         这里可以预先注册一些已知的数据类型，避免运行时注册。
         目前为空实现，数据类型会在首次使用时动态注册。
         """
@@ -316,6 +320,7 @@ class AsyncSimpleDataProcessor:
         """确保数据缓冲器已初始化"""
         if not self._data_buffer_initialized:
             from .data_buffer import get_async_data_buffer
+
             self.data_buffer = await get_async_data_buffer(self.flush_interval_seconds)
             if self.data_buffer is None:
                 raise RuntimeError("Failed to initialize async data buffer")
@@ -355,11 +360,11 @@ class AsyncSimpleDataProcessor:
         try:
             # 确保数据缓冲器已初始化
             await self._ensure_data_buffer_initialized()
-            
+
             # 再次检查数据缓冲器是否正确初始化
             if self.data_buffer is None:
                 raise RuntimeError("Data buffer is still None after initialization")
-            
+
             # 检查数据是否存在
             if data is None or data.empty:
                 logger.warning("数据为空，跳过处理")
@@ -371,8 +376,10 @@ class AsyncSimpleDataProcessor:
             if self.enable_batch:
                 # 批量处理模式：使用异步数据缓冲器
                 # 确保数据类型已注册
-                self.data_buffer.register_type(task_type, self._save_data_callback, self.batch_size)
-                
+                self.data_buffer.register_type(
+                    task_type, self._save_data_callback, self.batch_size
+                )
+
                 # 添加数据到缓冲器
                 await self.data_buffer.add(task_type, data)
                 logger.debug(f"数据已添加到异步缓冲区: {task_type}, rows: {len(data)}")
@@ -396,13 +403,13 @@ class AsyncSimpleDataProcessor:
 
     async def _save_data_callback(self, data_type: str, data: pd.DataFrame) -> bool:
         """异步数据保存回调函数
-        
+
         供异步数据缓冲器调用的回调函数，用于保存合并后的数据。
-        
+
         Args:
             data_type: 数据类型标识
             data: 要保存的合并数据
-            
+
         Returns:
             保存是否成功
         """
@@ -458,18 +465,22 @@ class AsyncSimpleDataProcessor:
 
     def get_buffer_status(self) -> Dict[str, int]:
         """获取缓冲区状态
-        
+
         Returns:
             各数据类型的缓冲区大小
         """
-        if hasattr(self.data_buffer, 'get_buffer_sizes'):
+        if hasattr(self.data_buffer, "get_buffer_sizes"):
             return self.data_buffer.get_buffer_sizes()
         return {}
-        
+
     async def shutdown(self) -> None:
         """异步关闭数据处理器，清理资源
-        
+
         确保所有缓冲的数据都被刷新到数据库，并停止后台线程。
         """
-        if hasattr(self, 'data_buffer') and self.data_buffer is not None and self._data_buffer_initialized:
+        if (
+            hasattr(self, "data_buffer")
+            and self.data_buffer is not None
+            and self._data_buffer_initialized
+        ):
             await self.data_buffer.shutdown()

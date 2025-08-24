@@ -3,7 +3,8 @@ import pandas as pd
 from unittest.mock import Mock, patch
 from threading import Lock
 from neo.downloader.fetcher_builder import TushareApiManager, FetcherBuilder
-from neo.task_bus.types import TaskTemplate, TaskType
+from neo.task_bus.types import TaskTemplate, TaskType, TaskTemplateRegistry
+from neo.container import AppContainer
 
 
 class TestTaskTemplate:
@@ -32,18 +33,18 @@ class TestTaskType:
     """测试 TaskType 枚举"""
 
     def test_task_type_enum_values(self):
-        """测试任务类型枚举值"""
-        assert TaskType.stock_basic.name == "stock_basic"
-        assert TaskType.stock_daily.name == "stock_daily"
-        assert TaskType.stock_adj_qfq.name == "stock_adj_qfq"
+        """测试任务类型常量值"""
+        assert TaskType.stock_basic == "stock_basic"
+        assert TaskType.stock_daily == "stock_daily"
+        assert TaskType.stock_adj_qfq == "stock_adj_qfq"
 
     def test_task_type_templates(self):
         """测试任务类型模板"""
-        stock_basic_template = TaskType.stock_basic.template
+        stock_basic_template = TaskTemplateRegistry.get_template(TaskType.stock_basic)
         assert stock_basic_template.base_object == "pro"
         assert stock_basic_template.api_method == "stock_basic"
 
-        stock_daily_template = TaskType.stock_daily.template
+        stock_daily_template = TaskTemplateRegistry.get_template(TaskType.stock_daily)
         assert stock_daily_template.base_object == "pro"
         assert stock_daily_template.api_method == "daily"
 
@@ -226,3 +227,55 @@ class TestFetcherBuilder:
         assert call_args["ts_code"] == "600519.SH"
         assert call_args["start_date"] == "20240101"
         assert call_args["end_date"] == "20240131"
+
+
+class TestFetcherBuilderContainer:
+    """测试从 Container 中获取 FetcherBuilder"""
+
+    def test_get_fetcher_builder_from_container(self):
+        """测试从容器中获取 FetcherBuilder 实例"""
+        container = AppContainer()
+        fetcher_builder = container.fetcher_builder()
+
+        assert isinstance(fetcher_builder, FetcherBuilder)
+        assert fetcher_builder.api_manager is not None
+        assert isinstance(fetcher_builder.api_manager, TushareApiManager)
+
+    def test_container_provides_different_instances(self):
+        """测试容器提供不同的 FetcherBuilder 实例（Factory 模式）"""
+        container = AppContainer()
+        fetcher_builder1 = container.fetcher_builder()
+        fetcher_builder2 = container.fetcher_builder()
+
+        # Factory 模式应该提供不同的实例
+        assert fetcher_builder1 is not fetcher_builder2
+        assert isinstance(fetcher_builder1, FetcherBuilder)
+        assert isinstance(fetcher_builder2, FetcherBuilder)
+
+    @patch.object(TushareApiManager, "get_api_function")
+    def test_container_fetcher_builder_functionality(self, mock_get_api):
+        """测试从容器获取的 FetcherBuilder 功能正常"""
+        mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
+        mock_get_api.return_value = mock_api_func
+
+        container = AppContainer()
+        fetcher_builder = container.fetcher_builder()
+
+        # 测试构建任务功能
+        fetcher = fetcher_builder.build_by_task(TaskType.stock_basic)
+        result = fetcher()
+
+        mock_get_api.assert_called_once_with("pro", "stock_basic")
+        mock_api_func.assert_called_once_with()
+        assert isinstance(result, pd.DataFrame)
+
+    def test_multiple_containers_share_singleton_api_manager(self):
+        """测试多个容器共享单例 API 管理器"""
+        container1 = AppContainer()
+        container2 = AppContainer()
+
+        fetcher_builder1 = container1.fetcher_builder()
+        fetcher_builder2 = container2.fetcher_builder()
+
+        # API 管理器应该是同一个单例实例
+        assert fetcher_builder1.api_manager is fetcher_builder2.api_manager
