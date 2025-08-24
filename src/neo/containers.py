@@ -17,7 +17,7 @@ class AppContainer(containers.DeclarativeContainer):
     """应用的核心服务容器"""
 
     fetcher_builder = providers.Factory(FetcherBuilder)
-    rate_limit_manager = providers.Singleton(RateLimitManager)
+    rate_limit_manager = providers.Singleton(RateLimitManager.singleton)
     db_operator = providers.Factory(DBOperator)
     downloader = providers.Singleton(
         "neo.downloader.simple_downloader.SimpleDownloader",
@@ -48,12 +48,12 @@ class AppContainer(containers.DeclarativeContainer):
 
 
 if __name__ == "__main__":
-    c = AppContainer()
+    from neo.app import container
 
-    # downloader = c.downloader()
+    # downloader = container.downloader()
     # df = downloader.download(TaskType.stock_basic.name, "600519.SH")
     # print(df.head(1))
 
-    db_operator = c.db_operator()
+    db_operator = container.db_operator()
     db_operator.drop_all_tables()
     db_operator.create_all_tables()

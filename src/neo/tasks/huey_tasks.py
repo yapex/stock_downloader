@@ -33,7 +33,9 @@ async def _process_data_async(task_type: str, data: pd.DataFrame, symbol: str) -
     data_processor = container.data_processor()
     try:
         process_success = await data_processor.process(task_type, data)
-        logger.info(f"数据处理完成: {symbol}, 成功: {process_success}")
+        logger.debug(
+            f"数据处理完成: {symbol}_{task_type}, 数量：{len(data)}, 成功: {process_success}"
+        )
         return process_success
     finally:
         # 确保数据处理器正确关闭，刷新所有缓冲区数据
@@ -52,7 +54,7 @@ def download_task(task_type: TaskType, symbol: str) -> bool:
         bool: 下载是否成功
     """
     try:
-        logger.info(f"开始执行下载任务: {symbol}")
+        logger.debug(f"开始执行下载任务: {symbol}")
 
         # 从中心化的 app.py 获取共享的容器实例
         from ..app import container
@@ -66,11 +68,11 @@ def download_task(task_type: TaskType, symbol: str) -> bool:
             success = (
                 result is not None and not result.empty if result is not None else False
             )
-            logger.info(f"下载任务完成: {symbol}, 成功: {success}")
+            logger.debug(f"下载任务完成: {symbol}, 成功: {success}")
 
             # 🔗 链式调用：下载完成后自动触发数据处理
             if success and result is not None:
-                logger.info(f"🔄 触发数据处理任务: {symbol}")
+                logger.debug(f"🔄 触发数据处理任务: {symbol}")
                 # 触发独立的数据处理任务，传递下载的数据
                 process_data_task(task_type, symbol, result)  # 传递下载的数据
                 # 返回下载的成功状态，而不是数据处理结果
@@ -98,7 +100,7 @@ def process_data_task(task_type: TaskType, symbol: str, data: pd.DataFrame) -> b
         bool: 处理是否成功
     """
     try:
-        logger.info(f"开始处理数据: {symbol}")
+        logger.debug(f"开始处理数据: {symbol}")
 
         # 创建异步数据处理器并运行
         async def process_async():
@@ -110,7 +112,7 @@ def process_data_task(task_type: TaskType, symbol: str, data: pd.DataFrame) -> b
                 if success and data is not None:
                     return await _process_data_async(task_type, data, symbol)
                 else:
-                    logger.warning(f"数据处理失败，无有效数据: {symbol}")
+                    logger.debug(f"数据处理失败，无有效数据: {symbol}")
                     return False
             except Exception as e:
                 logger.error(f"数据处理过程中发生错误: {symbol}, 错误: {e}")

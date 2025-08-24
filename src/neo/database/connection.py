@@ -44,7 +44,6 @@ class DatabaseConnectionManager:
         conn = None
         try:
             conn = duckdb.connect(self.db_path)
-            logger.debug(f"连接到数据库 {self.db_path} 成功")
             yield conn
         except Exception as e:
             logger.error(f"数据库连接错误: {e}")
@@ -52,7 +51,6 @@ class DatabaseConnectionManager:
         finally:
             if conn:
                 conn.close()
-                logger.debug("数据库连接已关闭")
 
 
 # 全局实例，提供便捷的函数接口

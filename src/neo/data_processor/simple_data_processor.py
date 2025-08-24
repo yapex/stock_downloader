@@ -16,7 +16,6 @@ from ..database.schema_loader import SchemaLoader
 logger = logging.getLogger(__name__)
 
 
-
 class AsyncSimpleDataProcessor:
     """异步数据处理器实现
 
@@ -120,7 +119,7 @@ class AsyncSimpleDataProcessor:
             return schema.table_name
         except KeyError:
             type_name = task_type.name if hasattr(task_type, "name") else str(task_type)
-            logger.warning(f"未找到任务类型 '{type_name}' 对应的表配置")
+            logger.debug(f"未找到任务类型 '{type_name}' 对应的表配置")
             return None
 
     async def process(self, task_type: str, data: pd.DataFrame) -> bool:
@@ -145,7 +144,7 @@ class AsyncSimpleDataProcessor:
 
             # 检查数据是否存在
             if data is None or data.empty:
-                logger.warning("数据为空，跳过处理")
+                logger.debug("数据为空，跳过处理")
                 return False
 
             logger.debug(f"数据维度: {len(data)} 行 x {len(data.columns)} 列")
@@ -170,7 +169,7 @@ class AsyncSimpleDataProcessor:
                 if not self.enable_batch:
                     logger.info(f"✅ 成功保存 {len(data)} 行数据")
             else:
-                logger.warning(f"异步数据处理失败: {task_type}")
+                logger.debug(f"异步数据处理失败: {task_type}")
 
             return success
 
@@ -206,18 +205,15 @@ class AsyncSimpleDataProcessor:
             保存是否成功
         """
         try:
-            # 调试信息：打印 task_type 的类型和值
-            logger.debug(f"task_type 类型: {type(task_type)}, 值: {task_type}")
-
             # 根据任务类型动态获取表名
             table_name = self._get_table_name(task_type)
             if not table_name:
-                logger.warning(f"未知的任务类型: {task_type}")
+                logger.debug(f"未知的任务类型: {task_type}")
                 return False
 
             # 保存数据到数据库
             self.db_operator.upsert(table_name, data)
-            logger.info(f"异步数据保存成功: {table_name}, {len(data)} rows")
+            logger.info(f"✅ {table_name} 业务成功保存了 {len(data)}条数据")
 
             return True
 

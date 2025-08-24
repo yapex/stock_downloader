@@ -102,13 +102,10 @@ class FetcherBuilder:
 
         def execute() -> pd.DataFrame:
             """执行数据获取"""
-            logger.debug(
-                f"开始执行任务 - 函数: {template.base_object}.{template.api_method}, 参数: {merged_params}"
-            )
             try:
                 result = api_func(**merged_params)
                 logger.debug(
-                    f"任务执行成功 - 函数: {template.base_object}.{template.api_method}, 获取 {len(result)} 条记录"
+                    f"成功获取 {len(result)} 条记录 - 函数: {template.base_object}.{template.api_method}, 参数: {merged_params}"
                 )
                 return result
             except Exception as e:

@@ -8,7 +8,7 @@ echo "📋 步骤 0: 删除日志..."
 rm -rf logs/*
 
 echo "📋 步骤 1: 创建数据库表..."
-uv run scripts/create_tables.py
+uv run scripts/create_tables.py -d
 if [ $? -ne 0 ]; then
     echo "❌ 创建数据库表失败"
     exit 1

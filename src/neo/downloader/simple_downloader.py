@@ -61,7 +61,7 @@ class SimpleDownloader(IDownloader):
             return data
 
         except Exception as e:
-            logger.warning(f"下载任务失败: {task_type}, symbol: {symbol}, error: {e}")
+            logger.debug(f"下载任务失败: {task_type}, symbol: {symbol}, error: {e}")
             return None
 
     def _apply_rate_limiting(self, task_type: str) -> None:
@@ -78,7 +78,7 @@ class SimpleDownloader(IDownloader):
 
         使用 FetcherBuilder 获取真实的 Tushare 数据。
         1. 先从数据库中获取最新日期
-        2. 如果没有最新日期，就用默认的 19000101
+        2. 如果没有最新日期，就用默认的 19901218
         3. 使用 FetcherBuilder 构建数据获取器
         4. 执行数据获取
 
@@ -109,9 +109,9 @@ class SimpleDownloader(IDownloader):
             data = fetcher()
 
             if data is not None and not data.empty:
-                logger.info(f"✅ 真实数据获取完成: {len(data)} rows")
+                logger.info(f"✅ {task_type} 业务成功下载 {len(data)} 条数据")
             else:
-                logger.warning("⚠️ 数据获取结果为空")
+                logger.debug("⚠️ 数据获取结果为空")
             return data
 
         except Exception as e:

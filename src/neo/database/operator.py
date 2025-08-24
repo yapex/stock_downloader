@@ -60,15 +60,15 @@ class DBOperator(SchemaTableCreator, IDBOperator):
         """
         # 数据验证
         if data is None:
-            logger.warning(f"数据为空，跳过 upsert 操作: {table_name}")
+            logger.debug(f"数据为空，跳过 upsert 操作: {table_name}")
             return True
 
         if isinstance(data, pd.DataFrame) and data.empty:
-            logger.warning(f"DataFrame 为空，跳过 upsert 操作: {table_name}")
+            logger.debug(f"DataFrame 为空，跳过 upsert 操作: {table_name}")
             return True
 
         if isinstance(data, (list, dict)) and not data:
-            logger.warning(f"数据为空，跳过 upsert 操作: {table_name}")
+            logger.debug(f"数据为空，跳过 upsert 操作: {table_name}")
             return True
 
         # 确保表存在
@@ -100,7 +100,7 @@ class DBOperator(SchemaTableCreator, IDBOperator):
             df = data.copy()
 
         if df.empty:
-            logger.warning(f"处理后的数据为空，跳过 upsert 操作: {table_name}")
+            logger.debug(f"处理后的数据为空，跳过 upsert 操作: {table_name}")
             return True
 
         # 检查必要的列是否存在
@@ -125,7 +125,7 @@ class DBOperator(SchemaTableCreator, IDBOperator):
             else:
                 self._perform_upsert(self.conn, table_name, df, primary_key)
 
-            logger.info(f"成功向表 '{table_name}' upsert {len(df)} 条记录")
+            logger.debug(f"成功向表 '{table_name}' upsert {len(df)} 条记录")
             return True
 
         except Exception as e:
@@ -204,7 +204,7 @@ class DBOperator(SchemaTableCreator, IDBOperator):
 
         # 检查表是否定义了 date_col
         if "date_col" not in table_config or not table_config["date_col"]:
-            logger.warning(f"表 '{table_name}' 未定义 date_col 字段，无法查询最大日期")
+            logger.debug(f"表 '{table_name}' 未定义 date_col 字段，无法查询最大日期")
             return before_first_open_day
 
         date_col = table_config["date_col"]
@@ -220,7 +220,7 @@ class DBOperator(SchemaTableCreator, IDBOperator):
             if result and result[0] is not None:
                 return result[0]
             else:
-                logger.warning(f"表 '{table_name}' 为空或 {date_col} 字段无有效数据")
+                logger.debug(f"表 '{table_name}' 为空或 {date_col} 字段无有效数据")
                 return before_first_open_day
 
         except Exception as e:
