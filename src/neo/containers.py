@@ -33,12 +33,12 @@ class AppContainer(containers.DeclarativeContainer):
         schema_loader=schema_loader,
     )
     progress_tracker_factory = providers.Singleton(ProgressTrackerFactory)
-    tasks_progress_tracker = providers.Factory(
+    tasks_progress_tracker = providers.Singleton(
         TasksProgressTracker,
         factory=progress_tracker_factory,
     )
 
-    app_service = providers.Factory(
+    app_service = providers.Singleton(
         "neo.helpers.app_service.AppService",
         tasks_progress_tracker=tasks_progress_tracker,
     )
