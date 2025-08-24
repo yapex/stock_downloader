@@ -75,6 +75,10 @@ class GroupHandler:
             return []
 
         # 其他组需要从数据库获取所有股票代码
+        if not self._db_operator:
+            from neo.database.operator import DBOperator
+            self._db_operator = DBOperator()
+
         if self._db_operator:
             return self._get_all_symbols_from_db()
         else:
