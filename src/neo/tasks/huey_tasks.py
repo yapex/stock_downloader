@@ -104,7 +104,7 @@ def process_data_task(task_type: TaskType, symbol: str) -> bool:
 
             downloader = SimpleDownloader.create_default()
             try:
-                result = downloader.download(task_type.name, symbol)
+                result = downloader.download(task_type, symbol)
 
                 success = (
                     result is not None and not result.empty
@@ -112,7 +112,7 @@ def process_data_task(task_type: TaskType, symbol: str) -> bool:
                     else False
                 )
                 if success and result is not None:
-                    return await _process_data_async(task_type.name, result, symbol)
+                    return await _process_data_async(task_type, result, symbol)
                 else:
                     logger.warning(f"数据处理失败，无有效数据: {symbol}")
                     return False

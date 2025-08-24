@@ -347,7 +347,8 @@ class AppService:
             else:
                 print("✅ 所有任务执行完成!")
         finally:
-            # 停止 Consumer
+            # 等待所有任务（包括数据处理任务）完成后再停止 Consumer
+            await self._wait_for_all_tasks_completion()
             await self._stop_consumer()
 
     async def _start_consumer(self) -> None:
@@ -371,6 +372,69 @@ class AppService:
         # 给 consumer 一点时间启动
         await asyncio.sleep(0.5)
 
+    async def _wait_for_all_tasks_completion(self) -> None:
+        """等待所有任务（包括数据处理任务）完成"""
+        import asyncio
+        from neo.configs import huey
+        
+        print("⏳ 等待数据处理任务完成...")
+        
+        # 等待最多30秒，同时检查队列和活跃任务
+        max_wait_time = 30  # 秒
+        check_interval = 0.5  # 秒
+        elapsed_time = 0
+        
+        # 首先等待一小段时间，让所有被触发的任务都被正确加入队列
+        await asyncio.sleep(1.0)
+        
+        # 记录上一次的 pending 数量，用于检测稳定状态
+        last_pending_count = float('inf')
+        stable_count = 0  # 连续稳定的次数
+        
+        while elapsed_time < max_wait_time:
+            # 检查是否还有待处理的任务
+            pending_count = huey.pending_count()
+            
+            # 获取 Consumer 实例，检查正在运行的任务数
+            consumer = DataProcessorRunner.get_consumer_instance()
+            active_tasks = 0
+            if consumer and hasattr(consumer, '_pool') and consumer._pool:
+                # 计算正在执行的任务数（工作线程池中的活跃线程数）
+                try:
+                    active_tasks = consumer._pool._threads - len(consumer._pool._idle)
+                except AttributeError:
+                    # 如果无法获取活跃任务数，假设有任务在运行如果 pending_count > 0
+                    active_tasks = 1 if pending_count > 0 else 0
+            
+            total_tasks = pending_count + active_tasks
+            
+            # 如果没有任务了，检查是否稳定
+            if total_tasks == 0:
+                if last_pending_count == 0:
+                    stable_count += 1
+                    if stable_count >= 3:  # 连续3次检查都是0，认为真正完成
+                        print("✅ 所有任务已完成")
+                        break
+                else:
+                    stable_count = 1
+            else:
+                stable_count = 0
+                
+            last_pending_count = total_tasks
+            
+            # 等待一段时间再检查
+            await asyncio.sleep(check_interval)
+            elapsed_time += check_interval
+            
+            # 每3秒显示一次进度
+            if int(elapsed_time * 2) % 6 == 0:  # 每3秒显示
+                if total_tasks > 0:
+                    print(f"⏳ 还有 {pending_count} 个等待任务，{active_tasks} 个活跃任务... ({elapsed_time:.1f}s)")
+        
+        if elapsed_time >= max_wait_time:
+            remaining = huey.pending_count()
+            print(f"⚠️  超时等待，仍有 {remaining} 个任务未完成，强制停止")
+    
     async def _stop_consumer(self) -> None:
         """停止 Huey Consumer"""
         import asyncio
@@ -384,7 +448,7 @@ class AppService:
             
             # 使用DataProcessorRunner停止Consumer
             DataProcessorRunner.stop_consumer_if_running()
-            print("🛑 Huey Consumer 已停止")
+            print("🚫 Huey Consumer 已停止")
 
     def _group_tasks_by_type(
         self, tasks: List[DownloadTaskConfig]
