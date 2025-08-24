@@ -258,7 +258,7 @@ class AppService:
                         await aget_result(result)  # 等待单个任务完成
 
                         # 更新对应任务类型的进度条
-                        task_type_name = task.task_type.name
+                        task_type_name = task.task_type
                         completed_by_type[task_type_name] += 1
                         total_for_type = len(task_groups[task_type_name])
 
@@ -339,7 +339,7 @@ class AppService:
         """
         task_groups = {}
         for task in tasks:
-            task_type_name = task.task_type.name
+            task_type_name = task.task_type
             if task_type_name not in task_groups:
                 task_groups[task_type_name] = []
             task_groups[task_type_name].append(task)

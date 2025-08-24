@@ -14,7 +14,7 @@ class AppContainer(containers.DeclarativeContainer):
 
     fetcher_builder = providers.Factory(FetcherBuilder)
     rate_limit_manager = providers.Singleton(RateLimitManager)
-    downloader = providers.Factory(
+    downloader = providers.Singleton(
         SimpleDownloader,
         fetcher_builder=fetcher_builder,
         rate_limit_manager=rate_limit_manager,

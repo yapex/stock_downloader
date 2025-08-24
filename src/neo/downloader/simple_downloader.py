@@ -119,3 +119,26 @@ class SimpleDownloader(IDownloader):
         目前没有需要清理的资源，但提供接口以供AppService调用。
         """
         logger.debug("SimpleDownloader cleanup completed")
+
+
+# 模块级别的单例实例
+_singleton_instance: Optional[IDownloader] = None
+
+
+def get_downloader(singleton: bool = True) -> IDownloader:
+    """获取下载器实例
+    
+    Args:
+        singleton: 是否使用单例模式，默认为 True
+        
+    Returns:
+        IDownloader: 下载器实例
+    """
+    global _singleton_instance
+    
+    if singleton:
+        if _singleton_instance is None:
+            _singleton_instance = SimpleDownloader.create_default()
+        return _singleton_instance
+    else:
+        return SimpleDownloader.create_default()

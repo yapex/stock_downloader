@@ -3,7 +3,7 @@
 import pandas as pd
 from unittest.mock import Mock, patch
 
-from neo.downloader.simple_downloader import SimpleDownloader
+from neo.downloader.simple_downloader import SimpleDownloader, get_downloader
 from neo.database.operator import DBOperator
 from neo.helpers.interfaces import IRateLimitManager
 from neo.downloader.fetcher_builder import FetcherBuilder
@@ -46,6 +46,65 @@ class TestSimpleDownloader:
         assert downloader.fetcher_builder is not None
 
 
+class TestGetDownloader:
+    """测试模块级别的 get_downloader 函数"""
+
+    def setup_method(self):
+        """每个测试前重置单例实例"""
+        import neo.downloader.simple_downloader as module
+        module._singleton_instance = None
+
+    def test_get_downloader_singleton_default(self):
+        """测试默认单例模式"""
+        downloader1 = get_downloader()
+        downloader2 = get_downloader()
+        
+        # 验证返回相同实例
+        assert downloader1 is downloader2
+        assert isinstance(downloader1, SimpleDownloader)
+
+    def test_get_downloader_singleton_explicit(self):
+        """测试显式指定单例模式"""
+        downloader1 = get_downloader(singleton=True)
+        downloader2 = get_downloader(singleton=True)
+        
+        # 验证返回相同实例
+        assert downloader1 is downloader2
+        assert isinstance(downloader1, SimpleDownloader)
+
+    def test_get_downloader_non_singleton(self):
+        """测试非单例模式"""
+        downloader1 = get_downloader(singleton=False)
+        downloader2 = get_downloader(singleton=False)
+        
+        # 验证返回不同实例
+        assert downloader1 is not downloader2
+        assert isinstance(downloader1, SimpleDownloader)
+        assert isinstance(downloader2, SimpleDownloader)
+
+    def test_get_downloader_mixed_modes(self):
+        """测试混合使用单例和非单例模式"""
+        singleton1 = get_downloader(singleton=True)
+        non_singleton = get_downloader(singleton=False)
+        singleton2 = get_downloader(singleton=True)
+        
+        # 验证单例实例相同，非单例实例不同
+        assert singleton1 is singleton2
+        assert singleton1 is not non_singleton
+        assert isinstance(singleton1, SimpleDownloader)
+        assert isinstance(non_singleton, SimpleDownloader)
+
+    def test_get_downloader_returns_idownloader_interface(self):
+        """测试返回的是 IDownloader 接口"""
+        downloader = get_downloader()
+        
+        # 验证实现了 IDownloader 接口的方法
+        assert hasattr(downloader, 'download')
+        assert hasattr(downloader, 'cleanup')
+        assert callable(downloader.download)
+        assert callable(downloader.cleanup)
+
+
 class TestSimpleDownloaderContainer:
     """测试从 AppContainer 获取 SimpleDownloader 的相关行为"""
 
@@ -64,14 +123,14 @@ class TestSimpleDownloaderContainer:
         # 验证具有预期的方法
         assert hasattr(downloader, "download")
 
-    def test_container_provides_different_instances(self):
-        """测试容器以工厂模式提供不同的 SimpleDownloader 实例"""
+    def test_container_provides_same_instances(self):
+        """测试容器以单例模式提供相同的 SimpleDownloader 实例"""
         container = AppContainer()
         downloader1 = container.downloader()
         downloader2 = container.downloader()
 
-        # 验证是不同的实例（工厂模式）
-        assert downloader1 is not downloader2
+        # 验证是相同的实例（单例模式）
+        assert downloader1 is downloader2
         assert isinstance(downloader1, SimpleDownloader)
         assert isinstance(downloader2, SimpleDownloader)
 
@@ -113,8 +172,8 @@ class TestSimpleDownloaderContainer:
         downloader1 = container.downloader()
         downloader2 = container.downloader()
 
-        # 验证下载器是不同实例（工厂模式）
-        assert downloader1 is not downloader2
+        # 验证下载器是相同实例（单例模式）
+        assert downloader1 is downloader2
 
         # 但它们共享同一个速率限制管理器（单例）
         assert downloader1.rate_limit_manager is downloader2.rate_limit_manager

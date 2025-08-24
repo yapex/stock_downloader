@@ -9,7 +9,7 @@ import logging
 from ..configs import huey
 from ..task_bus.types import TaskType
 
-# 延迟导入 SimpleDownloader 以避免循环导入
+# 延迟导入以避免循环导入
 from ..data_processor.simple_data_processor import AsyncSimpleDataProcessor
 
 logger = logging.getLogger(__name__)
@@ -28,12 +28,12 @@ def download_task(task_type: TaskType, symbol: str) -> bool:
     """
     try:
         # 延迟导入以避免循环导入
-        from ..downloader.simple_downloader import SimpleDownloader
+        from ..downloader.simple_downloader import get_downloader
 
         logger.info(f"开始执行下载任务: {symbol}")
 
         # 创建下载器并执行下载
-        downloader = SimpleDownloader.create_default()
+        downloader = get_downloader(singleton=True)
         try:
             result = downloader.download(task_type, symbol)
 
