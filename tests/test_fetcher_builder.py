@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 from threading import Lock
 from neo.downloader.fetcher_builder import TushareApiManager, FetcherBuilder
 from neo.task_bus.types import TaskTemplate, TaskType, TaskTemplateRegistry
-from neo.container import AppContainer
+from neo.containers import AppContainer
 
 
 class TestTaskTemplate:

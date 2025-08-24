@@ -8,7 +8,7 @@ from typing import List, Optional
 
 
 from neo.helpers.app_service import AppService
-from neo.container import AppContainer
+from neo.app import container
 from dependency_injector.wiring import Provide
 
 app = typer.Typer(help="Neo 股票数据处理系统命令行工具")
@@ -37,7 +37,7 @@ def dl(
     # 初始化下载日志配置
     setup_logging("download", log_level)
 
-    container = AppContainer()
+    # 使用共享的容器实例
     task_builder = container.task_builder()
     group_handler = container.group_handler()
     app_service = container.app_service()
@@ -66,7 +66,7 @@ def dl(
     app_service.run_downloader(tasks, dry_run=dry_run)
 
 
-def main(app_service: AppService = Provide[AppContainer.app_service]):
+def main(app_service: AppService = Provide["AppContainer.app_service"]):
     """主函数"""
     app()
 

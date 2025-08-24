@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 from contextlib import contextmanager
 import duckdb
 from neo.database.operator import DBOperator
-from neo.container import AppContainer
+from neo.containers import AppContainer
 from pathlib import Path
 
 
@@ -240,7 +240,7 @@ class TestDBOperator:
         # stock_basic 表没有 date_col
         result = db_operator.get_max_date("stock_basic")
 
-        assert result is None
+        assert result == "19901218"  # 没有 date_col 时返回默认日期
         # 不再检查日志输出内容
 
     def test_get_max_date_empty_table(self, db_operator, caplog):
@@ -254,7 +254,7 @@ class TestDBOperator:
 
         max_date = db_operator.get_max_date("stock_daily")
 
-        assert max_date is None
+        assert max_date == "19901218"  # 空表应该返回默认日期
         # 不再检查日志输出内容
 
     def test_get_max_date_invalid_table(self, db_operator):

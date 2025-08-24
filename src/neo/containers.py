@@ -14,18 +14,18 @@ class AppContainer(containers.DeclarativeContainer):
 
     fetcher_builder = providers.Factory(FetcherBuilder)
     rate_limit_manager = providers.Singleton(RateLimitManager)
+    db_operator = providers.Factory(DBOperator)
     downloader = providers.Singleton(
         SimpleDownloader,
         fetcher_builder=fetcher_builder,
         rate_limit_manager=rate_limit_manager,
+        db_operator=db_operator,
     )
     progress_tracker_factory = providers.Singleton(ProgressTrackerFactory)
     tasks_progress_tracker = providers.Factory(
         TasksProgressTracker,
         factory=progress_tracker_factory,
     )
-
-    db_operator = providers.Factory(DBOperator)
 
     app_service = providers.Factory(
         AppService,

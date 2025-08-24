@@ -11,7 +11,7 @@ import pytest
 from neo.helpers.app_service import AppService, DataProcessorRunner, ServiceFactory
 from neo.helpers.huey_consumer_manager import HueyConsumerManager
 from neo.task_bus.types import DownloadTaskConfig, TaskType
-from neo.container import AppContainer
+from neo.containers import AppContainer
 
 
 class TestAppService:

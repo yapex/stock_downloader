@@ -1,6 +1,7 @@
 """Huey 任务定义
 
 定义带 @huey_task 装饰器的下载任务函数。
+使用中心化的容器实例来获取依赖服务。
 """
 
 import asyncio
@@ -38,7 +39,10 @@ async def _process_data_async(task_type: str, data: pd.DataFrame, symbol: str) -
 
 
 @huey.task()
-def download_task(task_type: TaskType, symbol: str) -> bool:
+def download_task(
+    task_type: TaskType, 
+    symbol: str
+) -> bool:
     """下载股票数据的 Huey 任务
 
     Args:
@@ -49,13 +53,13 @@ def download_task(task_type: TaskType, symbol: str) -> bool:
         bool: 下载是否成功
     """
     try:
-        # 延迟导入以避免循环导入
-        from ..downloader.simple_downloader import get_downloader
-
         logger.info(f"开始执行下载任务: {symbol}")
 
-        # 创建下载器并执行下载
-        downloader = get_downloader(singleton=True)
+        # 从中心化的 app.py 获取共享的容器实例
+        from ..app import container
+        downloader = container.downloader()
+        
+        # 使用下载器执行下载
         try:
             result = downloader.download(task_type, symbol)
 
@@ -82,7 +86,10 @@ def download_task(task_type: TaskType, symbol: str) -> bool:
 
 
 @huey.task()
-def process_data_task(task_type: TaskType, symbol: str) -> bool:
+def process_data_task(
+    task_type: TaskType, 
+    symbol: str
+) -> bool:
     """数据处理任务
 
     Args:
@@ -99,10 +106,10 @@ def process_data_task(task_type: TaskType, symbol: str) -> bool:
         async def process_async():
             data_processor = AsyncSimpleDataProcessor.create_default()
 
-            # 重新下载数据进行处理
-            from ..downloader.simple_downloader import SimpleDownloader
-
-            downloader = SimpleDownloader.create_default()
+            # 从中心化的 app.py 获取共享的容器实例
+            from ..app import container
+            downloader = container.downloader()
+            
             try:
                 result = downloader.download(task_type, symbol)
 

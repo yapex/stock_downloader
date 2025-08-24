@@ -312,8 +312,9 @@ class TestHueyConsumerManager:
     async def test_stop_consumer_async_with_task(self):
         """测试异步停止 Consumer - 有任务"""
         with patch.object(HueyConsumerManager, 'stop_consumer_if_running') as mock_stop:
-            # 创建模拟任务
-            mock_task = AsyncMock()
+            # 创建模拟任务 - 使用 Mock 而不是 AsyncMock，因为 cancel() 是同步方法
+            mock_task = Mock()
+            mock_task.cancel = Mock()
             
             # 调用方法
             await HueyConsumerManager.stop_consumer_async(mock_task)

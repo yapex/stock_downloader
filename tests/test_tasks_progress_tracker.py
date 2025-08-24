@@ -12,7 +12,7 @@ from neo.tqmd import (
     ProgressTrackerFactory,
     TqdmProgressTracker,
 )
-from neo.container import AppContainer
+from neo.containers import AppContainer
 
 
 class TestTqdmProgressTracker:

@@ -10,8 +10,8 @@ import pandas as pd
 from neo.database.operator import DBOperator
 from neo.helpers.interfaces import IRateLimitManager
 from neo.task_bus.types import TaskType
-from .fetcher_builder import FetcherBuilder
-from .interfaces import IDownloader
+from neo.downloader.fetcher_builder import FetcherBuilder
+from neo.downloader.interfaces import IDownloader
 
 logger = logging.getLogger(__name__)
 
@@ -21,21 +21,6 @@ class SimpleDownloader(IDownloader):
 
     专注于网络IO和数据获取，不处理业务逻辑。
     """
-
-    @classmethod
-    def create_default(cls) -> "SimpleDownloader":
-        """创建使用默认配置的下载器
-
-        Returns:
-            使用默认配置的 SimpleDownloader 实例
-        """
-        from neo.helpers.rate_limit_manager import get_rate_limit_manager
-
-        return cls(
-            fetcher_builder=FetcherBuilder(),
-            rate_limit_manager=get_rate_limit_manager(),
-            db_operator=DBOperator.create_default(),
-        )
 
     def __init__(
         self,
@@ -51,6 +36,7 @@ class SimpleDownloader(IDownloader):
         """
         self.rate_limit_manager = rate_limit_manager
         self.fetcher_builder = fetcher_builder
+        self.db_operator = db_operator
 
     def download(self, task_type: str, symbol: str) -> Optional[pd.DataFrame]:
         """执行下载任务
@@ -91,13 +77,32 @@ class SimpleDownloader(IDownloader):
         """获取数据
 
         使用 FetcherBuilder 获取真实的 Tushare 数据。
+        1. 先从数据库中获取最新日期
+        2. 如果没有最新日期，就用默认的 19000101
+        3. 使用 FetcherBuilder 构建数据获取器
+        4. 执行数据获取
+
+        Args:
+            task_type: 任务类型
+            symbol: 股票代码
+
+        Returns:
+            Optional[pd.DataFrame]: 下载的数据，失败时返回 None
         """
         try:
-            # 获取任务类型常量以构建数据获取器
-            task_type_const = getattr(TaskType, task_type)
+            # 获取数据库中的最新日期，如果没有就用默认的
+            if self.db_operator is not None:
+                last_date = self.db_operator.get_max_date(task_type)
+
+                # 将 last_date 转成日期后加一天
+                last_date = (pd.Timestamp(last_date) + pd.Timedelta(days=1)).strftime(
+                    "%Y%m%d"
+                )
+            # 打印最新日期
+            logger.debug(f"数据库 {task_type} 中最新日期: {last_date}")
             # 使用 FetcherBuilder 构建数据获取器
             fetcher = self.fetcher_builder.build_by_task(
-                task_type=task_type_const, symbol=symbol
+                task_type=task_type, symbol=symbol, start_date=last_date
             )
 
             # 执行数据获取
@@ -119,26 +124,3 @@ class SimpleDownloader(IDownloader):
         目前没有需要清理的资源，但提供接口以供AppService调用。
         """
         logger.debug("SimpleDownloader cleanup completed")
-
-
-# 模块级别的单例实例
-_singleton_instance: Optional[IDownloader] = None
-
-
-def get_downloader(singleton: bool = True) -> IDownloader:
-    """获取下载器实例
-    
-    Args:
-        singleton: 是否使用单例模式，默认为 True
-        
-    Returns:
-        IDownloader: 下载器实例
-    """
-    global _singleton_instance
-    
-    if singleton:
-        if _singleton_instance is None:
-            _singleton_instance = SimpleDownloader.create_default()
-        return _singleton_instance
-    else:
-        return SimpleDownloader.create_default()

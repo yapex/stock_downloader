@@ -6,7 +6,7 @@ from neo.helpers.rate_limit_manager import RateLimitManager, get_rate_limit_mana
 from neo.helpers.interfaces import IRateLimitManager
 from neo.task_bus.types import TaskType, TaskTemplateRegistry
 from pyrate_limiter import Limiter
-from neo.container import AppContainer
+from neo.containers import AppContainer
 
 
 class TestRateLimitManager:

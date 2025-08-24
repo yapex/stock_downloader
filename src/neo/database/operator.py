@@ -185,15 +185,17 @@ class DBOperator(SchemaTableCreator, IDBOperator):
         data_tuples = [tuple(row) for row in df.values]
         conn.executemany(sql, data_tuples)
 
-    def get_max_date(self, table_key: str) -> Optional[str]:
+    def get_max_date(self, table_key: str) -> Optional[pd.Timestamp]:
         """根据 schema 中定义的 date_col，查询指定表中日期字段的最大值
 
         Args:
             table_key: 表在schema配置中的键名 (e.g., 'stock_basic')
 
         Returns:
-            日期字段的最大值，如果表为空或没有 date_col 则返回 None
+            日期字段的最大值，如果表为空返回 "19901218"
+            如果没有 date_col 则返回 "19901218"
         """
+        before_first_open_day = "19901218"  # 中国股市开盘前一天
         if not self._table_exists_in_schema(table_key):
             raise ValueError(f"表配置 '{table_key}' 不存在于 schema 中")
 
@@ -203,7 +205,7 @@ class DBOperator(SchemaTableCreator, IDBOperator):
         # 检查表是否定义了 date_col
         if "date_col" not in table_config or not table_config["date_col"]:
             logger.warning(f"表 '{table_name}' 未定义 date_col 字段，无法查询最大日期")
-            return None
+            return before_first_open_day
 
         date_col = table_config["date_col"]
         sql = f"SELECT MAX({date_col}) as max_date FROM {table_name}"
@@ -219,7 +221,7 @@ class DBOperator(SchemaTableCreator, IDBOperator):
                 return result[0]
             else:
                 logger.warning(f"表 '{table_name}' 为空或 {date_col} 字段无有效数据")
-                return None
+                return before_first_open_day
 
         except Exception as e:
             logger.error(f"查询表 '{table_name}' 最大日期失败: {e}")
