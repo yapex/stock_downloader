@@ -6,6 +6,7 @@
 import asyncio
 import logging
 
+import pandas as pd
 from ..configs import huey
 from ..task_bus.types import TaskType
 
@@ -13,6 +14,27 @@ from ..task_bus.types import TaskType
 from ..data_processor.simple_data_processor import AsyncSimpleDataProcessor
 
 logger = logging.getLogger(__name__)
+
+
+async def _process_data_async(task_type: str, data: pd.DataFrame, symbol: str) -> bool:
+    """异步处理数据的公共函数
+    
+    Args:
+        task_type: 任务类型字符串
+        data: 要处理的数据
+        symbol: 股票代码
+        
+    Returns:
+        bool: 处理是否成功
+    """
+    data_processor = AsyncSimpleDataProcessor.create_default()
+    try:
+        process_success = await data_processor.process(task_type, data)
+        logger.info(f"数据处理完成: {symbol}, 成功: {process_success}")
+        return process_success
+    finally:
+        # 确保数据处理器正确关闭，刷新所有缓冲区数据
+        await data_processor.shutdown()
 
 
 @huey.task()
@@ -45,21 +67,9 @@ def download_task(task_type: TaskType, symbol: str) -> bool:
             # 🔗 链式调用：下载完成后自动触发数据处理
             if success and result is not None:
                 logger.info(f"🔄 触发数据处理任务: {symbol}")
-
-                # 直接处理数据，避免重复下载
-                async def process_async():
-                    data_processor = AsyncSimpleDataProcessor.create_default()
-                    try:
-                        process_success = await data_processor.process(
-                            task_type, result
-                        )
-                        logger.info(f"数据处理完成: {symbol}, 成功: {process_success}")
-                        return process_success
-                    finally:
-                        # 确保数据处理器正确关闭，刷新所有缓冲区数据
-                        await data_processor.shutdown()
-
-                return asyncio.run(process_async())
+                # 触发独立的数据处理任务，利用 Huey 的任务调度
+                process_result = process_data_task(task_type, symbol)
+                return process_result
 
             return success
         finally:
@@ -102,19 +112,13 @@ def process_data_task(task_type: TaskType, symbol: str) -> bool:
                     else False
                 )
                 if success and result is not None:
-                    process_success = await data_processor.process(
-                        task_type.name, result
-                    )
-                    logger.info(f"数据处理完成: {symbol}, 成功: {process_success}")
-                    return process_success
+                    return await _process_data_async(task_type.name, result, symbol)
                 else:
                     logger.warning(f"数据处理失败，无有效数据: {symbol}")
                     return False
             finally:
                 # 确保清理速率限制器资源
                 downloader.cleanup()
-                # 确保数据处理器正确关闭，刷新所有缓冲区数据
-                await data_processor.shutdown()
 
         return asyncio.run(process_async())
 
