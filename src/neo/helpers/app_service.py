@@ -7,7 +7,8 @@ from typing import List, Optional
 
 from neo.tqmd.interfaces import ITasksProgressTracker
 from neo.task_bus.types import DownloadTaskConfig
-from neo.tasks.huey_tasks import download_task
+# 延迟导入以避免循环导入
+# from neo.tasks.huey_tasks import download_task
 from .huey_consumer_manager import HueyConsumerManager
 
 
@@ -258,6 +259,8 @@ class AppService:
 
         task_name = self._get_task_name(task)
         try:
+            # 延迟导入以避免循环导入
+            from neo.tasks.huey_tasks import download_task
             # 提交任务到 Huey 队列进行异步处理
             result = download_task(task.task_type, task.symbol)
 

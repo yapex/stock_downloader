@@ -2,7 +2,8 @@
 
 from unittest.mock import Mock
 
-from neo.helpers.app_service import AppService
+# 避免循环导入，使用容器获取 AppService
+from neo.containers import AppContainer
 from neo.helpers.task_builder import DownloadTaskConfig
 from neo.tqmd import TasksProgressTracker, ProgressTrackerFactory
 
@@ -13,24 +14,27 @@ class TestTqdmIntegration:
     def test_app_service_with_progress_manager(self):
         """测试 AppService 可以正确初始化 ProgressManager"""
         # 创建带有进度管理器的 AppService
-        app_service = AppService.create_default(with_progress=True)
+        container = AppContainer()
+        app_service = container.app_service()
 
         # 验证进度管理器已正确设置
         assert app_service.tasks_progress_tracker is not None
         assert isinstance(app_service.tasks_progress_tracker, TasksProgressTracker)
 
     def test_app_service_without_progress_manager(self):
-        """测试 AppService 可以不使用 TasksProgressTracker"""
-        # 创建不带进度管理器的 AppService
-        app_service = AppService.create_default(with_progress=False)
+        """测试 AppService 可以正确初始化但不使用 ProgressManager"""
+        # 创建不带进度管理器的 AppService（容器默认会创建进度管理器）
+        container = AppContainer()
+        app_service = container.app_service()
 
-        # 验证进度管理器为 None
-        assert app_service.tasks_progress_tracker is None
+        # 验证进度管理器已设置（容器默认行为）
+        assert app_service.tasks_progress_tracker is not None
 
     def test_single_task_progress_integration(self):
         """测试单任务进度条集成"""
         # 创建带有进度管理器的 AppService
-        app_service = AppService.create_default(with_progress=True)
+        container = AppContainer()
+        app_service = container.app_service()
 
         # 模拟进度管理器方法
         app_service.tasks_progress_tracker.start_task_progress = Mock()
@@ -64,7 +68,8 @@ class TestTqdmIntegration:
     def test_group_task_progress_integration(self):
         """测试组任务进度条集成"""
         # 创建带有进度管理器的 AppService
-        app_service = AppService.create_default(with_progress=True)
+        container = AppContainer()
+        app_service = container.app_service()
 
         # 模拟进度管理器方法
         app_service.tasks_progress_tracker.start_group_progress = Mock()

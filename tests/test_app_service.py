@@ -140,7 +140,7 @@ class TestAppService:
         assert len(groups["stock_basic"]) == 2
         assert len(groups["stock_daily"]) == 1
 
-    @patch('neo.helpers.app_service.download_task')
+    @patch('neo.tasks.huey_tasks.download_task')
     def test_execute_download_task_with_submission_success(self, mock_download_task):
         """测试成功提交下载任务"""
         app_service = AppService()
@@ -156,7 +156,7 @@ class TestAppService:
         assert result == mock_result
         mock_download_task.assert_called_once_with(TaskType.stock_basic, "000001")
 
-    @patch('neo.helpers.app_service.download_task')
+    @patch('neo.tasks.huey_tasks.download_task')
     def test_execute_download_task_with_submission_failure(self, mock_download_task):
         """测试提交下载任务失败"""
         app_service = AppService()

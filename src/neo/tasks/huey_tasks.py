@@ -19,16 +19,18 @@ logger = logging.getLogger(__name__)
 
 async def _process_data_async(task_type: str, data: pd.DataFrame, symbol: str) -> bool:
     """异步处理数据的公共函数
-    
+
     Args:
         task_type: 任务类型字符串
         data: 要处理的数据
         symbol: 股票代码
-        
+
     Returns:
         bool: 处理是否成功
     """
-    data_processor = AsyncSimpleDataProcessor.create_default()
+    from ..app import container
+
+    data_processor = container.data_processor()
     try:
         process_success = await data_processor.process(task_type, data)
         logger.info(f"数据处理完成: {symbol}, 成功: {process_success}")
@@ -39,10 +41,7 @@ async def _process_data_async(task_type: str, data: pd.DataFrame, symbol: str) -
 
 
 @huey.task()
-def download_task(
-    task_type: TaskType, 
-    symbol: str
-) -> bool:
+def download_task(task_type: TaskType, symbol: str) -> bool:
     """下载股票数据的 Huey 任务
 
     Args:
@@ -57,8 +56,9 @@ def download_task(
 
         # 从中心化的 app.py 获取共享的容器实例
         from ..app import container
+
         downloader = container.downloader()
-        
+
         # 使用下载器执行下载
         try:
             result = downloader.download(task_type, symbol)
@@ -71,8 +71,8 @@ def download_task(
             # 🔗 链式调用：下载完成后自动触发数据处理
             if success and result is not None:
                 logger.info(f"🔄 触发数据处理任务: {symbol}")
-                # 触发独立的数据处理任务，但不等待结果（避免序列化问题）
-                process_data_task(task_type, symbol)  # 只触发，不返回结果
+                # 触发独立的数据处理任务，传递下载的数据
+                process_data_task(task_type, symbol, result)  # 传递下载的数据
                 # 返回下载的成功状态，而不是数据处理结果
 
             return success
@@ -86,15 +86,13 @@ def download_task(
 
 
 @huey.task()
-def process_data_task(
-    task_type: TaskType, 
-    symbol: str
-) -> bool:
+def process_data_task(task_type: TaskType, symbol: str, data: pd.DataFrame) -> bool:
     """数据处理任务
 
     Args:
         task_type: 任务类型枚举
         symbol: 股票代码
+        data: 要处理的数据
 
     Returns:
         bool: 处理是否成功
@@ -104,28 +102,19 @@ def process_data_task(
 
         # 创建异步数据处理器并运行
         async def process_async():
-            data_processor = AsyncSimpleDataProcessor.create_default()
-
-            # 从中心化的 app.py 获取共享的容器实例
-            from ..app import container
-            downloader = container.downloader()
-            
             try:
-                result = downloader.download(task_type, symbol)
-
+                # 直接使用传入的数据，不再重复下载
                 success = (
-                    result is not None and not result.empty
-                    if result is not None
-                    else False
+                    data is not None and not data.empty if data is not None else False
                 )
-                if success and result is not None:
-                    return await _process_data_async(task_type, result, symbol)
+                if success and data is not None:
+                    return await _process_data_async(task_type, data, symbol)
                 else:
                     logger.warning(f"数据处理失败，无有效数据: {symbol}")
                     return False
-            finally:
-                # 确保清理速率限制器资源
-                downloader.cleanup()
+            except Exception as e:
+                logger.error(f"数据处理过程中发生错误: {symbol}, 错误: {e}")
+                return False
 
         return asyncio.run(process_async())
 

@@ -74,6 +74,7 @@ class SchemaLoader(ISchemaLoader):
             self._schemas = self._load_schemas()
         return self._schemas
 
+    @lru_cache(maxsize=7)
     def load_schema(self, table_name: str) -> TableSchema:
         """加载指定表的Schema配置
 
