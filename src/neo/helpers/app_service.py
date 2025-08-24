@@ -18,6 +18,9 @@ from neo.tasks.huey_tasks import download_task
 
 class DataProcessorRunner:
     """数据处理器运行工具类"""
+    
+    # 类变量：保存Consumer实例
+    _consumer_instance: Optional["Consumer"] = None
 
     @staticmethod
     def setup_signal_handlers():
@@ -48,6 +51,68 @@ class DataProcessorRunner:
         # 设置 Huey 日志级别
         huey_logger = logging.getLogger("huey")
         huey_logger.setLevel(logging.ERROR)
+
+    @classmethod
+    def start_consumer(cls) -> "Consumer":
+        """启动Consumer并保存到类变量中
+        
+        Returns:
+            Consumer: 启动的Consumer实例
+        """
+        from huey.consumer import Consumer
+        from neo.configs import huey
+        
+        if cls._consumer_instance is not None:
+            return cls._consumer_instance
+            
+        # 从配置文件读取工作线程数
+        config = get_config()
+        max_workers = config.huey.max_workers
+        
+        # 创建Consumer实例
+        cls._consumer_instance = Consumer(
+            huey,
+            workers=max_workers,
+            worker_type="thread",
+        )
+        
+        return cls._consumer_instance
+    
+    @classmethod
+    def stop_consumer(cls) -> bool:
+        """停止Consumer实例
+        
+        Returns:
+            bool: 是否成功停止
+        """
+        if cls._consumer_instance is not None:
+            try:
+                cls._consumer_instance.stop()
+                cls._consumer_instance = None
+                return True
+            except Exception:
+                return False
+        return True
+    
+    @classmethod
+    def get_consumer_instance(cls) -> Optional["Consumer"]:
+        """获取当前Consumer实例
+        
+        Returns:
+            Optional[Consumer]: 当前Consumer实例，如果没有则返回None
+        """
+        return cls._consumer_instance
+    
+    @classmethod
+    def stop_consumer_if_running(cls) -> bool:
+        """如果Consumer正在运行则优雅停止
+        
+        Returns:
+            bool: 是否成功停止或Consumer未运行
+        """
+        if cls._consumer_instance is not None:
+            return cls.stop_consumer()
+        return True
 
     @staticmethod
     def run_consumer():
@@ -212,7 +277,7 @@ class AppService:
             # 判断是否为组任务（多个任务）
             is_group_task = len(tasks) > 1
 
-            if self.progress_manager and is_group_task:
+            if self.progress_manager:
                 # 重置进度条位置计数器
                 from neo.tqmd.progress_manager import TqdmProgressTracker
 
@@ -221,7 +286,7 @@ class AppService:
                 # 按任务类型分组任务
                 task_groups = self._group_tasks_by_type(tasks)
 
-                # 启动母进度条
+                # 启动母进度条（单任务和多任务都使用）
                 self.progress_manager.start_group_progress(len(tasks), "处理下载任务")
 
                 # 为每个任务类型启动子进度条
@@ -242,15 +307,6 @@ class AppService:
 
                 # 初始化完成计数器
                 completed_by_type = {task_type: 0 for task_type in task_groups.keys()}
-
-            elif self.progress_manager:
-                # 单任务：直接启动任务进度条
-                self.progress_manager.start_task_progress(1, "执行下载任务")
-
-                result = self._execute_download_task_with_submission(tasks[0])
-                task_results = [result] if result else []
-
-                self.progress_manager.update_task_progress(1)
             else:
                 print("🚀 开始执行下载任务...")
                 task_results = []
@@ -267,8 +323,8 @@ class AppService:
             from huey.contrib.asyncio import aget_result
 
             try:
-                if self.progress_manager and is_group_task and task_results:
-                    # 逐个等待任务完成并更新进度条
+                if self.progress_manager and task_results:
+                    # 逐个等待任务完成并更新进度条（单任务和多任务）
                     for i, (result, task) in enumerate(
                         zip(task_results, task_info_list)
                     ):
@@ -291,7 +347,7 @@ class AppService:
                             1, f"已完成 {i + 1}/{len(task_results)} 个任务"
                         )
                 else:
-                    # 没有进度管理器或单任务，直接等待所有任务完成
+                    # 没有进度管理器，直接等待所有任务完成
                     await asyncio.gather(
                         *[aget_result(result) for result in task_results]
                     )
@@ -312,22 +368,21 @@ class AppService:
     async def _start_consumer(self) -> None:
         """在主线程中启动 Huey Consumer"""
         import asyncio
-        from huey.consumer import Consumer
-        from neo.configs import huey
-
-        # 导入任务以确保它们被注册到 huey 实例
 
         def run_consumer_sync():
             """同步运行 consumer"""
-            # 启动多线程 Consumer，支持真正的并发执行
-            consumer = Consumer(huey, workers=4, worker_type="thread")
+            # 使用DataProcessorRunner启动Consumer
+            consumer = DataProcessorRunner.start_consumer()
             consumer.run()
 
         # 在 executor 中运行 consumer，避免阻塞主线程
         loop = asyncio.get_event_loop()
         self._consumer_task = loop.run_in_executor(None, run_consumer_sync)
 
-        print("🚀 Huey Consumer 已启动 (4个工作线程)")
+        # 从配置文件读取工作线程数
+        config = get_config()
+        max_workers = config.huey.max_workers
+        print(f"🚀 Huey Consumer 已启动 ({max_workers}个工作线程)")
         # 给 consumer 一点时间启动
         await asyncio.sleep(0.5)
 
@@ -341,6 +396,9 @@ class AppService:
                 await asyncio.sleep(0.1)  # 给一点时间让任务清理
             except asyncio.CancelledError:
                 pass
+            
+            # 使用DataProcessorRunner停止Consumer
+            DataProcessorRunner.stop_consumer_if_running()
             print("🛑 Huey Consumer 已停止")
 
     def _group_tasks_by_type(
