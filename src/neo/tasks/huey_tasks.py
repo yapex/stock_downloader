@@ -67,9 +67,9 @@ def download_task(task_type: TaskType, symbol: str) -> bool:
             # 🔗 链式调用：下载完成后自动触发数据处理
             if success and result is not None:
                 logger.info(f"🔄 触发数据处理任务: {symbol}")
-                # 触发独立的数据处理任务，利用 Huey 的任务调度
-                process_result = process_data_task(task_type, symbol)
-                return process_result
+                # 触发独立的数据处理任务，但不等待结果（避免序列化问题）
+                process_data_task(task_type, symbol)  # 只触发，不返回结果
+                # 返回下载的成功状态，而不是数据处理结果
 
             return success
         finally:
