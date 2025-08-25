@@ -101,35 +101,7 @@ class HueyConsumerManager:
 
     @classmethod
     def run_consumer_standalone(cls):
-        """独立运行 Huey 消费者
-
-        在主线程中启动多线程 Consumer，适用于独立的消费者进程。
-        """
-
-        from huey.consumer import Consumer
-        from neo.configs import huey
-
-        # 重要：导入任务模块，让 Consumer 能够识别和执行任务
-        import neo.tasks.huey_tasks  # noqa: F401
-
-        try:
-            # 从配置文件读取工作线程数
-            config = get_config()
-            max_workers = config.huey.max_workers
-
-            # 创建 Consumer 实例，配置多线程
-            consumer = Consumer(
-                huey,
-                workers=max_workers,  # 从配置文件读取工作线程数
-                worker_type="thread",  # 使用线程而不是进程
-            )
-            print("数据处理器已启动（多线程模式），按 Ctrl+C 停止...")
-            consumer.run()
-        except KeyboardInterrupt:
-            print("\n数据处理器已停止")
-        except Exception as e:
-            print(f"Consumer 运行异常: {e}")
-            sys.exit(1)
+        pass
 
     @classmethod
     async def wait_for_all_tasks_completion(cls, max_wait_time: int = 30) -> None:

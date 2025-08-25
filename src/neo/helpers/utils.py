@@ -65,25 +65,8 @@ def is_interval_greater_than_7_days(start_date: str, end_date: str) -> bool:
 # 全局标志，防止重复配置日志
 
 
-def setup_logging(log_type: str = "download", log_level: str = "INFO"):
-    """配置日志记录
-
-    Args:
-        log_type: 日志类型，支持 'download' 或 'data_process'
-        log_level: 日志级别，支持 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
-    """
-    import os
-    from logging.handlers import TimedRotatingFileHandler
-
-    # 确保logs目录存在
-    log_dir = "logs"
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-
-    # 根据日志类型确定文件名
-    log_filename = f"{log_type}.log"
-
-    # 将字符串日志级别转换为logging模块的级别常量
+def _get_log_level(log_level: str) -> int:
+    """将字符串日志级别转换为数值级别"""
     level_mapping = {
         "DEBUG": logging.DEBUG,
         "INFO": logging.INFO,
@@ -91,77 +74,82 @@ def setup_logging(log_type: str = "download", log_level: str = "INFO"):
         "ERROR": logging.ERROR,
         "CRITICAL": logging.CRITICAL,
     }
+    return level_mapping.get(log_level.upper(), logging.INFO)
 
-    # 获取日志级别，如果无效则默认为INFO
-    numeric_level = level_mapping.get(log_level.upper(), logging.INFO)
 
+def _setup_file_handler(log_type: str, numeric_level: int) -> None:
+    """配置文件日志处理器"""
+    import os
+    from logging.handlers import TimedRotatingFileHandler
+    
+    # 确保logs目录存在
+    log_dir = "logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    log_filename = f"{log_type}.log"
+    
     # 配置根日志记录器
     root_logger = logging.getLogger()
     root_logger.setLevel(numeric_level)
-
-    # 清除根日志记录器现有的处理器
+    
+    # 清除现有处理器
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
-
-    # 创建文件处理器，每天轮换
+    
+    # 创建文件处理器
     file_handler = TimedRotatingFileHandler(
         filename=os.path.join(log_dir, log_filename),
         when="midnight",
         interval=1,
-        backupCount=1,  # 保留1天的日志
+        backupCount=1,
         encoding="utf-8",
     )
-
-    # 设置日志格式
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    
+    # 设置格式并添加处理器
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     file_handler.setFormatter(formatter)
-
-    # 添加处理器到根日志记录器
     root_logger.addHandler(file_handler)
-
-    # 在日志文件中添加会话分隔符，方便定位新的日志内容
-    session_separator = f"\n{'=' * 80}\n"
-
-    # 直接写入分隔符到文件，避免通过日志系统重复处理
-    log_file_path = os.path.join("logs", log_filename)
+    
+    # 添加会话分隔符
+    log_file_path = os.path.join(log_dir, log_filename)
     try:
         with open(log_file_path, "a", encoding="utf-8") as f:
-            f.write(f"\n{session_separator}\n")
+            f.write(f"\n{'=' * 80}\n")
     except Exception:
-        pass  # 如果写入失败，不影响程序运行
+        pass
 
-    # 屏蔽第三方模块的日志输出到控制台，只保留文件日志
-    # 这样终端只会显示tqdm进度条信息
-    logging.getLogger("tushare").setLevel(logging.CRITICAL)
 
-    # 屏蔽技术类日志的控制台输出，但保留文件日志
-    logging.getLogger("sqlite3").setLevel(logging.CRITICAL)
-    logging.getLogger("urllib3").setLevel(logging.CRITICAL)
-    logging.getLogger("requests").setLevel(logging.CRITICAL)
-
-    # 配置 Huey 日志输出到文件，但不输出到控制台
+def _configure_third_party_loggers(numeric_level: int) -> None:
+    """配置第三方库的日志级别"""
+    # 屏蔽第三方库的噪音日志
+    third_party_loggers = ["tushare", "sqlite3", "urllib3", "requests"]
+    for logger_name in third_party_loggers:
+        logging.getLogger(logger_name).setLevel(logging.CRITICAL)
+    
+    # 配置 Huey 日志
     huey_logger = logging.getLogger("huey")
-    # 清除控制台处理器，但保持文件日志
-    console_handlers = [
-        h
-        for h in huey_logger.handlers
-        if isinstance(h, logging.StreamHandler)
-        and not isinstance(h, TimedRotatingFileHandler)
-    ]
-    for handler in console_handlers:
-        huey_logger.removeHandler(handler)
-
-    # 设置 Huey 日志级别为 DEBUG 以获取详细信息
     huey_logger.setLevel(numeric_level)
-    huey_logger.propagate = True  # 允许传播到根日志记录器
-
-    # 过滤掉 Huey 调度器和工作器的 DEBUG 日志，这些信息太多且不重要
-    logging.getLogger("huey.consumer").setLevel(logging.INFO)
-    logging.getLogger("huey.consumer.Scheduler").setLevel(logging.INFO)
-    logging.getLogger("huey.consumer.Worker").setLevel(logging.INFO)
-
-    # 屏蔽 pandas 的 FutureWarning 和其他警告
+    huey_logger.propagate = True
+    
+    # 过滤 Huey 内部调试信息
+    huey_internal_loggers = ["huey.consumer", "huey.consumer.Scheduler", "huey.consumer.Worker"]
+    for logger_name in huey_internal_loggers:
+        logging.getLogger(logger_name).setLevel(logging.INFO)
+    
+    # 屏蔽警告
     warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
     warnings.filterwarnings("ignore", category=FutureWarning, module="tushare")
+
+
+def setup_logging(log_type: str = "download", log_level: str = "INFO"):
+    """配置日志记录
+    
+    Args:
+        log_type: 日志类型，支持 'download' 或 'data_process'（已统一到 stock_download.log）
+        log_level: 日志级别，支持 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
+    """
+    numeric_level = _get_log_level(log_level)
+    # 统一使用 stock_download.log 文件
+    _setup_file_handler("stock_download", numeric_level)
+    _configure_third_party_loggers(numeric_level)

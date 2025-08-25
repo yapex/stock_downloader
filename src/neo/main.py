@@ -20,9 +20,8 @@ def dl(
     stock_codes: Optional[List[str]] = typer.Option(
         None, "--symbols", "-s", help="股票代码列表"
     ),
-    task_type: Optional[str] = typer.Option(None, "--type", "-t", help="任务类型"),
     log_level: str = typer.Option(
-        "info",
+        "debug",
         "--log-level",
         "-l",
         help="日志级别 (debug, info, warning, error, critical)",
@@ -51,13 +50,7 @@ def dl(
     else:
         symbols = group_handler.get_symbols_for_group(group)
 
-    if task_type:
-        # 将字符串转换为TaskType枚举（转换为大写）
-        from neo.task_bus.types import TaskType
-
-        task_types = [getattr(TaskType, task_type)]
-    else:
-        task_types = group_handler.get_task_types_for_group(group)
+    task_types = group_handler.get_task_types_for_group(group)
 
     # 构建任务列表
     tasks = task_builder.build_tasks(symbols=symbols, task_types=task_types)
@@ -69,7 +62,7 @@ def dl(
 @app.command()
 def dp(
     log_level: str = typer.Option(
-        "info",
+        "debug",
         "--log-level",
         "-l",
         help="日志级别 (debug, info, warning, error, critical)",
