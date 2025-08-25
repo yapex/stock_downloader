@@ -11,13 +11,10 @@ import pandas as pd
 from ..configs import huey
 from ..task_bus.types import TaskType
 
-# 延迟导入以避免循环导入
-from ..data_processor.simple_data_processor import AsyncSimpleDataProcessor
-
 logger = logging.getLogger(__name__)
 
 
-async def _process_data_async(task_type: str, data: pd.DataFrame, symbol: str) -> bool:
+async def _process_data_async(task_type: str, data: pd.DataFrame) -> bool:
     """异步处理数据的公共函数
 
     Args:
@@ -30,20 +27,23 @@ async def _process_data_async(task_type: str, data: pd.DataFrame, symbol: str) -
     """
     from ..app import container
 
+    logger.debug(f"[HUEY] 获取数据处理器实例")
     data_processor = container.data_processor()
     try:
-        process_success = await data_processor.process(task_type, data)
         logger.debug(
-            f"数据处理完成: {symbol}_{task_type}, 数量：{len(data)}, 成功: {process_success}"
+            f"[HUEY] 调用数据处理器处理数据: {task_type}, 数据行数: {len(data)}"
         )
+        process_success = await data_processor.process(task_type, data)
+        logger.debug(f"[HUEY] 数据处理器返回结果: {process_success}")
         return process_success
     finally:
         # 确保数据处理器正确关闭，刷新所有缓冲区数据
+        logger.debug(f"[HUEY] 关闭数据处理器，刷新缓冲区")
         await data_processor.shutdown()
 
 
 @huey.task()
-def download_task(task_type: TaskType, symbol: str) -> bool:
+def download_task(task_type: TaskType, symbol: str) -> dict:
     """下载股票数据的 Huey 任务
 
     Args:
@@ -51,75 +51,94 @@ def download_task(task_type: TaskType, symbol: str) -> bool:
         symbol: 股票代码
 
     Returns:
-        bool: 下载是否成功
+        dict: 包含任务参数和下载数据的字典，键名与 process_data_task 参数匹配
     """
     try:
-        logger.debug(f"开始执行下载任务: {symbol}")
+        logger.debug(f"🚀 [HUEY] 开始执行下载任务: {symbol} ({task_type})")
 
         # 从中心化的 app.py 获取共享的容器实例
         from ..app import container
 
         downloader = container.downloader()
 
-        # 使用下载器执行下载
-        try:
-            result = downloader.download(task_type, symbol)
+        result = downloader.download(task_type, symbol)
 
-            success = (
-                result is not None and not result.empty if result is not None else False
-            )
-            logger.debug(f"下载任务完成: {symbol}, 成功: {success}")
-
-            # 🔗 链式调用：下载完成后自动触发数据处理
-            if success and result is not None:
-                logger.debug(f"🔄 触发数据处理任务: {symbol}")
-                # 触发独立的数据处理任务，并等待其完成
-                process_result = process_data_task(task_type, symbol, result)
-                return process_result.get(blocking=True)
-
-            return success
-        finally:
-            # 确保清理速率限制器资源
-            downloader.cleanup()
-
+        if result is not None and not result.empty:
+            # 返回与 process_data_task 参数名匹配的字典
+            return {
+                "task_type": task_type,  # task_type 已经是字符串
+                "symbol": symbol,
+                "data_frame": result.to_dict(
+                    "records"
+                ),  # 将 DataFrame 转换为可序列化的字典列表
+            }
+        else:
+            logger.warning(f"⚠️ [HUEY] 下载任务完成: {symbol}, 成功: False, 返回空数据")
+            return {
+                "task_type": task_type,
+                "symbol": symbol,
+                "data_frame": [],  # 空数据
+            }
     except Exception as e:
-        logger.error(f"下载任务执行失败: {symbol}, 错误: {e}")
-        return False
+        logger.error(f"❌ [HUEY] 下载任务执行失败: {symbol}, 错误: {e}")
+        return {
+            "task_type": task_type,
+            "symbol": symbol,
+            "data_frame": [],
+            "error": str(e),
+        }
 
 
 @huey.task()
-def process_data_task(task_type: TaskType, symbol: str, data: pd.DataFrame) -> bool:
+def process_data_task(task_type: str, symbol: str, data_frame: list) -> bool:
     """数据处理任务
 
+    参数名与 download_task 返回的字典键名完全匹配
+
     Args:
-        task_type: 任务类型枚举
-        symbol: 股票代码
-        data: 要处理的数据
+        task_type: 任务类型字符串（来自 download_task 返回字典的 'task_type' 键）
+        symbol: 股票代码（来自 download_task 返回字典的 'symbol' 键）
+        data_frame: DataFrame 数据（来自 download_task 返回字典的 'data_frame' 键）
 
     Returns:
         bool: 处理是否成功
     """
     try:
-        logger.debug(f"开始处理数据: {symbol}")
+        logger.debug(
+            f"📊 [HUEY] 开始处理数据: {symbol} ({task_type}), 数据行数: {len(data_frame) if data_frame else 0}"
+        )
 
         # 创建异步数据处理器并运行
         async def process_async():
             try:
-                # 直接使用传入的数据，不再重复下载
-                success = (
-                    data is not None and not data.empty if data is not None else False
-                )
-                if success and data is not None:
-                    return await _process_data_async(task_type, data, symbol)
+                # 将字典列表转换为 DataFrame
+                if data_frame and isinstance(data_frame, list) and len(data_frame) > 0:
+                    logger.debug(
+                        f"[HUEY] 转换数据格式: {symbol}, 字典列表 -> DataFrame"
+                    )
+                    df_data = pd.DataFrame(data_frame)
+                    logger.debug(
+                        f"[HUEY] 开始异步保存数据: {symbol}, 数据行数: {len(df_data)}"
+                    )
+                    process_success = await _process_data_async(task_type, df_data)
+                    logger.info(
+                        f"✅ [HUEY] 数据保存完成: {symbol}_{task_type}, 数量：{len(df_data)}, 成功: {process_success}"
+                    )
+                    return process_success
                 else:
-                    logger.debug(f"数据处理失败，无有效数据: {symbol}")
+                    logger.warning(
+                        f"⚠️ [HUEY] 数据保存失败，无有效数据: {symbol}, 数据为空或None"
+                    )
                     return False
             except Exception as e:
-                logger.error(f"数据处理过程中发生错误: {symbol}, 错误: {e}")
+                logger.error(f"❌ [HUEY] 数据处理过程中发生错误: {symbol}, 错误: {e}")
                 return False
 
-        return asyncio.run(process_async())
+        logger.debug(f"[HUEY] 启动异步处理: {symbol}")
+        result = asyncio.run(process_async())
+        logger.info(f"🏁 [HUEY] 最终结果: {symbol}_{task_type}, 成功: {result}")
+        return result
 
     except Exception as e:
-        logger.error(f"数据处理任务执行失败: {symbol}, 错误: {e}")
+        logger.error(f"❌ [HUEY] 数据处理任务执行失败: {symbol}, 错误: {e}")
         return False

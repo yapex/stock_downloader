@@ -165,17 +165,10 @@ class AsyncSimpleDataProcessor:
                 # 单条处理模式：直接保存
                 success = self._save_data(data, task_type)
 
-            if success:
-                if not self.enable_batch:
-                    logger.info(f"✅ 成功保存 {len(data)} 行数据")
-            else:
-                logger.debug(f"异步数据处理失败: {task_type}")
-
             return success
 
         except Exception as e:
-            print(f"💥 异步处理异常: {task_type} - {str(e)}")
-            logger.error(f"异步处理数据时出错: {e}")
+            logger.error(f"💥 异步处理异常: {task_type} - {str(e)}")
             return False
 
     async def _save_data_callback(self, data_type: str, data: pd.DataFrame) -> bool:

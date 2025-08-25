@@ -49,14 +49,4 @@ class TestHueyIntegration:
         assert callable(download_task)
         assert callable(process_data_task)
 
-    def test_memory_huey_features(self):
-        """测试 MemoryHuey 特性"""
-        # MemoryHuey 应该支持内存存储
-        assert hasattr(huey, "storage")
-        assert hasattr(huey, "put")
-        assert hasattr(huey, "get")
-
-        # 验证 Huey 实例配置
-        assert huey.name == "stock_downloader"
-        assert not huey.immediate
-        assert not huey.utc
+    

@@ -136,19 +136,31 @@ def setup_logging(log_type: str = "download", log_level: str = "INFO"):
     # 这样终端只会显示tqdm进度条信息
     logging.getLogger("tushare").setLevel(logging.CRITICAL)
 
-    # 屏蔽技术类日志的控制台输出
-    logging.getLogger("huey").setLevel(logging.CRITICAL)
-    logging.getLogger("huey.consumer").setLevel(logging.CRITICAL)
-    logging.getLogger("huey.api").setLevel(logging.CRITICAL)
-    logging.getLogger("huey.scheduler").setLevel(logging.CRITICAL)
+    # 屏蔽技术类日志的控制台输出，但保留文件日志
     logging.getLogger("sqlite3").setLevel(logging.CRITICAL)
     logging.getLogger("urllib3").setLevel(logging.CRITICAL)
     logging.getLogger("requests").setLevel(logging.CRITICAL)
 
-    # 完全禁用huey的所有日志输出到控制台
+    # 配置 Huey 日志输出到文件，但不输出到控制台
     huey_logger = logging.getLogger("huey")
-    huey_logger.handlers.clear()
-    huey_logger.propagate = False
+    # 清除控制台处理器，但保持文件日志
+    console_handlers = [
+        h
+        for h in huey_logger.handlers
+        if isinstance(h, logging.StreamHandler)
+        and not isinstance(h, TimedRotatingFileHandler)
+    ]
+    for handler in console_handlers:
+        huey_logger.removeHandler(handler)
+
+    # 设置 Huey 日志级别为 DEBUG 以获取详细信息
+    huey_logger.setLevel(numeric_level)
+    huey_logger.propagate = True  # 允许传播到根日志记录器
+
+    # 过滤掉 Huey 调度器和工作器的 DEBUG 日志，这些信息太多且不重要
+    logging.getLogger("huey.consumer").setLevel(logging.INFO)
+    logging.getLogger("huey.consumer.Scheduler").setLevel(logging.INFO)
+    logging.getLogger("huey.consumer.Worker").setLevel(logging.INFO)
 
     # 屏蔽 pandas 的 FutureWarning 和其他警告
     warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")

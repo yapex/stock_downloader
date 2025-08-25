@@ -16,10 +16,10 @@ app = typer.Typer(help="Neo 股票数据处理系统命令行工具")
 
 @app.command()
 def dl(
+    group: Optional[str] = typer.Option(None, "--group", "-g", help="任务组名称"),
     stock_codes: Optional[List[str]] = typer.Option(
         None, "--symbols", "-s", help="股票代码列表"
     ),
-    group: Optional[str] = typer.Option(None, "--group", "-g", help="任务组名称"),
     task_type: Optional[str] = typer.Option(None, "--type", "-t", help="任务类型"),
     log_level: str = typer.Option(
         "info",
@@ -64,6 +64,28 @@ def dl(
 
     # 运行下载器
     app_service.run_downloader(tasks, dry_run=dry_run)
+
+
+@app.command()
+def dp(
+    log_level: str = typer.Option(
+        "info",
+        "--log-level",
+        "-l",
+        help="日志级别 (debug, info, warning, error, critical)",
+    ),
+):
+    """启动数据处理器消费者"""
+    from neo.helpers.utils import setup_logging
+
+    # 初始化消费者日志配置
+    setup_logging("consumer", log_level)
+
+    # 使用共享的容器实例
+    app_service = container.app_service()
+
+    # 启动消费者
+    app_service.run_data_processor()
 
 
 def main(app_service: AppService = Provide["AppContainer.app_service"]):

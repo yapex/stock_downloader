@@ -1,11 +1,14 @@
 """Huey 配置模块
 
-提供全局的 MemoryHuey 实例配置，支持多线程 Consumer。
+提供全局的 Huey 实例配置，支持多线程 Consumer 和 Sqlite 后端。
 """
 
-from huey import MemoryHuey
+from huey import SqliteHuey
+from . import get_config
 
-# 创建 MemoryHuey 实例用于多线程任务处理
-# immediate=False 表示任务异步执行
-# utc=False 使用本地时区
-huey = MemoryHuey("stock_downloader", immediate=False, utc=False)
+# 获取配置
+config = get_config()
+db_path = config.huey.sqlite_path
+
+# 创建 SqliteHuey 实例
+huey = SqliteHuey("stock_downloader", filename=db_path, utc=False)

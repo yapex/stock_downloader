@@ -22,7 +22,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "⚙️ 步骤 3: 运行系统任务..."
-uv run neo -g sys -l debug
+uv run neo dl -g sys -l debug
 if [ $? -ne 0 ]; then
     echo "❌ 运行系统任务失败"
     exit 1

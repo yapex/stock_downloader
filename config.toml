@@ -1,5 +1,6 @@
 [huey]
-max_workers = 4
+max_workers = 6
+sqlite_path = "data/tasks.db"
 
 [database]
 type = "duckdb"

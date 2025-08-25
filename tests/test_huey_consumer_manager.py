@@ -175,40 +175,23 @@ class TestHueyConsumerManager:
 
     @patch('neo.helpers.huey_consumer_manager.get_config')
     @patch('huey.consumer.Consumer')
-    @patch('asyncio.new_event_loop')
-    @patch('asyncio.set_event_loop')
-    @patch('concurrent.futures.ThreadPoolExecutor')
-    def test_run_consumer_standalone_success(self, mock_executor, mock_set_loop, 
-                                           mock_new_loop, mock_consumer_class, mock_get_config):
+    def test_run_consumer_standalone_success(self, mock_consumer_class, mock_get_config):
         """测试独立运行 Consumer 成功"""
         # 模拟配置
         mock_config = Mock()
         mock_config.huey.max_workers = 4
         mock_get_config.return_value = mock_config
         
-        # 模拟事件循环
-        mock_loop = Mock()
-        mock_new_loop.return_value = mock_loop
-        
         # 模拟 Consumer
         mock_consumer = Mock()
         mock_consumer_class.return_value = mock_consumer
         
-        # 模拟 ThreadPoolExecutor
-        mock_executor_instance = Mock()
-        mock_future = Mock()
-        mock_executor_instance.submit.return_value = mock_future
-        mock_executor.return_value.__enter__.return_value = mock_executor_instance
-        
         # 调用方法
         HueyConsumerManager.run_consumer_standalone()
         
-        # 验证调用
-        mock_new_loop.assert_called_once()
-        mock_set_loop.assert_called_once_with(mock_loop)
-        mock_executor_instance.submit.assert_called_once()
-        mock_future.result.assert_called_once()
-        mock_loop.close.assert_called_once()
+        # 验证 Consumer 被创建和运行
+        mock_consumer_class.assert_called_once()
+        mock_consumer.run.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_wait_for_all_tasks_completion_no_tasks(self):
