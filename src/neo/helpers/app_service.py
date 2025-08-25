@@ -194,9 +194,8 @@ class AppService:
             else:
                 print("✅ 所有任务执行完成!")
         finally:
-            # 等待所有任务（包括数据处理任务）完成后再停止 Consumer
-            await HueyConsumerManager.wait_for_all_tasks_completion()
-            await HueyConsumerManager.stop_consumer_async(consumer_task)
+            # 任务提交后，主程序可以退出，Consumer 将在后台继续处理
+            pass
 
 
     def _group_tasks_by_type(

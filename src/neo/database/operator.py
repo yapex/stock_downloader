@@ -184,6 +184,7 @@ class DBOperator(SchemaTableCreator, IDBOperator):
         """
         data_tuples = [tuple(row) for row in df.values]
         conn.executemany(sql, data_tuples)
+        conn.commit()
 
     def get_max_date(self, table_key: str) -> Optional[pd.Timestamp]:
         """根据 schema 中定义的 date_col，查询指定表中日期字段的最大值

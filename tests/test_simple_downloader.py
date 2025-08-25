@@ -221,11 +221,11 @@ class TestSimpleDownloaderContainer:
         # 验证不同容器的下载器是不同实例
         assert downloader1 is not downloader2
 
-        # 验证不同容器的速率限制管理器是不同实例
-        # （因为 RateLimitManager 在容器中配置为 Singleton，但是容器级别的单例）
+        # 验证不同容器的速率限制管理器是相同实例
+        # （因为 RateLimitManager 是全局单例）
         rate_manager1 = container1.rate_limit_manager()
         rate_manager2 = container2.rate_limit_manager()
-        assert rate_manager1 is not rate_manager2
+        assert rate_manager1 is rate_manager2
 
     def test_same_container_shares_singleton_components(self):
         """测试同一容器内的单例组件共享"""

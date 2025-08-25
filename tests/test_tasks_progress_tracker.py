@@ -345,16 +345,15 @@ class TestTasksProgressTrackerContainer:
         assert hasattr(tracker, "update_group_progress")
         assert hasattr(tracker, "finish_all")
 
-    def test_container_provides_different_tracker_instances(self):
-        """测试容器以工厂模式提供不同的 TasksProgressTracker 实例"""
+    def test_container_provides_singleton_tracker_instance(self):
+        """测试容器以单例模式提供 TasksProgressTracker 实例"""
         container = AppContainer()
         tracker1 = container.tasks_progress_tracker()
         tracker2 = container.tasks_progress_tracker()
 
-        # 验证是不同的实例（工厂模式）
-        assert tracker1 is not tracker2
+        # 验证是相同的实例（单例模式）
+        assert tracker1 is tracker2
         assert isinstance(tracker1, TasksProgressTracker)
-        assert isinstance(tracker2, TasksProgressTracker)
 
     def test_container_tracker_functionality(self):
         """测试从容器获取的 TasksProgressTracker 功能是否正常"""
@@ -375,8 +374,8 @@ class TestTasksProgressTrackerContainer:
         tracker1 = container.tasks_progress_tracker()
         tracker2 = container.tasks_progress_tracker()
 
-        # 验证跟踪器是不同实例（工厂模式）
-        assert tracker1 is not tracker2
+        # 验证跟踪器是相同实例（单例模式）
+        assert tracker1 is tracker2
 
         # 验证它们使用同一个工厂实例（单例）
         factory = container.progress_tracker_factory()

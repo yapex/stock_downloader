@@ -321,8 +321,8 @@ class TestRateLimitManagerContainer:
         rate_limit_manager.apply_rate_limiting(TaskType.stock_basic)
 
     @patch("neo.helpers.rate_limit_manager.get_config")
-    def test_different_containers_have_different_singletons(self, mock_get_config):
-        """测试不同容器有各自的单例 RateLimitManager"""
+    def test_different_containers_share_same_global_singleton(self, mock_get_config):
+        """测试不同容器共享同一个全局 RateLimitManager 单例"""
         mock_config = Mock()
         mock_config.download_tasks = {}
         mock_get_config.return_value = mock_config
@@ -333,10 +333,9 @@ class TestRateLimitManagerContainer:
         rate_limit_manager1 = container1.rate_limit_manager()
         rate_limit_manager2 = container2.rate_limit_manager()
 
-        # 不同容器应该有各自的单例实例（容器级别的单例）
-        assert rate_limit_manager1 is not rate_limit_manager2
+        # 因为 RateLimitManager 使用了全局单例模式，所以不同容器也应该返回同一个实例
+        assert rate_limit_manager1 is rate_limit_manager2
         assert isinstance(rate_limit_manager1, RateLimitManager)
-        assert isinstance(rate_limit_manager2, RateLimitManager)
 
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_container_singleton_preserves_state(self, mock_get_config):

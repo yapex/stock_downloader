@@ -73,9 +73,9 @@ def download_task(task_type: TaskType, symbol: str) -> bool:
             # 🔗 链式调用：下载完成后自动触发数据处理
             if success and result is not None:
                 logger.debug(f"🔄 触发数据处理任务: {symbol}")
-                # 触发独立的数据处理任务，传递下载的数据
-                process_data_task(task_type, symbol, result)  # 传递下载的数据
-                # 返回下载的成功状态，而不是数据处理结果
+                # 触发独立的数据处理任务，并等待其完成
+                process_result = process_data_task(task_type, symbol, result)
+                return process_result.get(blocking=True)
 
             return success
         finally:

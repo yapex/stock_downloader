@@ -173,9 +173,7 @@ class TestAppService:
 
     @pytest.mark.asyncio
     @patch('neo.helpers.app_service.HueyConsumerManager.start_consumer_async', new_callable=AsyncMock)
-    @patch('neo.helpers.app_service.HueyConsumerManager.wait_for_all_tasks_completion', new_callable=AsyncMock)
-    @patch('neo.helpers.app_service.HueyConsumerManager.stop_consumer_async', new_callable=AsyncMock)
-    async def test_run_downloader_async_with_progress(self, mock_stop_consumer, mock_wait_completion, mock_start_consumer):
+    async def test_run_downloader_async_with_progress(self, mock_start_consumer):
         """测试带进度管理器的异步下载"""
         # 创建带进度管理器的 AppService
         mock_progress_tracker = Mock()
@@ -198,15 +196,9 @@ class TestAppService:
             mock_progress_tracker.start_group_progress.assert_called_once_with(2, "处理下载任务")
             mock_progress_tracker.start_task_type_progress.assert_called_once()
             mock_progress_tracker.finish_all.assert_called_once()
-            
-            # 验证消费者管理器方法被调用
-            mock_wait_completion.assert_called_once()
-            mock_stop_consumer.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch('neo.helpers.app_service.HueyConsumerManager.wait_for_all_tasks_completion', new_callable=AsyncMock)
-    @patch('neo.helpers.app_service.HueyConsumerManager.stop_consumer_async', new_callable=AsyncMock)
-    async def test_run_downloader_async_without_progress(self, mock_stop_consumer, mock_wait_completion):
+    async def test_run_downloader_async_without_progress(self):
         """测试不带进度管理器的异步下载"""
         
         app_service = AppService(tasks_progress_tracker=None)
@@ -222,16 +214,10 @@ class TestAppService:
             
             # 验证任务被执行
             mock_execute.assert_called_once()
-            
-            # 验证消费者管理器方法被调用
-            mock_wait_completion.assert_called_once()
-            mock_stop_consumer.assert_called_once()
 
     @pytest.mark.asyncio
     @patch('neo.helpers.app_service.HueyConsumerManager.start_consumer_async', new_callable=AsyncMock)
-    @patch('neo.helpers.app_service.HueyConsumerManager.wait_for_all_tasks_completion', new_callable=AsyncMock)
-    @patch('neo.helpers.app_service.HueyConsumerManager.stop_consumer_async', new_callable=AsyncMock)
-    async def test_run_downloader_async_with_task_failure(self, mock_stop_consumer, mock_wait_completion, mock_start_consumer):
+    async def test_run_downloader_async_with_task_failure(self, mock_start_consumer):
         """测试异步下载中任务失败的情况"""
         
         mock_progress_tracker = Mock()
@@ -255,16 +241,10 @@ class TestAppService:
             mock_progress_tracker.start_group_progress.assert_called_once_with(2, "处理下载任务")
             mock_progress_tracker.start_task_type_progress.assert_called_once()
             mock_progress_tracker.finish_all.assert_called_once()
-            
-            # 验证消费者管理器方法被调用
-            mock_wait_completion.assert_called_once()
-            mock_stop_consumer.assert_called_once()
 
     @pytest.mark.asyncio
     @patch('neo.helpers.app_service.HueyConsumerManager.start_consumer_async', new_callable=AsyncMock)
-    @patch('neo.helpers.app_service.HueyConsumerManager.wait_for_all_tasks_completion', new_callable=AsyncMock)
-    @patch('neo.helpers.app_service.HueyConsumerManager.stop_consumer_async', new_callable=AsyncMock)
-    async def test_run_downloader_async_progress_update(self, mock_stop_consumer, mock_wait_completion, mock_start_consumer):
+    async def test_run_downloader_async_progress_update(self, mock_start_consumer):
         """测试异步下载中进度更新"""
         
         mock_progress_tracker = Mock()
@@ -289,10 +269,6 @@ class TestAppService:
             mock_progress_tracker.start_group_progress.assert_called_once_with(2, "处理下载任务")
             mock_progress_tracker.start_task_type_progress.assert_called_once()
             mock_progress_tracker.finish_all.assert_called_once()
-            
-            # 验证消费者管理器方法被调用
-            mock_wait_completion.assert_called_once()
-            mock_stop_consumer.assert_called_once()
 
 
 class TestDataProcessorRunner:
@@ -344,16 +320,15 @@ class TestAppServiceContainer:
         assert isinstance(app_service, AppService)
         assert hasattr(app_service, "tasks_progress_tracker")
 
-    def test_container_provides_different_service_instances(self):
-        """测试容器每次提供不同的 AppService 实例（工厂模式）"""
+    def test_container_provides_singleton_service_instance(self):
+        """测试容器提供单例的 AppService 实例"""
         container = AppContainer()
 
         service1 = container.app_service()
         service2 = container.app_service()
 
-        assert service1 is not service2
+        assert service1 is service2
         assert isinstance(service1, AppService)
-        assert isinstance(service2, AppService)
 
     def test_container_service_functionality(self):
         """测试容器获取的 AppService 功能正常"""

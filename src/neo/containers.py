@@ -28,7 +28,7 @@ class AppContainer(containers.DeclarativeContainer):
     schema_loader = providers.Singleton(SchemaLoader)
     data_processor = providers.Factory(
         AsyncSimpleDataProcessor,
-        enable_batch=True,
+        enable_batch=False,
         db_operator=db_operator,
         schema_loader=schema_loader,
     )
