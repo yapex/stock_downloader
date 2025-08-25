@@ -101,3 +101,40 @@ def setup_test_database():
     yield
 
     # 测试结束后清理（内存数据库会自动清理）
+
+
+@pytest.fixture
+def db_operator_with_memory_db():
+    """为测试提供使用内存数据库的DBOperator实例"""
+    from contextlib import contextmanager
+    import duckdb
+    from neo.database.operator import DBOperator
+    from pathlib import Path
+    
+    # 创建内存数据库连接
+    conn = duckdb.connect(":memory:")
+    
+    @contextmanager
+    def memory_conn_context():
+        try:
+            yield conn
+        finally:
+            pass  # 不关闭连接，让测试中的多个操作可以复用
+    
+    # 创建DBOperator实例
+    schema_file_path = Path.cwd() / "stock_schema.toml"
+    operator = DBOperator(str(schema_file_path), memory_conn_context)
+    
+    yield operator
+    
+    # 清理时关闭连接
+    conn.close()
+
+
+@pytest.fixture
+def memory_db_connection():
+    """为测试提供内存数据库连接"""
+    import duckdb
+    conn = duckdb.connect(":memory:")
+    yield conn
+    conn.close()

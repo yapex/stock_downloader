@@ -111,9 +111,6 @@ class AppService:
             )
             from neo.configs.huey_config import huey
 
-            logger.info(f"PRODUCER: Submitting pipeline with Huey instance: {huey}")
-            logger.info(f"PRODUCER: Huey backend is: {huey.storage}")
-
             # 创建 pipeline：下载任务 -> 数据处理任务
             # 参考原型的成功模式，Huey 会自动将 download_task 返回的字典解包给 process_data_task
             pipeline = download_task.s(task.task_type, task.symbol).then(

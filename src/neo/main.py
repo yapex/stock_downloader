@@ -20,11 +20,10 @@ def dl(
     stock_codes: Optional[List[str]] = typer.Option(
         None, "--symbols", "-s", help="股票代码列表"
     ),
-    log_level: str = typer.Option(
-        "debug",
-        "--log-level",
-        "-l",
-        help="日志级别 (debug, info, warning, error, critical)",
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        help="启用调试模式，输出详细日志",
     ),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="仅显示将要执行的任务，不实际执行"
@@ -34,6 +33,7 @@ def dl(
     from neo.helpers.utils import setup_logging
 
     # 初始化下载日志配置
+    log_level = "debug" if debug else "info"
     setup_logging("download", log_level)
 
     # 使用共享的容器实例
@@ -61,17 +61,17 @@ def dl(
 
 @app.command()
 def dp(
-    log_level: str = typer.Option(
-        "debug",
-        "--log-level",
-        "-l",
-        help="日志级别 (debug, info, warning, error, critical)",
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        help="启用调试模式，输出详细日志",
     ),
 ):
     """启动数据处理器消费者"""
     from neo.helpers.utils import setup_logging
 
     # 初始化消费者日志配置
+    log_level = "debug" if debug else "info"
     setup_logging("consumer", log_level)
 
     # 使用共享的容器实例

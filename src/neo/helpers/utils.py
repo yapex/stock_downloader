@@ -65,38 +65,29 @@ def is_interval_greater_than_7_days(start_date: str, end_date: str) -> bool:
 # 全局标志，防止重复配置日志
 
 
-def _get_log_level(log_level: str) -> int:
-    """将字符串日志级别转换为数值级别"""
-    level_mapping = {
-        "DEBUG": logging.DEBUG,
-        "INFO": logging.INFO,
-        "WARNING": logging.WARNING,
-        "ERROR": logging.ERROR,
-        "CRITICAL": logging.CRITICAL,
-    }
-    return level_mapping.get(log_level.upper(), logging.INFO)
+# 移除了 _get_log_level 函数，因为 setLevel 可以直接接受字符串参数
 
 
-def _setup_file_handler(log_type: str, numeric_level: int) -> None:
+def _setup_file_handler(log_type: str, log_level: str) -> None:
     """配置文件日志处理器"""
     import os
     from logging.handlers import TimedRotatingFileHandler
-    
+
     # 确保logs目录存在
     log_dir = "logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    
+
     log_filename = f"{log_type}.log"
-    
+
     # 配置根日志记录器
     root_logger = logging.getLogger()
-    root_logger.setLevel(numeric_level)
-    
+    root_logger.setLevel(log_level)
+
     # 清除现有处理器
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
-    
+
     # 创建文件处理器
     file_handler = TimedRotatingFileHandler(
         filename=os.path.join(log_dir, log_filename),
@@ -105,38 +96,45 @@ def _setup_file_handler(log_type: str, numeric_level: int) -> None:
         backupCount=1,
         encoding="utf-8",
     )
-    
+
     # 设置格式并添加处理器
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     file_handler.setFormatter(formatter)
     root_logger.addHandler(file_handler)
-    
+
     # 添加会话分隔符
     log_file_path = os.path.join(log_dir, log_filename)
     try:
         with open(log_file_path, "a", encoding="utf-8") as f:
-            f.write(f"\n{'=' * 80}\n")
+            f.write("\n==== new start here ====\n")
     except Exception:
         pass
 
 
-def _configure_third_party_loggers(numeric_level: int) -> None:
+def _configure_third_party_loggers(log_level: str) -> None:
     """配置第三方库的日志级别"""
     # 屏蔽第三方库的噪音日志
     third_party_loggers = ["tushare", "sqlite3", "urllib3", "requests"]
     for logger_name in third_party_loggers:
         logging.getLogger(logger_name).setLevel(logging.CRITICAL)
-    
+
     # 配置 Huey 日志
     huey_logger = logging.getLogger("huey")
-    huey_logger.setLevel(numeric_level)
+    huey_logger.setLevel(log_level)
     huey_logger.propagate = True
-    
+
     # 过滤 Huey 内部调试信息
-    huey_internal_loggers = ["huey.consumer", "huey.consumer.Scheduler", "huey.consumer.Worker"]
+    huey_internal_loggers = [
+        "huey",
+        "huey.consumer",
+        "huey.consumer.Scheduler",
+        "huey.consumer.Worker",
+    ]
     for logger_name in huey_internal_loggers:
-        logging.getLogger(logger_name).setLevel(logging.INFO)
-    
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
+
     # 屏蔽警告
     warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
     warnings.filterwarnings("ignore", category=FutureWarning, module="tushare")
@@ -144,12 +142,11 @@ def _configure_third_party_loggers(numeric_level: int) -> None:
 
 def setup_logging(log_type: str = "download", log_level: str = "INFO"):
     """配置日志记录
-    
+
     Args:
         log_type: 日志类型，支持 'download' 或 'data_process'（已统一到 stock_download.log）
         log_level: 日志级别，支持 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
     """
-    numeric_level = _get_log_level(log_level)
     # 统一使用 stock_download.log 文件
-    _setup_file_handler("stock_download", numeric_level)
-    _configure_third_party_loggers(numeric_level)
+    _setup_file_handler("stock_download", log_level.upper())
+    _configure_third_party_loggers(log_level.upper())

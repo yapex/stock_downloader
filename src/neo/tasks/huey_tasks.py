@@ -20,25 +20,19 @@ async def _process_data_async(task_type: str, data: pd.DataFrame) -> bool:
     Args:
         task_type: 任务类型字符串
         data: 要处理的数据
-        symbol: 股票代码
 
     Returns:
         bool: 处理是否成功
     """
     from ..app import container
 
-    logger.debug(f"[HUEY] 获取数据处理器实例")
     data_processor = container.data_processor()
     try:
-        logger.debug(
-            f"[HUEY] 调用数据处理器处理数据: {task_type}, 数据行数: {len(data)}"
-        )
         process_success = await data_processor.process(task_type, data)
-        logger.debug(f"[HUEY] 数据处理器返回结果: {process_success}")
+        logger.debug(f"[HUEY] {task_type} 数据处理器返回结果: {process_success}")
         return process_success
     finally:
         # 确保数据处理器正确关闭，刷新所有缓冲区数据
-        logger.debug(f"[HUEY] 关闭数据处理器，刷新缓冲区")
         await data_processor.shutdown()
 
 
@@ -81,12 +75,7 @@ def download_task(task_type: TaskType, symbol: str) -> dict:
             }
     except Exception as e:
         logger.error(f"❌ [HUEY] 下载任务执行失败: {symbol}, 错误: {e}")
-        return {
-            "task_type": task_type,
-            "symbol": symbol,
-            "data_frame": [],
-            "error": str(e),
-        }
+        raise e
 
 
 @huey.task()
@@ -104,41 +93,28 @@ def process_data_task(task_type: str, symbol: str, data_frame: list) -> bool:
         bool: 处理是否成功
     """
     try:
-        logger.debug(
-            f"📊 [HUEY] 开始处理数据: {symbol} ({task_type}), 数据行数: {len(data_frame) if data_frame else 0}"
-        )
-
         # 创建异步数据处理器并运行
         async def process_async():
             try:
                 # 将字典列表转换为 DataFrame
                 if data_frame and isinstance(data_frame, list) and len(data_frame) > 0:
-                    logger.debug(
-                        f"[HUEY] 转换数据格式: {symbol}, 字典列表 -> DataFrame"
-                    )
                     df_data = pd.DataFrame(data_frame)
                     logger.debug(
-                        f"[HUEY] 开始异步保存数据: {symbol}, 数据行数: {len(df_data)}"
+                        f"[HUEY] 开始异步保存数据: {symbol}_{task_type}, 数据行数: {len(df_data)}"
                     )
-                    process_success = await _process_data_async(task_type, df_data)
-                    logger.info(
-                        f"✅ [HUEY] 数据保存完成: {symbol}_{task_type}, 数量：{len(df_data)}, 成功: {process_success}"
-                    )
-                    return process_success
+                    return await _process_data_async(task_type, df_data)
                 else:
                     logger.warning(
-                        f"⚠️ [HUEY] 数据保存失败，无有效数据: {symbol}, 数据为空或None"
+                        f"⚠️ [HUEY] 数据保存失败，无有效数据: {symbol}_{task_type}, 数据为空或None"
                     )
                     return False
             except Exception as e:
-                logger.error(f"❌ [HUEY] 数据处理过程中发生错误: {symbol}, 错误: {e}")
-                return False
+                raise e
 
-        logger.debug(f"[HUEY] 启动异步处理: {symbol}")
         result = asyncio.run(process_async())
         logger.info(f"🏁 [HUEY] 最终结果: {symbol}_{task_type}, 成功: {result}")
         return result
 
     except Exception as e:
         logger.error(f"❌ [HUEY] 数据处理任务执行失败: {symbol}, 错误: {e}")
-        return False
+        raise e

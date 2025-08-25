@@ -8,7 +8,6 @@ from unittest.mock import Mock, patch
 import pytest
 
 from neo.helpers.app_service import AppService, DataProcessorRunner
-from neo.helpers.huey_consumer_manager import HueyConsumerManager
 from neo.task_bus.types import DownloadTaskConfig, TaskType
 
 
@@ -32,7 +31,7 @@ class TestAppService:
 
     @patch('neo.tasks.huey_tasks.process_data_task')
     @patch('neo.tasks.huey_tasks.download_task')
-    @patch('neo.configs.huey')
+    @patch('neo.configs.huey_config.huey')
     def test_execute_download_task_with_submission_success(self, mock_huey, mock_download_task, mock_process_task):
         """测试成功提交下载任务"""
         app_service = AppService()
@@ -55,7 +54,7 @@ class TestAppService:
         
         assert result == mock_result
         mock_download_task.s.assert_called_once_with(TaskType.stock_basic, "000001")
-        mock_download_signature.then.assert_called_once_with(mock_process_task, TaskType.stock_basic, "000001")
+        mock_download_signature.then.assert_called_once_with(mock_process_task)
         mock_huey.enqueue.assert_called_once_with(mock_pipeline)
 
     @patch('neo.tasks.huey_tasks.download_task')
@@ -79,17 +78,15 @@ class TestAppService:
 
         # 模拟 _execute_download_task_with_submission 的返回值
         mock_result = Mock()
-        mock_result.get.return_value = True  # 模拟任务成功
 
         with patch.object(app_service, '_execute_download_task_with_submission', return_value=mock_result) as mock_execute:
-            app_service.run_downloader(tasks, dry_run=False)
+            result = app_service.run_downloader(tasks, dry_run=False)
 
             # 验证任务被提交
             assert mock_execute.call_count == 2
 
-            # 验证等待了每个任务的结果
-            assert mock_result.get.call_count == 2
-            mock_result.get.assert_called_with(blocking=True, timeout=60)
+            # 验证返回了任务结果列表
+            assert result == [mock_result, mock_result]
 
 
 class TestDataProcessorRunner:
@@ -97,10 +94,23 @@ class TestDataProcessorRunner:
     
     def test_run_data_processor(self):
         """测试运行数据处理器"""
-        with patch.object(HueyConsumerManager, 'setup_huey_logging') as mock_setup_logging, \
-             patch.object(HueyConsumerManager, 'run_consumer_standalone') as mock_run_consumer:
+        with patch('huey.consumer.Consumer') as mock_consumer_class, \
+             patch('neo.helpers.app_service.get_config') as mock_get_config:
+            
+            # 模拟配置
+            mock_config = Mock()
+            mock_config.huey.max_workers = 4
+            mock_get_config.return_value = mock_config
+            
+            # 模拟 Consumer 实例
+            mock_consumer = Mock()
+            mock_consumer_class.return_value = mock_consumer
+            
+            # 模拟 KeyboardInterrupt 来结束运行
+            mock_consumer.run.side_effect = KeyboardInterrupt()
             
             DataProcessorRunner.run_data_processor()
             
-            mock_setup_logging.assert_called_once()
-            mock_run_consumer.assert_called_once()
+            # 验证 Consumer 被正确创建和调用
+            mock_consumer_class.assert_called_once()
+            mock_consumer.run.assert_called_once()

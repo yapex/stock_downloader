@@ -6,7 +6,6 @@ from neo.helpers.rate_limit_manager import RateLimitManager
 # from neo.downloader.simple_downloader import SimpleDownloader
 # from neo.helpers.app_service import AppService
 from neo.data_processor.simple_data_processor import AsyncSimpleDataProcessor
-from neo.tqmd.progress_tracker import ProgressTrackerFactory, TasksProgressTracker
 from neo.database.operator import DBOperator
 from neo.database.schema_loader import SchemaLoader
 from neo.helpers.task_builder import TaskBuilder

@@ -56,7 +56,7 @@ class SimpleDownloader(IDownloader):
             return self._fetch_data(task_type, symbol)
 
         except Exception as e:
-            logger.debug(f"下载任务失败: {task_type}, symbol: {symbol}, error: {e}")
+            logger.debug(f"下载任务失败: {symbol}_{task_type}, error: {e}")
             return None
 
     def _apply_rate_limiting(self, task_type: str) -> None:
@@ -94,7 +94,7 @@ class SimpleDownloader(IDownloader):
                     "%Y%m%d"
                 )
             # 打印最新日期
-            logger.debug(f"数据库 {task_type} 中最新日期: {last_date}")
+            logger.debug(f"数据库 {symbol}_{task_type} 中最新日期: {last_date}")
             # 使用 FetcherBuilder 构建数据获取器
             fetcher = self.fetcher_builder.build_by_task(
                 task_type=task_type, symbol=symbol, start_date=last_date
@@ -104,13 +104,13 @@ class SimpleDownloader(IDownloader):
             data = fetcher()
 
             if data is not None and not data.empty:
-                logger.info(f"✅ {task_type} 业务成功下载 {len(data)} 条数据")
+                logger.info(f"🚀 {symbol}_{task_type} 业务成功下载 {len(data)} 条数据")
             else:
-                logger.debug("⚠️ 数据获取结果为空")
+                logger.debug(f"⚠️ {symbol}_{task_type} 数据获取结果为空")
             return data
 
         except Exception as e:
-            logger.error(f"数据获取失败: {e}")
+            logger.error(f"😱 {symbol}_{task_type} 数据获取失败: {e}")
             raise
 
     def cleanup(self):
