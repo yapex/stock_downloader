@@ -4,10 +4,12 @@
 """
 
 from typing import List
+import sys
+import logging
 
 from neo.task_bus.types import DownloadTaskConfig
 from neo.configs import get_config
-import sys
+from neo.tasks.huey_tasks import download_task
 
 
 class DataProcessorRunner:
@@ -70,9 +72,7 @@ class AppService:
         DataProcessorRunner.run_data_processor(queue_name)
 
     def run_downloader(
-        self,
-        tasks: List[DownloadTaskConfig],
-        dry_run: bool = False
+        self, tasks: List[DownloadTaskConfig], dry_run: bool = False
     ) -> None:
         """运行下载器 (同步阻塞版本)
 
@@ -90,7 +90,7 @@ class AppService:
             result = self._execute_download_task_with_submission(task)
             if result is not None:
                 task_results.append(result)
-        print(f"✅ 已成功提交 {len(task_results)} 个下载任务ảng。")
+        print(f"✅ 已成功提交 {len(task_results)} 个下载任务。")
         return task_results
 
     def _print_dry_run_info(self, tasks: List[DownloadTaskConfig]) -> None:
@@ -109,8 +109,6 @@ class AppService:
 
     def _execute_download_task_with_submission(self, task: DownloadTaskConfig):
         """执行单个下载任务并提交到 Huey 快速队列"""
-        import logging
-
         logger = logging.getLogger(__name__)
 
         task_type_str = (
@@ -120,9 +118,6 @@ class AppService:
         )
         task_name = f"{task.symbol}_{task_type_str}" if task.symbol else task_type_str
         try:
-            # 只需要导入第一个任务，后续的链接在任务内部完成
-            from neo.tasks.huey_tasks import download_task
-
             # 直接调用第一个任务，Huey会将其放入队列
             result = download_task(task.task_type, task.symbol)
             logger.debug(f"成功提交任务: {task_name}")

@@ -14,7 +14,7 @@ from ..task_bus.types import TaskType
 logger = logging.getLogger(__name__)
 
 
-async def _process_data_async(task_type: str, data: pd.DataFrame) -> bool:
+def _process_data_sync(task_type: str, data: pd.DataFrame) -> bool:
     """异步处理数据的公共函数
 
     Args:
@@ -28,12 +28,12 @@ async def _process_data_async(task_type: str, data: pd.DataFrame) -> bool:
 
     data_processor = container.data_processor()
     try:
-        process_success = await data_processor.process(task_type, data)
+        process_success = data_processor.process(task_type, data)
         logger.debug(f"[HUEY] {task_type} 数据处理器返回结果: {process_success}")
         return process_success
     finally:
         # 确保数据处理器正确关闭，刷新所有缓冲区数据
-        await data_processor.shutdown()
+        data_processor.shutdown()
 
 
 @huey_fast.task()
@@ -65,7 +65,9 @@ def download_task(task_type: TaskType, symbol: str):
                 data_frame=result.to_dict("records"),
             )
         else:
-            logger.warning(f"⚠️ [HUEY_FAST] 下载任务完成: {symbol}, 但返回空数据，不提交后续任务")
+            logger.warning(
+                f"⚠️ [HUEY_FAST] 下载任务完成: {symbol}, 但返回空数据，不提交后续任务"
+            )
 
     except Exception as e:
         logger.error(f"❌ [HUEY_FAST] 下载任务执行失败: {symbol}, 错误: {e}")
@@ -86,7 +88,7 @@ def process_data_task(task_type: str, symbol: str, data_frame: list) -> bool:
     """
     try:
         # 创建异步数据处理器并运行
-        async def process_async():
+        def process_sync():
             try:
                 # 将字典列表转换为 DataFrame
                 if data_frame and isinstance(data_frame, list) and len(data_frame) > 0:
@@ -94,7 +96,7 @@ def process_data_task(task_type: str, symbol: str, data_frame: list) -> bool:
                     logger.debug(
                         f"🐌 [HUEY_SLOW] 开始异步保存数据: {symbol}_{task_type}, 数据行数: {len(df_data)}"
                     )
-                    return await _process_data_async(task_type, df_data)
+                    return _process_data_sync(task_type, df_data)
                 else:
                     logger.warning(
                         f"⚠️ [HUEY_SLOW] 数据保存失败，无有效数据: {symbol}_{task_type}, 数据为空或None"
@@ -103,7 +105,7 @@ def process_data_task(task_type: str, symbol: str, data_frame: list) -> bool:
             except Exception as e:
                 raise e
 
-        result = asyncio.run(process_async())
+        result = process_sync()
         logger.info(f"🏁 [HUEY_SLOW] 最终结果: {symbol}_{task_type}, 成功: {result}")
         return result
 
