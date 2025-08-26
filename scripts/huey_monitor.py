@@ -4,9 +4,8 @@ from rich.table import Table
 from rich.console import Console
 from collections import deque
 
-# 导入配置加载函数
-from neo.configs import get_config
-from huey import SqliteHuey
+# 导入在 huey_config.py 中配置好的、全局唯一的 Huey 实例
+from neo.configs.huey_config import huey_fast, huey_slow
 
 console = Console()
 
@@ -34,7 +33,8 @@ class TaskMonitor:
         time_elapsed = self.timestamps[-1] - self.timestamps[0]
 
         if time_elapsed > 0:
-            return tasks_processed / time_elapsed
+            rate = tasks_processed / time_elapsed
+            return max(0, rate)  # 确保速率不为负
         return 0
 
     def get_eta(self, pending_tasks):
@@ -56,14 +56,6 @@ def format_time(seconds):
     return f"{seconds / 3600:.1f}小时"
 
 
-def get_huey_instances():
-    """在每次需要时创建新的 Huey 实例以获取最新状态"""
-    config = get_config()
-    huey_fast = SqliteHuey(name='fast_queue', filename=config.huey_fast.sqlite_path)
-    huey_slow = SqliteHuey(name='slow_queue', filename=config.huey_slow.sqlite_path)
-    return huey_fast, huey_slow
-
-
 def generate_table(fast_monitor: TaskMonitor, slow_monitor: TaskMonitor, start_time: float) -> Table:
     """生成并返回一个包含两个Huey队列状态的Rich Table"""
     table = Table(title="Huey 双队列实时监控")
@@ -72,8 +64,10 @@ def generate_table(fast_monitor: TaskMonitor, slow_monitor: TaskMonitor, start_t
     table.add_column("快速队列 (Fast)", style="magenta")
     table.add_column("慢速队列 (Slow)", style="yellow")
 
-    # 每次都获取新的 Huey 实例
-    huey_fast, huey_slow = get_huey_instances()
+    # 核心修复：在每次查询前，关闭旧的数据库连接，以强制 Huey 重新连接并获取最新状态。
+    # 这可以避免因连接缓存导致的数据陈旧问题，且不会触发重量级的实例重建和数据库锁。
+    huey_fast.storage.close()
+    huey_slow.storage.close()
 
     # 获取两个队列的核心指标
     pending_fast = len(huey_fast)
@@ -111,6 +105,7 @@ def generate_table(fast_monitor: TaskMonitor, slow_monitor: TaskMonitor, start_t
 
 
 if __name__ == "__main__":
+    # 为每个队列创建一个监控器实例
     fast_monitor = TaskMonitor()
     slow_monitor = TaskMonitor()
     start_time = time.time()
@@ -118,7 +113,7 @@ if __name__ == "__main__":
     try:
         with Live(generate_table(fast_monitor, slow_monitor, start_time), screen=True, redirect_stderr=False) as live:
             while True:
-                time.sleep(1)
+                time.sleep(1)  # 每秒刷新一次
                 live.update(generate_table(fast_monitor, slow_monitor, start_time))
     except KeyboardInterrupt:
         print("\n监控已停止。")

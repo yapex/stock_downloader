@@ -57,7 +57,7 @@ def download_task(task_type: TaskType, symbol: str):
         result = downloader.download(task_type, symbol)
 
         if result is not None and not result.empty:
-            logger.debug(f"📥 [HUEY_FAST] 下载完成: {symbol}, 准备提交到慢速队列...")
+            logger.debug(f"🚀 [HUEY_FAST] 下载完成: {symbol}, 准备提交到慢速队列...")
             # 手动调用慢速任务，并传递数据
             process_data_task(
                 task_type=task_type,
@@ -106,7 +106,7 @@ def process_data_task(task_type: str, symbol: str, data_frame: list) -> bool:
                 raise e
 
         result = process_sync()
-        logger.info(f"🏁 [HUEY_SLOW] 最终结果: {symbol}_{task_type}, 成功: {result}")
+        logger.info(f"🏆 [HUEY_SLOW] 最终结果: {symbol}_{task_type}, 成功: {result}")
         return result
 
     except Exception as e:
