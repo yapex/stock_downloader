@@ -5,6 +5,8 @@
 from typing import Protocol, Optional
 import pandas as pd
 
+from neo.task_bus.types import TaskType
+
 
 class IDownloader(Protocol):
     """下载器接口
@@ -12,7 +14,7 @@ class IDownloader(Protocol):
     专注于网络I/O和数据获取，不处理业务逻辑。
     """
 
-    def download(self, task_type: str, symbol: str) -> Optional[pd.DataFrame]:
+    def download(self, task_type: TaskType, symbol: str, **kwargs) -> Optional[pd.DataFrame]:
         """执行下载任务
 
         Args:

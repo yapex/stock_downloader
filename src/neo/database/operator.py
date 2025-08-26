@@ -186,15 +186,16 @@ class DBOperator(SchemaTableCreator, IDBOperator):
         conn.executemany(sql, data_tuples)
         conn.commit()
 
-    def get_max_date(self, table_key: str, ts_code: Optional[str] = None) -> Optional[str]:
-        """根据 schema 中定义的 date_col，查询指定表中日期字段的最大值
+    def get_max_date(self, table_key: str, ts_codes: Optional[List[str]] = None) -> Dict[str, str]:
+        """根据 schema 中定义的 date_col，查询指定表中一个或多个股票的最新日期
 
         Args:
-            table_key: 表在schema配置中的键名 (e.g., 'stock_basic')
-            ts_code: 股票代码，如果提供，则查询该股票的最新日期
+            table_key: 表在schema配置中的键名 (e.g., 'stock_daily')
+            ts_codes: 股票代码列表。如果为 None 或空，则查询全表的最新日期。
 
         Returns:
-            日期字段的最大值 (YYYYMMDD格式字符串)，如果表为空或无匹配则返回 None
+            一个字典，key为股票代码，value为对应的最新日期 (YYYYMMDD格式字符串)。
+            如果查询全表，则key为特殊值 '__all__'。
         """
         if not self._table_exists_in_schema(table_key):
             raise ValueError(f"表配置 '{table_key}' 不存在于 schema 中")
@@ -204,28 +205,35 @@ class DBOperator(SchemaTableCreator, IDBOperator):
 
         if "date_col" not in table_config or not table_config["date_col"]:
             logger.debug(f"表 '{table_name}' 未定义 date_col 字段，无法查询最大日期")
-            return None
+            return {}
 
         date_col = table_config["date_col"]
         
         params = []
-        sql = f"SELECT MAX({date_col}) as max_date FROM {table_name}"
-        if ts_code:
-            sql += f" WHERE ts_code = ?"
-            params.append(ts_code)
+        if ts_codes:
+            # 查询指定股票列表的最新日期
+            placeholders = ", ".join(["?" for _ in ts_codes])
+            sql = f"SELECT ts_code, MAX({date_col}) as max_date FROM {table_name} WHERE ts_code IN ({placeholders}) GROUP BY ts_code"
+            params.extend(ts_codes)
+        else:
+            # 查询全表的最新日期
+            sql = f"SELECT MAX({date_col}) as max_date FROM {table_name}"
 
         try:
             if callable(self.conn):
                 with self.conn() as conn:
-                    result = conn.execute(sql, params).fetchone()
+                    results = conn.execute(sql, params).fetchall()
             else:
-                result = self.conn.execute(sql, params).fetchone()
+                results = self.conn.execute(sql, params).fetchall()
 
-            if result and result[0] is not None:
-                return str(result[0])
-            else:
-                logger.debug(f"表 '{table_name}' 中未找到 {ts_code or ''} 的有效数据")
-                return None
+            max_dates = {}
+            if ts_codes:
+                for row in results:
+                    max_dates[row[0]] = str(row[1])
+            elif results and results[0][0] is not None:
+                max_dates['__all__'] = str(results[0][0])
+            
+            return max_dates
 
         except Exception as e:
             logger.error(f"❌ 查询表 '{table_name}' 最大日期失败: {e}")

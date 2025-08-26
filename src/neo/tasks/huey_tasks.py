@@ -10,8 +10,71 @@ import logging
 import pandas as pd
 from ..configs.huey_config import huey_fast, huey_slow
 from ..task_bus.types import TaskType
+from ..helpers.utils import get_next_day_str
 
 logger = logging.getLogger(__name__)
+
+
+@huey_slow.task()
+def build_and_enqueue_downloads_task(group_name: str):
+    """构建并派发增量下载任务 (慢速队列)
+
+    这是智能增量下载的第一步。
+    它会查询数据湖中已有数据的最新日期，计算出需要下载的起始日期，
+    然后将具体的下载任务派发到快速队列。
+
+    Args:
+        group_name: 在 groups.toml 中定义的任务组名
+    """
+    from ..app import container
+    from collections import defaultdict
+
+    logger.info(f"🛠️ [HUEY_SLOW] 开始构建增量下载任务, 任务组: {group_name}")
+
+    group_handler = container.group_handler()
+    db_operator = container.db_operator()
+    config = container.config()
+
+    try:
+        # 1. 解析任务组成员
+        members = group_handler.get_members(group_name)
+        if not members:
+            logger.warning(f"任务组 '{group_name}' 中没有找到任何成员，任务结束。")
+            return
+
+        # 2. 按 task_type 对 symbols 进行分组，为批量查询做准备
+        symbols_by_task_type = defaultdict(list)
+        for task_type, symbol in members:
+            symbols_by_task_type[task_type].append(symbol)
+
+        # 3. 批量查询每个 task_type 下所有 symbols 的最新日期
+        max_dates = {}
+        for task_type, symbols in symbols_by_task_type.items():
+            logger.debug(f"正在为 {task_type} 查询 {len(symbols)} 个股票的最新日期...")
+            # 注意：这里我们假设 DBOperator 是连接到元数据DB的
+            # 在新架构下，我们需要一个能查询 Parquet 数据湖的 DBOperator
+            # 此处暂时使用一个模拟的 ParquetDBOperator
+            # TODO: 替换为真实的 ParquetDBOperator
+            from ..database.parquet_operator import ParquetDBOperator
+            parquet_op = ParquetDBOperator(config.storage.parquet_base_path)
+            max_dates.update(parquet_op.get_max_date(task_type, symbols))
+
+        # 4. 循环派发具体的下载任务
+        default_start_date = config.downloader.default_start_date
+        enqueued_count = 0
+        for task_type, symbol in members:
+            latest_date = max_dates.get(symbol)
+            start_date = get_next_day_str(latest_date) if latest_date else default_start_date
+            
+            # 派发任务到快速队列
+            download_task.call(task_type=task_type, symbol=symbol, start_date=start_date)
+            enqueued_count += 1
+        
+        logger.info(f"✅ [HUEY_SLOW] 成功派发 {enqueued_count} 个增量下载任务。")
+
+    except Exception as e:
+        logger.error(f"❌ [HUEY_SLOW] 构建下载任务失败: {e}", exc_info=True)
+        raise e
 
 
 def _process_data_sync(task_type: str, data: pd.DataFrame) -> bool:
@@ -37,7 +100,7 @@ def _process_data_sync(task_type: str, data: pd.DataFrame) -> bool:
 
 
 @huey_fast.task()
-def download_task(task_type: TaskType, symbol: str):
+def download_task(task_type: TaskType, symbol: str, **kwargs):
     """下载股票数据的 Huey 任务 (快速队列)
 
     下载完成后，直接调用慢速队列的数据处理任务。
@@ -45,6 +108,7 @@ def download_task(task_type: TaskType, symbol: str):
     Args:
         task_type: 任务类型枚举
         symbol: 股票代码
+        **kwargs: 额外的下载参数，如 start_date, end_date
     """
     try:
         logger.debug(f"🚀 [HUEY_FAST] 开始执行下载任务: {symbol} ({task_type})")
@@ -54,7 +118,7 @@ def download_task(task_type: TaskType, symbol: str):
 
         downloader = container.downloader()
 
-        result = downloader.download(task_type, symbol)
+        result = downloader.download(task_type, symbol, **kwargs)
 
         if result is not None and not result.empty:
             logger.debug(f"🚀 [HUEY_FAST] 下载完成: {symbol}, 准备提交到慢速队列...")

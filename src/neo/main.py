@@ -39,24 +39,15 @@ def dl(
     # 使用共享的容器实例
     task_builder = container.task_builder()
     group_handler = container.group_handler()
-    app_service = container.app_service()
+    """下载指定分组的股票数据
 
-    # 处理组配置，获取股票代码和任务类型
-    if not group:
-        raise ValueError("必须指定任务组 (-g/--group) 参数")
-
-    if stock_codes:
-        symbols = stock_codes
-    else:
-        symbols = group_handler.get_symbols_for_group(group)
-
-    task_types = group_handler.get_task_types_for_group(group)
-
-    # 构建任务列表
-    tasks = task_builder.build_tasks(symbols=symbols, task_types=task_types)
-
-    # 运行下载器
-    app_service.run_downloader(tasks, dry_run=dry_run)
+    通过向 Huey 慢速队列提交一个构建任务来启动整个增量下载流程。
+    """
+    from .tasks.huey_tasks import build_and_enqueue_downloads_task
+    
+    typer.echo(f"正在提交任务组 '{group_name}' 的增量下载构建任务...")
+    build_and_enqueue_downloads_task.call(group_name=group_name)
+    typer.echo("✅ 任务已成功提交到后台处理。请启动消费者来执行任务。")
 
 
 @app.command()

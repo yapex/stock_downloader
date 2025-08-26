@@ -63,14 +63,13 @@ class FetcherBuilder:
         self.api_manager = TushareApiManager.get_instance()
 
     def build_by_task(
-        self, task_type: TaskType, symbol: str = "", **overrides: Any
+        self, task_type: TaskType, **kwargs: Any
     ) -> Callable[[], pd.DataFrame]:
         """构建指定股票代码的数据获取器
 
         Args:
             task_type: 任务类型
-            symbol: 股票代码
-            **overrides: 运行时参数覆盖
+            **kwargs: 运行时参数，例如 symbol, start_date 等
 
         Returns:
             可执行的数据获取函数
@@ -81,19 +80,15 @@ class FetcherBuilder:
         except KeyError:
             raise ValueError(f"不支持的任务类型: {task_type}")
 
-        # 标准化股票代码
-        if symbol:
-            overrides["ts_code"] = normalize_stock_code(symbol)
+        # 标准化股票代码（如果提供了 symbol）
+        if 'symbol' in kwargs:
+            kwargs["ts_code"] = normalize_stock_code(kwargs.pop('symbol'))
 
-        # 合并参数：必需参数 + 覆盖参数
+        # 合并参数：模板的固定参数 + 运行时的动态参数
         merged_params = {}
-
-        # 合并必需参数
         if template.required_params:
             merged_params.update(template.required_params)
-
-        # 应用运行时覆盖参数
-        merged_params.update(overrides)
+        merged_params.update(kwargs)
 
         # 获取 API 函数
         api_func = self.api_manager.get_api_function(

@@ -219,46 +219,47 @@ class TestDBOperator:
             for keyword in ["primary", "key", "ts_code", "column", "missing"]
         )
 
-    def test_get_max_date_for_symbol(self, db_operator):
-        """测试为特定股票代码获取最大日期"""
+    def test_get_max_date_for_multiple_symbols(self, db_operator):
+        """测试为多个特定股票代码批量获取最大日期"""
         # 准备包含多个股票和日期的数据
         test_data = pd.DataFrame({
-            'ts_code': ['000001.SZ', '000001.SZ', '000002.SZ', '000002.SZ'],
-            'trade_date': ['20240101', '20240105', '20240102', '20240110'],
-            # 添加其他必需列以通过upsert验证
-            'open': [10.0, 11.0, 20.0, 21.0],
-            'high': [10.8, 11.8, 20.8, 21.8],
-            'low': [9.8, 10.8, 19.8, 20.8],
-            'close': [10.5, 11.5, 20.5, 21.5],
-            'pre_close': [10.0, 10.5, 20.0, 20.5],
-            'change': [0.5, 1.0, 0.5, 1.0],
-            'pct_chg': [5.0, 9.52, 2.5, 4.88],
-            'vol': [1000, 1100, 2000, 2100],
-            'amount': [10500, 12650, 41000, 43050],
+            'ts_code': ['000001.SZ', '000001.SZ', '000002.SZ', '000003.SZ'],
+            'trade_date': ['20240101', '20240105', '20240110', '20240115'],
+            # 添加其他必需列
+            'open': [10.0, 11.0, 20.0, 30.0],
+            'high': [10.8, 11.8, 20.8, 30.8],
+            'low': [9.8, 10.8, 19.8, 29.8],
+            'close': [10.5, 11.5, 20.5, 30.5],
+            'pre_close': [10.0, 10.5, 20.0, 30.0],
+            'change': [0.5, 1.0, 0.5, 0.5],
+            'pct_chg': [5.0, 9.52, 2.5, 1.67],
+            'vol': [1000, 1100, 2000, 3000],
+            'amount': [10500, 12650, 41000, 91500],
         })
         db_operator.upsert("stock_daily", test_data)
 
-        # 验证 '000001.SZ' 的最大日期
-        max_date_1 = db_operator.get_max_date("stock_daily", ts_code='000001.SZ')
-        assert max_date_1 == "20240105"
+        # 批量查询 '000001.SZ' 和 '000003.SZ' 的最大日期
+        max_dates = db_operator.get_max_date("stock_daily", ts_codes=['000001.SZ', '000003.SZ'])
+        assert max_dates == {
+            '000001.SZ': '20240105',
+            '000003.SZ': '20240115'
+        }
 
-        # 验证 '000002.SZ' 的最大日期
-        max_date_2 = db_operator.get_max_date("stock_daily", ts_code='000002.SZ')
-        assert max_date_2 == "20240110"
+        # 查询一个存在的和一个不存在的
+        max_dates_mixed = db_operator.get_max_date("stock_daily", ts_codes=['000002.SZ', '999999.SH'])
+        assert max_dates_mixed == {
+            '000002.SZ': '20240110'
+        }
 
-        # 验证无过滤时的最大日期（全表最大）
+        # 查询全表的最新日期
         max_date_all = db_operator.get_max_date("stock_daily")
-        assert max_date_all == "20240110"
-
-        # 验证不存在的股票代码返回 None
-        max_date_none = db_operator.get_max_date("stock_daily", ts_code='999999.SH')
-        assert max_date_none is None
+        assert max_date_all == {'__all__': '20240115'}
 
     def test_get_max_date_without_date_col(self, db_operator):
-        """测试获取最大日期（无日期列）"""
-        # stock_basic 表没有日期列，应该返回 None
-        max_date = db_operator.get_max_date("stock_basic")
-        assert max_date is None
+        """测试在没有日期列的表上获取最大日期"""
+        # stock_basic 表没有日期列，应该返回空字典
+        max_dates = db_operator.get_max_date("stock_basic")
+        assert max_dates == {}
 
     def test_get_all_symbols_with_data(self, db_operator, sample_stock_basic_data):
         """测试获取所有股票代码（有数据）"""

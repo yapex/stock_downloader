@@ -37,25 +37,24 @@ class SimpleDownloader(IDownloader):
         self.fetcher_builder = fetcher_builder
         self.db_operator = None # No longer used
 
-    def download(self, task_type: str, symbol: str) -> Optional[pd.DataFrame]:
-        """执行下载任务
+    def download(self, task_type: TaskType, symbol: str, **kwargs) -> Optional[pd.DataFrame]:
+        """下载指定任务类型和股票代码的数据
 
         Args:
-            task_type: 任务类型字符串
+            task_type: 任务类型
             symbol: 股票代码
+            **kwargs: 额外的下载参数，如 start_date
 
         Returns:
-            Optional[pd.DataFrame]: 下载的数据，失败时返回 None
+            下载的数据，或在失败时返回 None
         """
         try:
-            # 应用速率限制 - 直接使用字符串
-            self._apply_rate_limiting(task_type)
-
-            # 获取数据
-            return self._fetch_data(task_type, symbol)
-
+            # 从构建器获取一个配置好的、可执行的 fetcher 函数
+            fetcher = self.fetcher_builder.build_by_task(task_type, symbol=symbol, **kwargs)
+            # 执行 fetcher 函数
+            return fetcher()
         except Exception as e:
-            logger.error(f"❌ 下载任务失败: {symbol}_{task_type}, error: {e}")
+            logger.error(f"下载器执行失败 - 任务: {task_type}, 代码: {symbol}, 错误: {e}")
             return None
 
     def _apply_rate_limiting(self, task_type: str) -> None:

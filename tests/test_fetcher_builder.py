@@ -137,7 +137,7 @@ class TestFetcherBuilder:
         mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
         mock_get_api.return_value = mock_api_func
 
-        fetcher = self.builder.build_by_task(TaskType.stock_basic, "600519")
+        fetcher = self.builder.build_by_task(TaskType.stock_basic, symbol="600519")
         result = fetcher()
 
         mock_normalize.assert_called_once_with("600519")
@@ -168,7 +168,7 @@ class TestFetcherBuilder:
         mock_get_api.return_value = mock_api_func
 
         fetcher = self.builder.build_by_task(
-            TaskType.stock_basic, "600519", exchange="SZSE", list_status="L"
+            TaskType.stock_basic, symbol="600519", exchange="SZSE", list_status="L"
         )
         result = fetcher()
 
@@ -196,6 +196,28 @@ class TestFetcherBuilder:
         assert isinstance(result, pd.DataFrame)
 
     @patch.object(TushareApiManager, "get_api_function")
+    def test_build_by_task_with_kwargs(self, mock_get_api):
+        """测试使用 kwargs 传递 start_date 等参数"""
+        mock_api_func = Mock(return_value=pd.DataFrame({"data": [1]}))
+        mock_get_api.return_value = mock_api_func
+
+        builder = FetcherBuilder()
+        fetcher = builder.build_by_task(
+            TaskType.stock_daily,
+            symbol="600519.SH",
+            start_date="20240101",
+            end_date="20240131"
+        )
+        fetcher()
+
+        # 验证传递给 Tushare API 的参数是否正确
+        mock_api_func.assert_called_once_with(
+            ts_code="600519.SH",
+            start_date="20240101",
+            end_date="20240131"
+        )
+
+    @patch.object(TushareApiManager, "get_api_function")
     def test_execute_function_exception_handling(self, mock_get_api):
         """测试执行函数异常处理"""
         mock_api_func = Mock(side_effect=Exception("API调用失败"))
@@ -217,7 +239,7 @@ class TestFetcherBuilder:
         # 测试运行时参数覆盖默认参数
         fetcher = self.builder.build_by_task(
             TaskType.stock_daily,
-            "600519",
+            symbol="600519",
             start_date="20240101",  # 覆盖默认参数
             end_date="20240131",  # 新增参数
         )

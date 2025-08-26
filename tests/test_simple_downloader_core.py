@@ -87,18 +87,21 @@ class TestSimpleDownloaderDownload:
 
     def test_download_success(self):
         """测试成功下载"""
-        # 模拟 _fetch_data 返回数据
-        with patch.object(self.downloader, '_fetch_data', return_value=pd.DataFrame({'a': [1]})) as mock_fetch:
-            result = self.downloader.download("stock_basic", "000001.SZ")
-            assert result is not None
-            self.mock_rate_limit_manager.apply_rate_limiting.assert_called_once_with(TaskType.stock_basic)
-            mock_fetch.assert_called_once_with("stock_basic", "000001.SZ")
+        # 模拟 fetcher_builder 返回一个函数，该函数返回数据
+        mock_fetcher = Mock(return_value=pd.DataFrame({'a': [1]}))
+        self.mock_fetcher_builder.build_by_task.return_value = mock_fetcher
+        
+        result = self.downloader.download("stock_basic", "000001.SZ")
+        
+        assert result is not None
+        self.mock_fetcher_builder.build_by_task.assert_called_once_with("stock_basic", symbol="000001.SZ")
+        mock_fetcher.assert_called_once()
 
     def test_download_rate_limiting_exception(self):
-        """测试速率限制异常"""
-        # 模拟速率限制抛出异常
-        self.mock_rate_limit_manager.apply_rate_limiting.side_effect = Exception(
-            "Rate limit exceeded"
+        """测试 fetcher_builder 抛出异常"""
+        # 模拟 fetcher_builder 抛出异常
+        self.mock_fetcher_builder.build_by_task.side_effect = Exception(
+            "Fetcher build failed"
         )
 
         # 执行下载
@@ -106,16 +109,20 @@ class TestSimpleDownloaderDownload:
 
         # 验证结果
         assert result is None
-        self.mock_rate_limit_manager.apply_rate_limiting.assert_called_once_with(
-            TaskType.stock_basic
+        self.mock_fetcher_builder.build_by_task.assert_called_once_with(
+            "stock_basic", symbol="000001.SZ"
         )
 
     def test_download_fetcher_exception(self):
-        """测试数据获取异常"""
-        # 模拟数据获取抛出异常
-        with patch.object(self.downloader, '_fetch_data', side_effect=Exception("Fetch failed")):
-            result = self.downloader.download("stock_basic", "000001.SZ")
-            assert result is None
-            self.mock_rate_limit_manager.apply_rate_limiting.assert_called_once_with(
-                TaskType.stock_basic
-            )
+        """测试 fetcher 执行异常"""
+        # 模拟 fetcher 函数执行时抛出异常
+        mock_fetcher = Mock(side_effect=Exception("Fetch failed"))
+        self.mock_fetcher_builder.build_by_task.return_value = mock_fetcher
+        
+        result = self.downloader.download("stock_basic", "000001.SZ")
+        
+        assert result is None
+        self.mock_fetcher_builder.build_by_task.assert_called_once_with(
+            "stock_basic", symbol="000001.SZ"
+        )
+        mock_fetcher.assert_called_once()
