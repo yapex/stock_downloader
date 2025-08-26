@@ -112,3 +112,78 @@ def process_data_task(task_type: str, symbol: str, data_frame: list) -> bool:
     except Exception as e:
         logger.error(f"❌ [HUEY_SLOW] 数据处理任务执行失败: {symbol}, 错误: {e}")
         raise e
+
+
+# ==========================================================
+# 元数据同步任务 (维护队列)
+# ==========================================================
+import duckdb
+from pathlib import Path
+from huey import crontab
+from ..configs.huey_config import huey_maint
+from ..configs import get_config
+
+config = get_config()
+
+
+def get_sync_metadata_crontab():
+    """从配置中读取 cron 表达式"""
+    schedule = config.cron_tasks.sync_metadata_schedule
+    minute, hour, day, month, day_of_week = schedule.split()
+    return crontab(minute, hour, day, month, day_of_week)
+
+@huey_maint.periodic_task(get_sync_metadata_crontab(), name="sync_metadata")
+def sync_metadata():
+    """
+    周期性任务：扫描 Parquet 文件目录，并更新 DuckDB 元数据文件。
+    """
+    logger.info("🛠️ [HUEY_MAINT] 开始执行元数据同步任务...")
+    
+    # 获取当前文件所在目录的绝对路径，并找到项目根目录
+    # neo/tasks/huey_tasks.py -> neo/tasks -> neo -> src -> project_root
+    project_root = Path(__file__).resolve().parents[3]
+    logger.info(f"诊断: 项目根目录: {project_root}")
+
+    parquet_base_path = project_root / config.storage.parquet_base_path
+    metadata_db_path = project_root / config.database.metadata_path
+    logger.info(f"诊断: Parquet 根目录: {parquet_base_path}")
+    logger.info(f"诊断: 元数据DB路径: {metadata_db_path}")
+
+    if not parquet_base_path.is_dir():
+        logger.warning(f"Parquet 根目录 {parquet_base_path} 不存在，跳过同步。")
+        return
+
+    try:
+        with duckdb.connect(str(metadata_db_path)) as con:
+            logger.info("诊断: 成功连接到元数据DB。")
+            # 扫描 Parquet 根目录下的所有子目录，每个子目录代表一个表
+            
+            found_items = list(parquet_base_path.iterdir())
+            if not found_items:
+                logger.warning(f"警告: 在 {parquet_base_path} 中没有找到任何条目。")
+                return
+
+            logger.info(f"诊断: 在 {parquet_base_path} 中找到以下条目: {[p.name for p in found_items]}")
+
+            for table_dir in found_items:
+                if table_dir.is_dir():
+                    table_name = table_dir.name
+                    # DuckDB 的 hive_partitioning 会自动处理子目录，我们只需提供根路径
+                    # 修正：为增强兼容性，我们提供一个更明确的 glob 路径
+                    table_glob_path = str(table_dir / '**/*.parquet')
+                    
+                    logger.info(f"正在为表 {table_name} 从路径 {table_glob_path} 同步元数据...")
+                    
+                    sql = f"""
+                    CREATE OR REPLACE TABLE {table_name} AS
+                    SELECT * FROM read_parquet('{table_glob_path}', hive_partitioning=1, union_by_name=True);
+                    """
+                    con.execute(sql)
+                    logger.info(f"✅ 表 {table_name} 元数据同步完成。")
+                else:
+                    logger.info(f"诊断: 跳过非目录条目: {table_dir}")
+
+        logger.info("🛠️ [HUEY_MAINT] 元数据同步任务成功完成。")
+    except Exception as e:
+        logger.error(f"❌ [HUEY_MAINT] 元数据同步任务失败: {e}")
+        raise e

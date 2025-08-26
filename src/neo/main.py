@@ -61,7 +61,7 @@ def dl(
 
 @app.command()
 def dp(
-    queue_name: str = typer.Argument(..., help="要启动的队列名称 ('fast' 或 'slow')"),
+    queue_name: str = typer.Argument(..., help="要启动的队列名称 ('fast', 'slow', 或 'maint')"),
     debug: bool = typer.Option(
         False,
         "--debug",

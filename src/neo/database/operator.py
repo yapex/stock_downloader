@@ -186,43 +186,46 @@ class DBOperator(SchemaTableCreator, IDBOperator):
         conn.executemany(sql, data_tuples)
         conn.commit()
 
-    def get_max_date(self, table_key: str) -> Optional[pd.Timestamp]:
+    def get_max_date(self, table_key: str, ts_code: Optional[str] = None) -> Optional[str]:
         """根据 schema 中定义的 date_col，查询指定表中日期字段的最大值
 
         Args:
             table_key: 表在schema配置中的键名 (e.g., 'stock_basic')
+            ts_code: 股票代码，如果提供，则查询该股票的最新日期
 
         Returns:
-            日期字段的最大值，如果表为空返回 "19901218"
-            如果没有 date_col 则返回 "19901218"
+            日期字段的最大值 (YYYYMMDD格式字符串)，如果表为空或无匹配则返回 None
         """
-        before_first_open_day = "19901218"  # 中国股市开盘前一天
         if not self._table_exists_in_schema(table_key):
             raise ValueError(f"表配置 '{table_key}' 不存在于 schema 中")
 
         table_config = self._get_table_config(table_key)
         table_name = table_config.get("table_name")
 
-        # 检查表是否定义了 date_col
         if "date_col" not in table_config or not table_config["date_col"]:
             logger.debug(f"表 '{table_name}' 未定义 date_col 字段，无法查询最大日期")
-            return before_first_open_day
+            return None
 
         date_col = table_config["date_col"]
+        
+        params = []
         sql = f"SELECT MAX({date_col}) as max_date FROM {table_name}"
+        if ts_code:
+            sql += f" WHERE ts_code = ?"
+            params.append(ts_code)
 
         try:
             if callable(self.conn):
                 with self.conn() as conn:
-                    result = conn.execute(sql).fetchone()
+                    result = conn.execute(sql, params).fetchone()
             else:
-                result = self.conn.execute(sql).fetchone()
+                result = self.conn.execute(sql, params).fetchone()
 
             if result and result[0] is not None:
-                return result[0]
+                return str(result[0])
             else:
-                logger.debug(f"表 '{table_name}' 为空或 {date_col} 字段无有效数据")
-                return before_first_open_day
+                logger.debug(f"表 '{table_name}' 中未找到 {ts_code or ''} 的有效数据")
+                return None
 
         except Exception as e:
             logger.error(f"❌ 查询表 '{table_name}' 最大日期失败: {e}")

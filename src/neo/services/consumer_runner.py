@@ -23,8 +23,12 @@ class ConsumerRunner:
             from ..configs.huey_config import huey_slow as huey
             max_workers = get_config().huey_slow.max_workers
             print(f"🐌 正在启动慢速队列消费者 (slow_queue)，配置 {max_workers} 个 workers...")
+        elif queue_name == 'maint':
+            from ..configs.huey_config import huey_maint as huey
+            max_workers = get_config().huey_maint.max_workers
+            print(f"🛠️ 正在启动维护队列消费者 (maint_queue)，配置 {max_workers} 个 workers...")
         else:
-            print(f"❌ 错误：无效的队列名称 '{queue_name}'。请使用 'fast' 或 'slow'。", file=sys.stderr)
+            print(f"❌ 错误：无效的队列名称 '{queue_name}'。请使用 'fast', 'slow', 或 'maint'。", file=sys.stderr)
             sys.exit(1)
 
 

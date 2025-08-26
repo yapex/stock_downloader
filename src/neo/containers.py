@@ -8,10 +8,15 @@ from neo.helpers.task_builder import TaskBuilder
 from neo.helpers.group_handler import GroupHandler
 from neo.services.consumer_runner import ConsumerRunner
 from neo.services.downloader_service import DownloaderService
+from neo.writers.parquet_writer import ParquetWriter
+from neo.configs import get_config
 
 
 class AppContainer(containers.DeclarativeContainer):
     """应用的核心服务容器"""
+
+    config = providers.Configuration()
+    config.from_dict(get_config().to_dict())
 
     # Services
     consumer_runner = providers.Factory(ConsumerRunner)
@@ -20,10 +25,16 @@ class AppContainer(containers.DeclarativeContainer):
     # Helpers & Managers
     fetcher_builder = providers.Factory(FetcherBuilder)
     rate_limit_manager = providers.Singleton(RateLimitManager.singleton)
-    db_operator = providers.Factory(DBOperator)
+    db_operator = providers.Factory(DBOperator) # 仍然保留，可能其他地方需要
     schema_loader = providers.Singleton(SchemaLoader)
     task_builder = providers.Singleton(TaskBuilder)
     group_handler = providers.Singleton(GroupHandler)
+
+    # Writers
+    parquet_writer = providers.Factory(
+        ParquetWriter,
+        base_path=config.storage.parquet_base_path
+    )
 
     # Core Components
     downloader = providers.Singleton(
@@ -33,8 +44,7 @@ class AppContainer(containers.DeclarativeContainer):
     )
     data_processor = providers.Factory(
         "neo.data_processor.simple_data_processor.SimpleDataProcessor",
-        db_operator=db_operator,
-        schema_loader=schema_loader,
+        parquet_writer=parquet_writer,
     )
 
     # Facade

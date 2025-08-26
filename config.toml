@@ -6,14 +6,25 @@ sqlite_path = "data/tasks_fast.db"
 max_workers = 1   # 为慢速队列分配少量worker
 sqlite_path = "data/tasks_slow.db"
 
+[huey_maint]
+max_workers = 1
+sqlite_path = "data/tasks_maint.db"
+
+[storage]
+parquet_base_path = "data/parquet"
+
 [database]
 type = "duckdb"
-path = "data/stock.db"
+path = "data/stock.db" # 旧的、包含物理数据的主数据库
+metadata_path = "data/metadata.db" # 新的、仅含元数据的数据库
 schema_file_path = "stock_schema.toml" # 相对于项目根目录
 
 [data_processor]
 batch_size = 1000
 flush_interval_seconds = 30
+
+[cron_tasks]
+sync_metadata_schedule = "*/10 * * * *" # 每10分钟执行一次
 
 [download_tasks]
 [download_tasks.stock_basic]
