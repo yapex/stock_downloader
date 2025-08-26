@@ -1,24 +1,16 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import pandas as pd
-import argparse
 import sys
 import os
-import tempfile
-from pathlib import Path
-from huey import MemoryHuey, SqliteHuey
-from neo.database.connection import get_memory_conn
-from neo.database.table_creator import SchemaTableCreator
+from huey import MemoryHuey
 
 # 确保测试环境下可以直接从 src 导入包
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
-# 对于命名空间包（PEP 420），需要把项目根目录放入sys.path，
-# 这样 `src` 目录可作为命名空间包被导入。
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 
-# 保留原有的mock fixtures以保持向后兼容
 @pytest.fixture
 def mock_fetcher():
     """一个可供所有测试使用的、模拟的Fetcher实例。"""
@@ -27,7 +19,6 @@ def mock_fetcher():
     fetcher.fetch_daily_history.return_value = pd.DataFrame(
         {"trade_date": ["20230102"]}
     )
-    # ---> 核心修正：mock 正确的方法名 <---
     fetcher.fetch_daily_basic.return_value = pd.DataFrame({"trade_date": ["20230102"]})
     fetcher.fetch_income.return_value = pd.DataFrame({"ann_date": ["20230425"]})
     fetcher.fetch_balancesheet.return_value = pd.DataFrame({"ann_date": ["20230425"]})
@@ -35,106 +26,13 @@ def mock_fetcher():
     return fetcher
 
 
-@pytest.fixture
-def mock_storage():
-    """一个可供所有测试使用的、模拟的Storage实例。"""
-    storage = MagicMock()
-    # 为每个方法都设置一个默认的、安全的返回值
-    storage.get_latest_date_by_stock.return_value = "20230101"
-    storage.save_daily.return_value = None
-    storage.save_fundamental_data.return_value = None
-    storage.save_financial_data.return_value = None
-    storage.save_stock_list.return_value = None
-
-    # _get_file_path 返回一个可配置的 mock_path
-    mock_path = MagicMock()
-    mock_path.exists.return_value = True  # 默认文件存在
-    mock_path.stat.return_value.st_mtime = (
-        pd.Timestamp.now().timestamp()
-    )  # 默认文件很新
-    storage._get_file_path.return_value = mock_path
-    return storage
-
-
-@pytest.fixture
-def huey_immediate():
-    """为测试提供即时模式的 Huey 实例"""
-    return MemoryHuey(immediate=True)
-
-
-@pytest.fixture
-def huey_sqlite_temp():
-    """为测试提供使用临时SQLite数据库的 Huey 实例"""
-    # 创建临时数据库文件
-    temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    temp_db_path = temp_db.name
-    temp_db.close()
-
-    try:
-        # 创建使用临时SQLite数据库的Huey实例
-        test_huey = SqliteHuey(filename=temp_db_path, immediate=False)
-        yield test_huey
-    finally:
-        # 清理临时数据库文件
-        temp_db_file = Path(temp_db_path)
-        if temp_db_file.exists():
-            temp_db_file.unlink()
-
-
-@pytest.fixture
-def mock_args():
-    """一个可供所有测试使用的、模拟的命令行参数。"""
-    return argparse.Namespace(force=False)
-
-
-@pytest.fixture
-def setup_test_database():
-    """为测试设置内存数据库和必要的表结构"""
-    # 创建表结构
-    try:
-        creator = SchemaTableCreator(conn=get_memory_conn)
-        creator.create_all_tables()
-    except Exception:
-        # 如果表已存在或创建失败，忽略错误
-        pass
-
-    yield
-
-    # 测试结束后清理（内存数据库会自动清理）
-
-
-@pytest.fixture
-def db_operator_with_memory_db():
-    """为测试提供使用内存数据库的DBOperator实例"""
-    from contextlib import contextmanager
-    import duckdb
-    from neo.database.operator import DBOperator
-    from pathlib import Path
+@pytest.fixture(autouse=True)
+def mock_huey_config():
+    """自动模拟 huey_config，避免数据库锁定问题"""
+    # 创建内存模式的 huey 实例，immediate=True 让任务立即执行
+    memory_huey_fast = MemoryHuey('test_fast', immediate=True)
+    memory_huey_slow = MemoryHuey('test_slow', immediate=True)
     
-    # 创建内存数据库连接
-    conn = duckdb.connect(":memory:")
-    
-    @contextmanager
-    def memory_conn_context():
-        try:
-            yield conn
-        finally:
-            pass  # 不关闭连接，让测试中的多个操作可以复用
-    
-    # 创建DBOperator实例
-    schema_file_path = Path.cwd() / "stock_schema.toml"
-    operator = DBOperator(str(schema_file_path), memory_conn_context)
-    
-    yield operator
-    
-    # 清理时关闭连接
-    conn.close()
-
-
-@pytest.fixture
-def memory_db_connection():
-    """为测试提供内存数据库连接"""
-    import duckdb
-    conn = duckdb.connect(":memory:")
-    yield conn
-    conn.close()
+    with patch('neo.configs.huey_config.huey_fast', memory_huey_fast), \
+         patch('neo.configs.huey_config.huey_slow', memory_huey_slow):
+        yield

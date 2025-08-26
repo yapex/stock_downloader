@@ -9,16 +9,22 @@ from . import get_config
 # 获取配置
 config = get_config()
 
+# 为数据库连接启用 WAL (Write-Ahead Logging) 模式以提高并发性
+pragmas = [
+    'PRAGMA journal_mode=wal',
+    'PRAGMA synchronous=normal',
+]
+
 # 快速队列实例
 huey_fast = SqliteHuey(
     name='fast_queue',
     filename=config.huey_fast.sqlite_path,
-    utc=False
+    utc=False,
 )
 
 # 慢速队列实例
 huey_slow = SqliteHuey(
     name='slow_queue',
     filename=config.huey_slow.sqlite_path,
-    utc=False
+    utc=False,
 )
