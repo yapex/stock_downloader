@@ -4,6 +4,5 @@
 """
 
 from .app_config import get_config, load_config, clear_config_cache
-from .huey_config import huey
 
-__all__ = ["get_config", "load_config", "clear_config_cache", "huey"]
+__all__ = ["get_config", "load_config", "clear_config_cache"]

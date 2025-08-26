@@ -8,7 +8,17 @@ from . import get_config
 
 # 获取配置
 config = get_config()
-db_path = config.huey.sqlite_path
 
-# 创建 SqliteHuey 实例
-huey = SqliteHuey("stock_downloader", filename=db_path, utc=False)
+# 快速队列实例
+huey_fast = SqliteHuey(
+    name='fast_queue',
+    filename=config.huey_fast.sqlite_path,
+    utc=False
+)
+
+# 慢速队列实例
+huey_slow = SqliteHuey(
+    name='slow_queue',
+    filename=config.huey_slow.sqlite_path,
+    utc=False
+)

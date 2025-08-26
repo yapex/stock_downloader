@@ -1,6 +1,10 @@
-[huey]
-max_workers = 10
-sqlite_path = "data/tasks.db"
+[huey_fast]
+max_workers = 50  # 为快速队列分配更多worker
+sqlite_path = "data/tasks_fast.db"
+
+[huey_slow]
+max_workers = 1   # 为慢速队列分配少量worker
+sqlite_path = "data/tasks_slow.db"
 
 [database]
 type = "duckdb"

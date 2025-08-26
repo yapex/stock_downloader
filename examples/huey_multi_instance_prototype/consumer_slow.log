@@ -7208,3 +7208,9 @@
 2025-08-26 11:59:10,750 - [SLOW_WORKER] ✅ 完成保存 SH601197_balance_sheet.
 [2025-08-26 11:59:10,750] INFO:huey:Worker-3:examples.huey_multi_instance_prototype.tasks.process_data_task: 362ba8a3-43c1-4d5d-877b-da3ef4cda118 executed in 2.004s
 2025-08-26 11:59:10,750 - examples.huey_multi_instance_prototype.tasks.process_data_task: 362ba8a3-43c1-4d5d-877b-da3ef4cda118 executed in 2.004s
+[2025-08-26 13:40:43,159] INFO:huey.consumer:MainThread:Received SIGTERM
+2025-08-26 13:40:43,159 - Received SIGTERM
+[2025-08-26 13:40:43,227] INFO:huey.consumer:MainThread:Shutting down
+2025-08-26 13:40:43,227 - Shutting down
+[2025-08-26 13:40:43,229] INFO:huey.consumer:MainThread:Consumer exiting.
+2025-08-26 13:40:43,229 - Consumer exiting.

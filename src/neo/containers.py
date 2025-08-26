@@ -22,7 +22,6 @@ class AppContainer(containers.DeclarativeContainer):
         "neo.downloader.simple_downloader.SimpleDownloader",
         fetcher_builder=fetcher_builder,
         rate_limit_manager=rate_limit_manager,
-        db_operator=db_operator,
     )
     schema_loader = providers.Singleton(SchemaLoader)
     data_processor = providers.Factory(

@@ -7208,3 +7208,9 @@
 2025-08-26 11:49:10,917 - [FAST_WORKER] 📥 下载完成 SH601197_balance_sheet. 提交保存任务.
 [2025-08-26 11:49:10,917] INFO:huey:Worker-8:examples.huey_multi_instance_prototype.tasks.download_task: 6b713c48-63bb-4849-9cf4-627aa6f4f4d0 executed in 0.055s
 2025-08-26 11:49:10,917 - examples.huey_multi_instance_prototype.tasks.download_task: 6b713c48-63bb-4849-9cf4-627aa6f4f4d0 executed in 0.055s
+[2025-08-26 13:40:43,159] INFO:huey.consumer:MainThread:Received SIGTERM
+2025-08-26 13:40:43,159 - Received SIGTERM
+[2025-08-26 13:40:43,193] INFO:huey.consumer:MainThread:Shutting down
+2025-08-26 13:40:43,193 - Shutting down
+[2025-08-26 13:40:43,193] INFO:huey.consumer:MainThread:Consumer exiting.
+2025-08-26 13:40:43,193 - Consumer exiting.

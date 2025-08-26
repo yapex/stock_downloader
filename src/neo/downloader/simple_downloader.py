@@ -26,17 +26,16 @@ class SimpleDownloader(IDownloader):
         self,
         fetcher_builder: FetcherBuilder,
         rate_limit_manager: IRateLimitManager,
-        db_operator: Optional[DBOperator] = None,
     ):
         """初始化下载器
 
         Args:
+            fetcher_builder: 数据获取器构建工具
             rate_limit_manager: 速率限制管理器
-            db_operator: 数据库操作器，用于智能日期参数处理
         """
         self.rate_limit_manager = rate_limit_manager
         self.fetcher_builder = fetcher_builder
-        self.db_operator = db_operator
+        self.db_operator = None # No longer used
 
     def download(self, task_type: str, symbol: str) -> Optional[pd.DataFrame]:
         """执行下载任务
@@ -72,10 +71,8 @@ class SimpleDownloader(IDownloader):
         """获取数据
 
         使用 FetcherBuilder 获取真实的 Tushare 数据。
-        1. 先从数据库中获取最新日期
-        2. 如果没有最新日期，就用默认的 19901218
-        3. 使用 FetcherBuilder 构建数据获取器
-        4. 执行数据获取
+        下载任务不关心数据库状态，它会尝试下载所有可用的数据。
+        日期过滤的逻辑移至数据处理任务中。
 
         Args:
             task_type: 任务类型
@@ -85,19 +82,15 @@ class SimpleDownloader(IDownloader):
             Optional[pd.DataFrame]: 下载的数据，失败时返回 None
         """
         try:
-            # 获取数据库中的最新日期，如果没有就用默认的
-            if self.db_operator is not None:
-                last_date = self.db_operator.get_max_date(task_type)
+            # 下载任务不再检查数据库，总是尝试从一个较早的日期开始获取数据
+            # 以确保能拉取到全量或最新的数据。
+            # 具体的增量逻辑由处理任务负责。
+            start_date = "19901218"
+            logger.debug(f"开始为 {symbol}_{task_type} 获取数据，起始日期: {start_date}")
 
-                # 将 last_date 转成日期后加一天
-                last_date = (pd.Timestamp(last_date) + pd.Timedelta(days=1)).strftime(
-                    "%Y%m%d"
-                )
-            # 打印最新日期
-            logger.debug(f"数据库 {symbol}_{task_type} 中最新日期: {last_date}")
             # 使用 FetcherBuilder 构建数据获取器
             fetcher = self.fetcher_builder.build_by_task(
-                task_type=task_type, symbol=symbol, start_date=last_date
+                task_type=task_type, symbol=symbol, start_date=start_date
             )
 
             # 执行数据获取

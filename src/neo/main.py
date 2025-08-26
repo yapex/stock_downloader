@@ -61,24 +61,25 @@ def dl(
 
 @app.command()
 def dp(
+    queue_name: str = typer.Argument(..., help="要启动的队列名称 ('fast' 或 'slow')"),
     debug: bool = typer.Option(
         False,
         "--debug",
         help="启用调试模式，输出详细日志",
     ),
 ):
-    """启动数据处理器消费者"""
+    """启动指定队列的数据处理器消费者"""
     from neo.helpers.utils import setup_logging
 
     # 初始化消费者日志配置
     log_level = "debug" if debug else "info"
-    setup_logging("consumer", log_level)
+    setup_logging(f"consumer_{queue_name}", log_level) # 为不同队列使用不同日志
 
     # 使用共享的容器实例
     app_service = container.app_service()
 
-    # 启动消费者
-    app_service.run_data_processor()
+    # 启动指定队列的消费者
+    app_service.run_data_processor(queue_name)
 
 
 def main(app_service: AppService = Provide["AppContainer.app_service"]):

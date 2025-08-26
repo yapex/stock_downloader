@@ -8,7 +8,7 @@ import asyncio
 import logging
 
 import pandas as pd
-from ..configs import huey
+from ..configs.huey_config import huey_fast, huey_slow
 from ..task_bus.types import TaskType
 
 logger = logging.getLogger(__name__)
@@ -36,19 +36,18 @@ async def _process_data_async(task_type: str, data: pd.DataFrame) -> bool:
         await data_processor.shutdown()
 
 
-@huey.task()
-def download_task(task_type: TaskType, symbol: str) -> dict:
-    """下载股票数据的 Huey 任务
+@huey_fast.task()
+def download_task(task_type: TaskType, symbol: str):
+    """下载股票数据的 Huey 任务 (快速队列)
+
+    下载完成后，直接调用慢速队列的数据处理任务。
 
     Args:
         task_type: 任务类型枚举
         symbol: 股票代码
-
-    Returns:
-        dict: 包含任务参数和下载数据的字典，键名与 process_data_task 参数匹配
     """
     try:
-        logger.debug(f"🚀 [HUEY] 开始执行下载任务: {symbol} ({task_type})")
+        logger.debug(f"🚀 [HUEY_FAST] 开始执行下载任务: {symbol} ({task_type})")
 
         # 从中心化的 app.py 获取共享的容器实例
         from ..app import container
@@ -58,36 +57,29 @@ def download_task(task_type: TaskType, symbol: str) -> dict:
         result = downloader.download(task_type, symbol)
 
         if result is not None and not result.empty:
-            # 返回与 process_data_task 参数名匹配的字典
-            return {
-                "task_type": task_type,  # task_type 已经是字符串
-                "symbol": symbol,
-                "data_frame": result.to_dict(
-                    "records"
-                ),  # 将 DataFrame 转换为可序列化的字典列表
-            }
+            logger.debug(f"📥 [HUEY_FAST] 下载完成: {symbol}, 准备提交到慢速队列...")
+            # 手动调用慢速任务，并传递数据
+            process_data_task(
+                task_type=task_type,
+                symbol=symbol,
+                data_frame=result.to_dict("records"),
+            )
         else:
-            logger.warning(f"⚠️ [HUEY] 下载任务完成: {symbol}, 成功: False, 返回空数据")
-            return {
-                "task_type": task_type,
-                "symbol": symbol,
-                "data_frame": [],  # 空数据
-            }
+            logger.warning(f"⚠️ [HUEY_FAST] 下载任务完成: {symbol}, 但返回空数据，不提交后续任务")
+
     except Exception as e:
-        logger.error(f"❌ [HUEY] 下载任务执行失败: {symbol}, 错误: {e}")
+        logger.error(f"❌ [HUEY_FAST] 下载任务执行失败: {symbol}, 错误: {e}")
         raise e
 
 
-@huey.task()
+@huey_slow.task()
 def process_data_task(task_type: str, symbol: str, data_frame: list) -> bool:
-    """数据处理任务
-
-    参数名与 download_task 返回的字典键名完全匹配
+    """数据处理任务 (慢速队列)
 
     Args:
-        task_type: 任务类型字符串（来自 download_task 返回字典的 'task_type' 键）
-        symbol: 股票代码（来自 download_task 返回字典的 'symbol' 键）
-        data_frame: DataFrame 数据（来自 download_task 返回字典的 'data_frame' 键）
+        task_type: 任务类型字符串
+        symbol: 股票代码
+        data_frame: DataFrame 数据 (字典列表形式)
 
     Returns:
         bool: 处理是否成功
@@ -100,21 +92,21 @@ def process_data_task(task_type: str, symbol: str, data_frame: list) -> bool:
                 if data_frame and isinstance(data_frame, list) and len(data_frame) > 0:
                     df_data = pd.DataFrame(data_frame)
                     logger.debug(
-                        f"[HUEY] 开始异步保存数据: {symbol}_{task_type}, 数据行数: {len(df_data)}"
+                        f"🐌 [HUEY_SLOW] 开始异步保存数据: {symbol}_{task_type}, 数据行数: {len(df_data)}"
                     )
                     return await _process_data_async(task_type, df_data)
                 else:
                     logger.warning(
-                        f"⚠️ [HUEY] 数据保存失败，无有效数据: {symbol}_{task_type}, 数据为空或None"
+                        f"⚠️ [HUEY_SLOW] 数据保存失败，无有效数据: {symbol}_{task_type}, 数据为空或None"
                     )
                     return False
             except Exception as e:
                 raise e
 
         result = asyncio.run(process_async())
-        logger.info(f"🏁 [HUEY] 最终结果: {symbol}_{task_type}, 成功: {result}")
+        logger.info(f"🏁 [HUEY_SLOW] 最终结果: {symbol}_{task_type}, 成功: {result}")
         return result
 
     except Exception as e:
-        logger.error(f"❌ [HUEY] 数据处理任务执行失败: {symbol}, 错误: {e}")
+        logger.error(f"❌ [HUEY_SLOW] 数据处理任务执行失败: {symbol}, 错误: {e}")
         raise e

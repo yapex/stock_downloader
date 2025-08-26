@@ -144,9 +144,9 @@ def setup_logging(log_type: str = "download", log_level: str = "INFO"):
     """配置日志记录
 
     Args:
-        log_type: 日志类型，支持 'download' 或 'data_process'（已统一到 stock_download.log）
+        log_type: 日志类型，将作为日志文件名的一部分 (e.g., 'download', 'consumer_fast')
         log_level: 日志级别，支持 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
     """
-    # 统一使用 stock_download.log 文件
-    _setup_file_handler("stock_download", log_level.upper())
+    # 使用 log_type 来区分不同的日志文件
+    _setup_file_handler(log_type, log_level.upper())
     _configure_third_party_loggers(log_level.upper())
