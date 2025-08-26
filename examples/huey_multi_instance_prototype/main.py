@@ -1,0 +1,14 @@
+"""
+Huey 应用的主入口点。
+
+当消费者通过这个文件启动时，它不仅能找到Huey实例，
+还能确保 tasks 模块被导入，从而完成任务的注册。
+"""
+
+# 导入Huey实例，使其可通过该模块访问
+from .config import huey_fast, huey_slow
+
+# 关键步骤：导入任务模块。
+# 这个导入操作会执行 tasks.py 文件中的 @huey.task() 装饰器，
+# 从而将我们的任务函数注册到对应的Huey实例中。
+from . import tasks

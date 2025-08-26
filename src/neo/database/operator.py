@@ -125,11 +125,11 @@ class DBOperator(SchemaTableCreator, IDBOperator):
             else:
                 self._perform_upsert(self.conn, table_name, df, primary_key)
 
-            logger.debug(f"成功向表 '{table_name}' upsert {len(df)} 条记录")
+            logger.debug(f"📥 成功向表 '{table_name}' upsert {len(df)} 条记录")
             return True
 
         except Exception as e:
-            logger.error(f"upsert 操作失败 - 表: {table_name}, 错误: {e}")
+            logger.error(f"❌ upsert 操作失败 - 表: {table_name}, 错误: {e}")
             raise
 
     def _perform_upsert(
@@ -225,7 +225,7 @@ class DBOperator(SchemaTableCreator, IDBOperator):
                 return before_first_open_day
 
         except Exception as e:
-            logger.error(f"查询表 '{table_name}' 最大日期失败: {e}")
+            logger.error(f"❌ 查询表 '{table_name}' 最大日期失败: {e}")
             raise
 
     @lru_cache(maxsize=1)
@@ -253,5 +253,5 @@ class DBOperator(SchemaTableCreator, IDBOperator):
             return ts_codes
 
         except Exception as e:
-            logger.error(f"查询表 '{table_name}' 的 ts_code 失败: {e}")
+            logger.error(f"❌ 查询表 '{table_name}' 的 ts_code 失败: {e}")
             raise

@@ -56,7 +56,7 @@ class SimpleDownloader(IDownloader):
             return self._fetch_data(task_type, symbol)
 
         except Exception as e:
-            logger.debug(f"下载任务失败: {symbol}_{task_type}, error: {e}")
+            logger.error(f"❌ 下载任务失败: {symbol}_{task_type}, error: {e}")
             return None
 
     def _apply_rate_limiting(self, task_type: str) -> None:

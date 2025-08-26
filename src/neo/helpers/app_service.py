@@ -114,7 +114,7 @@ class AppService:
             # 创建 pipeline：下载任务 -> 数据处理任务
             # 参考原型的成功模式，Huey 会自动将 download_task 返回的字典解包给 process_data_task
             pipeline = download_task.s(task.task_type, task.symbol).then(
-                process_data_task
+                process_data_task.s()
             )
             pipeline_result = huey.enqueue(pipeline)
             logger.debug(f"成功提交任务链 (pipeline): {task_name}")

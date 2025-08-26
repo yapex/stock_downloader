@@ -1,5 +1,5 @@
 [huey]
-max_workers = 6
+max_workers = 10
 sqlite_path = "data/tasks.db"
 
 [database]
