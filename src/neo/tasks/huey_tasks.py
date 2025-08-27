@@ -293,9 +293,12 @@ def sync_metadata():
 
     try:
         with duckdb.connect(str(metadata_db_path)) as con:
-            logger.info("诊断: 成功连接到元数据DB。")
+            # 设置DuckDB内存限制，防止内存溢出
+            con.execute("SET memory_limit='2GB'")
+            con.execute("SET max_memory='2GB'")
+            logger.info("诊断: 成功连接到元数据DB，已设置内存限制为2GB。")
+            
             # 扫描 Parquet 根目录下的所有子目录，每个子目录代表一个表
-
             found_items = list(parquet_base_path.iterdir())
             if not found_items:
                 logger.warning(f"警告: 在 {parquet_base_path} 中没有找到任何条目。")
@@ -308,20 +311,27 @@ def sync_metadata():
             for table_dir in found_items:
                 if table_dir.is_dir():
                     table_name = table_dir.name
-                    # DuckDB 的 hive_partitioning 会自动处理子目录，我们只需提供根路径
-                    # 修正：为增强兼容性，我们提供一个更明确的 glob 路径
                     table_glob_path = str(table_dir / "**/*.parquet")
 
                     logger.info(
                         f"正在为表 {table_name} 从路径 {table_glob_path} 同步元数据..."
                     )
 
+                    # 使用VIEW而不是TABLE，避免将所有数据加载到内存
+                    # VIEW只存储查询定义，不存储实际数据
+                    # 先删除可能存在的TABLE或VIEW，避免类型冲突
+                    try:
+                        con.execute(f"DROP TABLE IF EXISTS {table_name}")
+                        con.execute(f"DROP VIEW IF EXISTS {table_name}")
+                    except Exception:
+                        pass  # 忽略删除错误
+                    
                     sql = f"""
-                    CREATE OR REPLACE TABLE {table_name} AS
+                    CREATE VIEW {table_name} AS
                     SELECT * FROM read_parquet('{table_glob_path}', hive_partitioning=1, union_by_name=True);
                     """
                     con.execute(sql)
-                    logger.info(f"✅ 表 {table_name} 元数据同步完成。")
+                    logger.info(f"✅ 表 {table_name} 元数据视图同步完成。")
                 else:
                     logger.info(f"诊断: 跳过非目录条目: {table_dir}")
 
