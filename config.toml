@@ -1,5 +1,5 @@
 [huey_fast]
-max_workers = 50  # 为快速队列分配更多worker
+max_workers = 8  # 减少worker数量以避免超过API限制
 sqlite_path = "data/tasks_fast.db"
 
 [huey_slow]
@@ -27,38 +27,37 @@ flush_interval_seconds = 30
 sync_metadata_schedule = "*/10 * * * *" # 每10分钟执行一次
 
 [download_tasks]
-[download_tasks.stock_basic]
+default_start_date = "19900101"
+
+# 注意：这里的键名必须与 TaskTemplateRegistry 中的 api_method 匹配
+[download_tasks.stock_basic]  # api_method: stock_basic
 rate_limit_per_minute = 195  # 基础数据访问频率较低
-# update_interval_hours = 24*7
-[download_tasks.stock_daily]
 
-rate_limit_per_minute = 195  # 日线数据访问频率较高
-[download_tasks.stock_adj_qfq]
+[download_tasks.daily]  # api_method: daily (对应 stock_daily 任务)
+rate_limit_per_minute = 400  # 保守设置，为8个worker留出安全边界
 
+[download_tasks.pro_bar]  # api_method: pro_bar (对应 stock_adj_qfq 任务)
 rate_limit_per_minute = 195  # 复权数据访问频率较高
-[download_tasks.daily_basic]
+
+[download_tasks.daily_basic]  # api_method: daily_basic
 rate_limit_per_minute = 195  # 每日基本面数据访问频率较高
-[download_tasks.balance_sheet]
 
+[download_tasks.balancesheet]  # api_method: balancesheet (对应 balance_sheet 任务)
 rate_limit_per_minute = 195  # 财务数据访问频率中等
-[download_tasks.income_statement]
 
+[download_tasks.income]  # api_method: income (对应 income_statement 任务)
 rate_limit_per_minute = 195  # 财务数据访问频率中等
-[download_tasks.cash_flow]
 
+[download_tasks.cashflow]  # api_method: cashflow (对应 cash_flow 任务)
 rate_limit_per_minute = 195  # 财务数据访问频率中等
 
 [task_groups]
 sys=[
     "stock_basic"
 ]
-all = [
+daily = [
     "stock_daily",
-    "stock_adj_qfq",
     "daily_basic",
-    "balance_sheet",
-    "income_statement",
-    "cash_flow",
 ]
 financial=[
     "balance_sheet",

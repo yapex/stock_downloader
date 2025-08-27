@@ -48,9 +48,11 @@ class GroupHandler:
         Returns:
             GroupHandler: 带有默认 DBOperator 的 GroupHandler 实例
         """
-        from neo.database.operator import DBOperator
+        from neo.database.operator import ParquetDBQueryer
+        from neo.database.schema_loader import SchemaLoader
 
-        db_operator = DBOperator()
+        schema_loader = SchemaLoader()
+        db_operator = ParquetDBQueryer(schema_loader=schema_loader)
         return cls(db_operator=db_operator)
 
     def get_symbols_for_group(self, group_name: str) -> List[str]:
@@ -76,14 +78,12 @@ class GroupHandler:
 
         # 其他组需要从数据库获取所有股票代码
         if not self._db_operator:
-            from neo.database.operator import DBOperator
-            self._db_operator = DBOperator()
+            from neo.database.operator import ParquetDBQueryer
+            from neo.database.schema_loader import SchemaLoader
+            schema_loader = SchemaLoader()
+            self._db_operator = ParquetDBQueryer(schema_loader=schema_loader)
 
-        if self._db_operator:
-            return self._get_all_symbols_from_db()
-        else:
-            # 如果没有数据库操作器，抛出异常
-            raise ValueError("数据库异常，无法获取股票代码")
+        return self._get_all_symbols_from_db()
 
     def get_task_types_for_group(self, group_name: str) -> List[TaskType]:
         """获取指定组的任务类型列表

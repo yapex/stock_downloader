@@ -80,9 +80,12 @@ class FetcherBuilder:
         except KeyError:
             raise ValueError(f"不支持的任务类型: {task_type}")
 
-        # 标准化股票代码（如果提供了 symbol）
+        # 标准化股票代码（如果提供了有效的股票代码）
         if 'symbol' in kwargs:
-            kwargs["ts_code"] = normalize_stock_code(kwargs.pop('symbol'))
+            symbol = kwargs.pop('symbol')
+            # 只有当 symbol 不为空时才标准化
+            if symbol:
+                kwargs["ts_code"] = normalize_stock_code(symbol)
 
         # 合并参数：模板的固定参数 + 运行时的动态参数
         merged_params = {}

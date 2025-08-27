@@ -2,7 +2,7 @@ from dependency_injector import containers, providers
 from neo.downloader.fetcher_builder import FetcherBuilder
 from neo.helpers.rate_limit_manager import RateLimitManager
 
-from neo.database.operator import DBOperator
+from neo.database.operator import ParquetDBQueryer
 from neo.database.schema_loader import SchemaLoader
 from neo.helpers.task_builder import TaskBuilder
 from neo.helpers.group_handler import GroupHandler
@@ -22,11 +22,18 @@ class AppContainer(containers.DeclarativeContainer):
     consumer_runner = providers.Factory(ConsumerRunner)
     downloader_service = providers.Factory(DownloaderService)
 
-    # Helpers & Managers
+    # Core Components
     fetcher_builder = providers.Factory(FetcherBuilder)
     rate_limit_manager = providers.Singleton(RateLimitManager.singleton)
-    db_operator = providers.Factory(DBOperator) # 仍然保留，可能其他地方需要
+    
+    # Schema and Database Components
     schema_loader = providers.Singleton(SchemaLoader)
+    
+    # Database Components - 职责分离
+    db_queryer = providers.Factory(
+        ParquetDBQueryer,
+        schema_loader=schema_loader
+    )  # 专门负责查询
     task_builder = providers.Singleton(TaskBuilder)
     group_handler = providers.Singleton(GroupHandler)
 

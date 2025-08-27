@@ -8,13 +8,12 @@ import pandas as pd
 from unittest.mock import patch, MagicMock, Mock
 from contextlib import contextmanager
 import duckdb
+from pathlib import Path
 
 from neo.database.connection import get_memory_conn, DatabaseConnectionManager, get_conn
-from neo.database.operator import DBOperator
-from neo.database.table_creator import SchemaTableCreator
+from neo.database.operator import ParquetDBQueryer
 from neo.database.types import TableName
 from neo.containers import AppContainer
-from pathlib import Path
 
 
 class TestDatabaseConnection:
@@ -69,12 +68,16 @@ class TestDatabaseConnection:
             with get_memory_conn() as conn:
                 # 每个线程创建自己的表
                 conn.execute(f"CREATE TABLE thread_{thread_id}_table (id INTEGER)")
-                conn.execute(f"INSERT INTO thread_{thread_id}_table VALUES ({thread_id})")
+                conn.execute(
+                    f"INSERT INTO thread_{thread_id}_table VALUES ({thread_id})"
+                )
 
                 # 尝试查询其他线程的表（应该失败）
                 other_thread_id = 2 if thread_id == 1 else 1
                 try:
-                    conn.execute(f"SELECT * FROM thread_{other_thread_id}_table").fetchall()
+                    conn.execute(
+                        f"SELECT * FROM thread_{other_thread_id}_table"
+                    ).fetchall()
                     results[thread_id] = "found_other_table"
                 except Exception:
                     results[thread_id] = "isolated"
@@ -156,7 +159,7 @@ class TestGetConnFunction:
                 assert result[0] == 1
 
 
-class TestDBOperator:
+class TestParquetDBQueryer:
     """数据库操作器测试类"""
 
     @pytest.fixture
@@ -164,22 +167,45 @@ class TestDBOperator:
         return Path.cwd() / "stock_schema.toml"
 
     @pytest.fixture
+    def mock_schema_loader(self):
+        """模拟 schema 加载器"""
+        mock_loader = Mock()
+        # 模拟 stock_basic 表配置（无 date_col）
+        stock_basic_config = Mock()
+        stock_basic_config.table_name = "stock_basic"
+        stock_basic_config.date_col = None
+
+        # 模拟 stock_daily 表配置（有 date_col）
+        stock_daily_config = Mock()
+        stock_daily_config.table_name = "stock_daily"
+        stock_daily_config.date_col = "trade_date"
+
+        def load_schema_side_effect(table_key):
+            if table_key == "stock_basic":
+                return stock_basic_config
+            elif table_key == "stock_daily":
+                return stock_daily_config
+            else:
+                raise KeyError(f"Table {table_key} not found")
+
+        mock_loader.load_schema.side_effect = load_schema_side_effect
+        return mock_loader
+
+    @pytest.fixture
     def db_operator(self, schema_file_path):
-        # 为每个测试创建独立的内存数据库连接，但在同一个测试中复用
-        conn = duckdb.connect(":memory:")
+        # ParquetDBQueryer 不需要连接参数
+        from neo.database.schema_loader import SchemaLoader
 
-        @contextmanager
-        def memory_conn_context():
-            try:
-                yield conn
-            finally:
-                pass  # 不关闭连接，让测试中的多个操作可以复用
+        schema_loader = SchemaLoader(str(schema_file_path))
+        operator = ParquetDBQueryer(schema_loader)
+        return operator
 
-        operator = DBOperator(str(schema_file_path), memory_conn_context)
-
-        # 在fixture清理时关闭连接
-        yield operator
-        conn.close()
+    @pytest.fixture
+    def mock_db_operator(self, mock_schema_loader):
+        """使用模拟 schema 加载器的数据库操作器"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            operator = ParquetDBQueryer(mock_schema_loader, temp_dir)
+            return operator
 
     @pytest.fixture
     def sample_stock_basic_data(self):
@@ -198,272 +224,316 @@ class TestDBOperator:
             }
         )
 
-    def test_upsert_empty_data(self, db_operator):
-        """测试空数据的处理"""
-        empty_df = pd.DataFrame()
-        db_operator.upsert("stock_basic", empty_df)
-        # 空数据不应该引发异常
+    def test_init_with_default_path(self, mock_schema_loader):
+        """测试使用默认路径初始化"""
+        with patch("neo.database.operator.get_config") as mock_get_config:
+            mock_config = Mock()
+            mock_config.get.return_value = "data/parquet"
+            mock_get_config.return_value = mock_config
 
-    def test_upsert_missing_primary_key(self, db_operator, sample_stock_basic_data):
-        """测试缺少主键的数据"""
-        # 删除主键列
-        data_without_pk = sample_stock_basic_data.drop(columns=["ts_code"])
+            operator = ParquetDBQueryer(mock_schema_loader)
+            assert operator.parquet_base_path == Path("data/parquet")
+            assert operator.schema_loader == mock_schema_loader
 
-        with pytest.raises(Exception) as exc_info:
-            db_operator.upsert("stock_basic", data_without_pk)
-
-        # 验证异常信息包含主键相关内容
-        error_msg = str(exc_info.value).lower()
-        assert any(
-            keyword in error_msg
-            for keyword in ["primary", "key", "ts_code", "column", "missing"]
-        )
-
-    def test_get_max_date_for_multiple_symbols(self, db_operator):
-        """测试为多个特定股票代码批量获取最大日期"""
-        # 准备包含多个股票和日期的数据
-        test_data = pd.DataFrame({
-            'ts_code': ['000001.SZ', '000001.SZ', '000002.SZ', '000003.SZ'],
-            'trade_date': ['20240101', '20240105', '20240110', '20240115'],
-            # 添加其他必需列
-            'open': [10.0, 11.0, 20.0, 30.0],
-            'high': [10.8, 11.8, 20.8, 30.8],
-            'low': [9.8, 10.8, 19.8, 29.8],
-            'close': [10.5, 11.5, 20.5, 30.5],
-            'pre_close': [10.0, 10.5, 20.0, 30.0],
-            'change': [0.5, 1.0, 0.5, 0.5],
-            'pct_chg': [5.0, 9.52, 2.5, 1.67],
-            'vol': [1000, 1100, 2000, 3000],
-            'amount': [10500, 12650, 41000, 91500],
-        })
-        db_operator.upsert("stock_daily", test_data)
-
-        # 批量查询 '000001.SZ' 和 '000003.SZ' 的最大日期
-        max_dates = db_operator.get_max_date("stock_daily", ts_codes=['000001.SZ', '000003.SZ'])
-        assert max_dates == {
-            '000001.SZ': '20240105',
-            '000003.SZ': '20240115'
-        }
-
-        # 查询一个存在的和一个不存在的
-        max_dates_mixed = db_operator.get_max_date("stock_daily", ts_codes=['000002.SZ', '999999.SH'])
-        assert max_dates_mixed == {
-            '000002.SZ': '20240110'
-        }
-
-        # 查询全表的最新日期
-        max_date_all = db_operator.get_max_date("stock_daily")
-        assert max_date_all == {'__all__': '20240115'}
-
-    def test_get_max_date_without_date_col(self, db_operator):
-        """测试在没有日期列的表上获取最大日期"""
-        # stock_basic 表没有日期列，应该返回空字典
-        max_dates = db_operator.get_max_date("stock_basic")
-        assert max_dates == {}
-
-    def test_get_all_symbols_with_data(self, db_operator, sample_stock_basic_data):
-        """测试获取所有股票代码（有数据）"""
-        # 插入测试数据
-        db_operator.upsert("stock_basic", sample_stock_basic_data)
-
-        # 获取所有股票代码
-        symbols = db_operator.get_all_symbols()
-
-        # 验证结果
-        expected_symbols = ["000001.SZ", "000002.SZ"]
-        assert set(symbols) == set(expected_symbols)
-        assert len(symbols) == 2
-
-    def test_get_all_symbols_empty_table(self, db_operator):
-        """测试获取所有股票代码（空表）"""
-        # 先创建stock_basic表
-        db_operator.create_table("stock_basic")
-        
-        # 获取空表的股票代码
-        symbols = db_operator.get_all_symbols()
-
-        # 验证结果
-        assert symbols == []
+    def test_init_with_custom_path(self, mock_schema_loader):
+        """测试使用自定义路径初始化"""
+        custom_path = "/custom/parquet/path"
+        operator = ParquetDBQueryer(mock_schema_loader, custom_path)
+        assert operator.parquet_base_path == Path(custom_path)
+        assert operator.schema_loader == mock_schema_loader
 
     def test_create_default(self):
-        """测试使用默认参数创建 DBOperator"""
-        with patch("neo.database.operator.get_conn") as mock_get_conn:
-            mock_conn = MagicMock()
-            mock_get_conn.return_value.__enter__.return_value = mock_conn
+        """测试使用默认参数创建 ParquetDBQueryer"""
+        with (
+            patch("neo.database.operator.get_config") as mock_get_config,
+            patch("neo.database.operator.SchemaLoader") as mock_schema_loader_class,
+        ):
+            mock_config = Mock()
+            mock_config.get.return_value = "data/parquet"
+            mock_get_config.return_value = mock_config
 
-            # 使用默认参数创建
-            operator = DBOperator.create_default()
+            mock_schema_loader = Mock()
+            mock_schema_loader_class.return_value = mock_schema_loader
+
+            operator = ParquetDBQueryer.create_default()
 
             # 验证实例创建成功
-            assert isinstance(operator, DBOperator)
-            assert operator.conn is not None
+            assert isinstance(operator, ParquetDBQueryer)
+            assert hasattr(operator, "get_all_symbols")
+            assert hasattr(operator, "get_max_date")
+            mock_schema_loader_class.assert_called_once()
 
+    def test_table_exists_in_schema_true(self, mock_db_operator):
+        """测试表在 schema 中存在的情况"""
+        result = mock_db_operator._table_exists_in_schema("stock_basic")
+        assert result is True
 
-class TestSchemaTableCreator:
-    """表创建器测试类"""
-
-    @pytest.fixture
-    def schema_file(self):
-        """创建临时 schema 文件"""
-        schema_content = """
-[tables.stock_basic]
-table_name = "stock_basic"
-primary_key = ["ts_code"]
-description = "股票基本信息表字段"
-columns = [
-    { name = "ts_code", type = "TEXT" },
-    { name = "symbol", type = "TEXT" },
-    { name = "name", type = "TEXT" }
-]
-
-[tables.stock_daily]
-table_name = "stock_daily"
-primary_key = ["ts_code", "trade_date"]
-description = "股票日线数据字段"
-columns = [
-    { name = "ts_code", type = "TEXT" },
-    { name = "trade_date", type = "TEXT" },
-    { name = "open", type = "REAL" },
-    { name = "close", type = "REAL" }
-]
-"""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
-            f.write(schema_content)
-            temp_file = f.name
-
-        yield temp_file
-
-        # 清理临时文件
-        os.unlink(temp_file)
-
-    @pytest.fixture
-    def shared_memory_conn(self):
-        """创建共享的内存数据库连接"""
-        conn = duckdb.connect(":memory:")
-
-        @contextmanager
-        def memory_conn_context():
-            try:
-                yield conn
-            finally:
-                pass
-
-        yield memory_conn_context
-        conn.close()
-
-    @pytest.fixture
-    def creator(self, schema_file, shared_memory_conn):
-        return SchemaTableCreator(schema_file, shared_memory_conn)
-
-    def test_create_table_with_valid_enum_table_name(self, creator):
-        """测试使用有效的枚举表名创建表"""
-        creator.create_table(TableName.STOCK_BASIC.value)
-        # 如果没有异常，则测试通过
-
-    def test_create_table_with_invalid_table_name(self, creator):
-        """测试使用无效表名创建表"""
-        # create_table方法对于无效表名会返回False而不是抛出异常
-        result = creator.create_table("invalid_table")
+    def test_table_exists_in_schema_false(self, mock_db_operator):
+        """测试表在 schema 中不存在的情况"""
+        result = mock_db_operator._table_exists_in_schema("nonexistent_table")
         assert result is False
 
-    def test_create_table_generates_correct_sql(self, creator):
-        """测试生成正确的 SQL"""
-        with patch.object(creator, "conn") as mock_conn_func:
-            mock_conn = MagicMock()
-            mock_conn_func.return_value.__enter__.return_value = mock_conn
+    def test_get_table_config(self, mock_db_operator):
+        """测试获取表配置"""
+        config = mock_db_operator._get_table_config("stock_basic")
+        assert config.table_name == "stock_basic"
+        assert config.date_col is None
 
-            creator.create_table(TableName.STOCK_BASIC.value)
+    def test_get_parquet_path_pattern(self, mock_db_operator):
+        """测试获取 Parquet 文件路径模式"""
+        pattern = mock_db_operator._get_parquet_path_pattern("stock_daily")
+        expected = str(
+            mock_db_operator.parquet_base_path / "stock_daily" / "**" / "*.parquet"
+        )
+        assert pattern == expected
 
-            # 验证执行了 SQL
-            mock_conn.execute.assert_called()
-            sql_call = mock_conn.execute.call_args[0][0]
+    def test_parquet_files_exist_false_no_directory(self, mock_db_operator):
+        """测试 Parquet 文件不存在的情况 - 目录不存在"""
+        result = mock_db_operator._parquet_files_exist("nonexistent_table")
+        assert result is False
 
-            # 验证 SQL 包含预期内容
-            assert "CREATE TABLE" in sql_call.upper()
-            assert "stock_basic" in sql_call
-            assert "ts_code" in sql_call
-            assert "PRIMARY KEY" in sql_call.upper()
+    def test_parquet_files_exist_false_no_parquet_files(self, mock_db_operator):
+        """测试 Parquet 文件不存在的情况 - 目录存在但无 parquet 文件"""
+        # 创建目录但不创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "empty_table"
+        table_path.mkdir(parents=True, exist_ok=True)
 
-    def test_create_table_in_memory_database_real(self, creator):
-        """测试在真实内存数据库中创建表"""
-        # 创建表
-        creator.create_table(TableName.STOCK_BASIC.value)
+        result = mock_db_operator._parquet_files_exist("empty_table")
+        assert result is False
 
-        # 验证表已创建
-        with creator.conn() as conn:
-            # 查询表信息
-            result = conn.execute(
-                "SELECT table_name FROM information_schema.tables WHERE table_name = 'stock_basic'"
-            ).fetchall()
-            assert len(result) == 1
-            assert result[0][0] == "stock_basic"
+    def test_parquet_files_exist_true(self, mock_db_operator):
+        """测试 Parquet 文件存在的情况"""
+        # 创建目录和 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "test_table"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
 
-    def test_create_all_tables(self, schema_file):
-        """测试创建所有表"""
-        conn = duckdb.connect(":memory:")
+        result = mock_db_operator._parquet_files_exist("test_table")
+        assert result is True
 
-        @contextmanager
-        def memory_conn_context():
-            try:
-                yield conn
-            finally:
-                pass
+    def test_get_max_date_table_not_in_schema(self, mock_db_operator):
+        """测试表不在 schema 中的情况"""
+        result = mock_db_operator.get_max_date("nonexistent_table", ["000001.SZ"])
+        assert result == {}
 
-        try:
-            creator = SchemaTableCreator(schema_file, memory_conn_context)
-            creator.create_all_tables()
+    def test_get_max_date_without_date_col(self, mock_db_operator):
+        """测试在没有日期列的表上获取最大日期"""
+        result = mock_db_operator.get_max_date("stock_basic", ["000001.SZ"])
+        assert result == {}
 
-            # 验证所有表都已创建
-            tables = conn.execute(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
-            ).fetchall()
-            table_names = [table[0] for table in tables]
+    def test_get_max_date_no_parquet_files(self, mock_db_operator):
+        """测试 Parquet 文件不存在时获取最大日期"""
+        result = mock_db_operator.get_max_date("stock_daily", ["000001.SZ"])
+        assert result == {}
 
-            assert "stock_basic" in table_names
-            assert "stock_daily" in table_names
+    @patch("neo.database.operator.duckdb.connect")
+    def test_get_max_date_with_data(self, mock_connect, mock_db_operator):
+        """测试有数据时获取最大日期"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "stock_daily"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
 
-        finally:
-            conn.close()
+        # 模拟 DuckDB 连接和查询结果
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+        mock_conn.execute.return_value.fetchall.return_value = [
+            ("000001.SZ", "20240101"),
+            ("000002.SZ", "20240102"),
+        ]
 
-    def test_drop_table_success(self, creator):
-        """测试成功删除表"""
-        # 先创建表
-        creator.create_table(TableName.STOCK_BASIC.value)
+        result = mock_db_operator.get_max_date(
+            "stock_daily", ["000001.SZ", "000002.SZ"]
+        )
 
-        # 删除表
-        creator.drop_table(TableName.STOCK_BASIC.value)
+        expected = {"000001.SZ": "20240101", "000002.SZ": "20240102"}
+        assert result == expected
+        mock_conn.close.assert_called_once()
 
-        # 验证表已删除
-        with creator.conn() as conn:
-            result = conn.execute(
-                "SELECT table_name FROM information_schema.tables WHERE table_name = 'stock_basic'"
-            ).fetchall()
-            assert len(result) == 0
+    @patch("neo.database.operator.duckdb.connect")
+    def test_get_max_date_with_null_values(self, mock_connect, mock_db_operator):
+        """测试查询结果包含 null 值的情况"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "stock_daily"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        # 模拟 DuckDB 连接和查询结果（包含 null 值）
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+        mock_conn.execute.return_value.fetchall.return_value = [
+            ("000001.SZ", "20240101"),
+            ("000002.SZ", None),  # null 值应该被过滤
+        ]
+
+        result = mock_db_operator.get_max_date(
+            "stock_daily", ["000001.SZ", "000002.SZ"]
+        )
+
+        expected = {"000001.SZ": "20240101"}  # 只包含非 null 值
+        assert result == expected
+
+    @patch("neo.database.operator.duckdb.connect")
+    def test_get_max_date_exception_handling(self, mock_connect, mock_db_operator):
+        """测试查询异常处理"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "stock_daily"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        # 模拟 DuckDB 连接异常
+        mock_connect.side_effect = Exception("Database connection failed")
+
+        result = mock_db_operator.get_max_date("stock_daily", ["000001.SZ"])
+        assert result == {}  # 异常时返回空字典
+
+    def test_get_all_symbols_table_not_in_schema(self, mock_db_operator):
+        """测试 stock_basic 表不在 schema 中的情况"""
+        # 修改 mock 使 stock_basic 不存在
+        mock_db_operator.schema_loader.load_schema.side_effect = KeyError(
+            "stock_basic not found"
+        )
+
+        result = mock_db_operator.get_all_symbols()
+        assert result == []
+
+    def test_get_all_symbols_no_parquet_files(self, mock_db_operator):
+        """测试 stock_basic Parquet 文件不存在的情况"""
+        result = mock_db_operator.get_all_symbols()
+        assert result == []
+
+    @patch("neo.database.operator.duckdb.connect")
+    def test_get_all_symbols_with_data(self, mock_connect, mock_db_operator):
+        """测试有数据时获取所有股票代码"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "stock_basic"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        # 模拟 DuckDB 连接和查询结果
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+        mock_conn.execute.return_value.fetchall.return_value = [
+            ("000001.SZ",),
+            ("000002.SZ",),
+            ("000003.SZ",),
+        ]
+
+        result = mock_db_operator.get_all_symbols()
+
+        expected = ["000001.SZ", "000002.SZ", "000003.SZ"]
+        assert result == expected
+        mock_conn.close.assert_called_once()
+
+    @patch("neo.database.operator.duckdb.connect")
+    def test_get_all_symbols_with_empty_values(self, mock_connect, mock_db_operator):
+        """测试查询结果包含空值的情况"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "stock_basic"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        # 模拟 DuckDB 连接和查询结果（包含空值）
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+        mock_conn.execute.return_value.fetchall.return_value = [
+            ("000001.SZ",),
+            (None,),  # null 值应该被过滤
+            ("",),  # 空字符串应该被过滤
+            ("000002.SZ",),
+        ]
+
+        result = mock_db_operator.get_all_symbols()
+
+        expected = ["000001.SZ", "000002.SZ"]  # 只包含有效值
+        assert result == expected
+
+    @patch("neo.database.operator.duckdb.connect")
+    def test_get_all_symbols_exception_handling(self, mock_connect, mock_db_operator):
+        """测试查询异常处理"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "stock_basic"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        # 模拟 DuckDB 连接异常
+        mock_connect.side_effect = Exception("Database connection failed")
+
+        result = mock_db_operator.get_all_symbols()
+        assert result == []  # 异常时返回空列表
+
+    def test_get_all_symbols_cache_behavior(self, mock_db_operator):
+        """测试 get_all_symbols 的缓存行为"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "stock_basic"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        with patch("neo.database.operator.duckdb.connect") as mock_connect:
+            mock_conn = Mock()
+            mock_connect.return_value = mock_conn
+            mock_conn.execute.return_value.fetchall.return_value = [("000001.SZ",)]
+
+            # 第一次调用
+            result1 = mock_db_operator.get_all_symbols()
+            # 第二次调用应该使用缓存
+            result2 = mock_db_operator.get_all_symbols()
+
+            assert result1 == result2 == ["000001.SZ"]
+            # 由于缓存，DuckDB 连接只应该被调用一次
+            mock_connect.assert_called_once()
+
+    # 保留原有的测试用例
+    def test_get_max_date_without_date_col_original(self, db_operator):
+        """测试在没有日期列的表上获取最大日期（原有测试）"""
+        # stock_basic 表没有日期列，应该返回空字典
+        max_dates = db_operator.get_max_date("stock_basic", ["000001.SZ"])
+        assert max_dates == {}
+
+    def test_create_default_original(self):
+        """测试使用默认参数创建 ParquetDBQueryer（原有测试）"""
+        # 使用默认参数创建
+        operator = ParquetDBQueryer.create_default()
+
+        # 验证实例创建成功
+        assert isinstance(operator, ParquetDBQueryer)
+        # ParquetDBQueryer 不需要 conn 参数，验证实例类型即可
+        assert hasattr(operator, "get_all_symbols")
+        assert hasattr(operator, "get_max_date")
 
 
 class TestDatabaseIntegration:
     """数据库集成测试类"""
 
     def test_container_db_operator_functionality(self):
-        """测试从容器获取的 DBOperator 功能"""
+        """测试从容器获取的 ParquetDBQueryer 功能"""
         container = AppContainer()
-        db_operator = container.db_operator()
+        # 使用 db_queryer 来测试 ParquetDBQueryer 功能
+        db_operator = container.db_queryer()
 
         # 验证实例类型
-        assert isinstance(db_operator, DBOperator)
+        assert isinstance(db_operator, ParquetDBQueryer)
 
-        # 验证具有预期的方法
-        assert hasattr(db_operator, "upsert")
-        assert hasattr(db_operator, "get_max_date")
+        # 验证具有预期的查询方法
         assert hasattr(db_operator, "get_all_symbols")
+        assert hasattr(db_operator, "get_max_date")
 
     def test_container_provides_different_operator_instances(self):
         """测试容器提供不同的操作器实例"""
         container = AppContainer()
-        operator1 = container.db_operator()
-        operator2 = container.db_operator()
+        # 使用 db_queryer 来测试 ParquetDBQueryer 功能
+        operator1 = container.db_queryer()
+        operator2 = container.db_queryer()
 
         # 验证是不同的实例（非单例模式）
         assert operator1 is not operator2
-        assert isinstance(operator1, DBOperator)
-        assert isinstance(operator2, DBOperator)
+        assert isinstance(operator1, ParquetDBQueryer)
+        assert isinstance(operator2, ParquetDBQueryer)

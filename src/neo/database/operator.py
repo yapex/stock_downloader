@@ -1,268 +1,232 @@
-"""数据库操作器
+"""Parquet 数据库操作器
 
-提供数据库的基本操作功能，包括数据插入、更新、查询等。
+基于 DuckDB 和 Parquet 文件的数据库操作器实现。
 """
 
 import logging
+import duckdb
 import pandas as pd
+from pathlib import Path
+from typing import Dict, List, Optional, Union, Any
 from functools import lru_cache
-from typing import List, Dict, Any, Optional, Union
 
-from .table_creator import SchemaTableCreator
-from .connection import get_conn
-from .interfaces import IDBOperator
-from .types import TableName
+from .schema_loader import SchemaLoader
+from .interfaces import IDBQueryer, ISchemaLoader
+from ..configs import get_config
 
 logger = logging.getLogger(__name__)
 
 
-class DBOperator(SchemaTableCreator, IDBOperator):
-    """数据库操作器
+class ParquetDBQueryer(IDBQueryer):
+    """基于 Parquet 文件的数据库查询器
 
-    继承自SchemaTableCreator，提供数据库的基本操作功能。
+    使用 DuckDB 查询 Parquet 数据湖，专门负责数据查询操作。
+    不支持数据写入，保持数据湖的只读特性。
     """
 
-    def __init__(self, schema_file_path: str = None, conn=get_conn):
-        """初始化数据库操作器
+    def __init__(self, schema_loader: ISchemaLoader, parquet_base_path: str = None):
+        """初始化 Parquet 数据库查询器
 
         Args:
-            schema_file_path: Schema文件路径
-            conn: 数据库连接函数
+            schema_loader: 数据库模式加载器
+            parquet_base_path: Parquet 文件的基础路径
         """
-        super().__init__(schema_file_path, conn)
+        if parquet_base_path is None:
+            config = get_config()
+            parquet_base_path = config.get('storage.parquet_base_path', 'data/parquet')
+        
+        self.parquet_base_path = Path(parquet_base_path)
+        self.schema_loader = schema_loader
 
     @classmethod
-    def create_default(cls) -> "DBOperator":
-        """创建默认的数据库操作器实例
+    def create_default(cls) -> "ParquetDBQueryer":
+        """创建默认的 Parquet 数据库查询器实例
 
-        使用默认配置创建 DBOperator 实例，包括：
-        - 默认的 schema 文件路径（从配置中获取）
-        - 默认的数据库连接函数
+        使用默认配置创建 ParquetDBQueryer 实例。
 
         Returns:
-            DBOperator: 默认配置的数据库操作器实例
+            ParquetDBQueryer: 默认配置的 Parquet 数据库查询器实例
         """
-        return cls()
+        config = get_config()
+        parquet_base_path = config.get("storage.parquet_base_path", "data/parquet")
+        schema_loader = SchemaLoader()
+        return cls(schema_loader=schema_loader, parquet_base_path=parquet_base_path)
 
-    def upsert(
-        self,
-        table_name: str,
-        data: Union[pd.DataFrame, Dict[str, Any], List[Dict[str, Any]]],
-    ) -> bool:
-        """向表中插入或更新数据
+    def _table_exists_in_schema(self, table_key: str) -> bool:
+        """检查表是否在 schema 中存在
 
         Args:
-            table_name: 表名
-            data: 要插入的数据，可以是DataFrame、字典或字典列表
+            table_key: 表在schema配置中的键名
 
         Returns:
-            操作是否成功
+            表是否存在
         """
-        # 数据验证
-        if data is None:
-            logger.debug(f"数据为空，跳过 upsert 操作: {table_name}")
+        try:
+            self.schema_loader.load_schema(table_key)
             return True
-
-        if isinstance(data, pd.DataFrame) and data.empty:
-            logger.debug(f"DataFrame 为空，跳过 upsert 操作: {table_name}")
-            return True
-
-        if isinstance(data, (list, dict)) and not data:
-            logger.debug(f"数据为空，跳过 upsert 操作: {table_name}")
-            return True
-
-        # 确保表存在
-        if not self.table_exists(table_name):
-            logger.info(f"表 '{table_name}' 不存在，正在创建...")
-            if not self.create_table(table_name):
-                logger.error(f"创建表 '{table_name}' 失败")
-                return False
-
-        # 获取表配置
-        if not self._table_exists_in_schema(table_name):
-            logger.error(f"表 '{table_name}' 在 schema 中不存在")
+        except KeyError:
             return False
 
-        table_config = self._get_table_config(table_name)
-        primary_key = getattr(
-            table_config, "primary_key", table_config.get("primary_key", [])
-        )
-
-        if not primary_key:
-            raise ValueError(f"表 '{table_name}' 未定义主键，无法执行 upsert 操作")
-
-        # 转换数据格式
-        if isinstance(data, dict):
-            df = pd.DataFrame([data])
-        elif isinstance(data, list):
-            df = pd.DataFrame(data)
-        else:
-            df = data.copy()
-
-        if df.empty:
-            logger.debug(f"处理后的数据为空，跳过 upsert 操作: {table_name}")
-            return True
-
-        # 检查必要的列是否存在
-        missing_pk_cols = [col for col in primary_key if col not in df.columns]
-        if missing_pk_cols:
-            raise ValueError(
-                f"数据中缺少主键列 {missing_pk_cols}，无法执行 upsert 操作"
-            )
-
-        # 检查DataFrame是否包含表的所有必需列
-        columns = getattr(table_config, "columns", table_config.get("columns", []))
-        table_columns = self._extract_column_names(columns)
-        missing_cols = [col for col in table_columns if col not in df.columns]
-        if missing_cols:
-            raise ValueError(f"DataFrame 缺少以下列: {missing_cols}")
-
-        try:
-            # 执行 upsert 操作
-            if callable(self.conn):
-                with self.conn() as conn:
-                    self._perform_upsert(conn, table_name, df, primary_key)
-            else:
-                self._perform_upsert(self.conn, table_name, df, primary_key)
-
-            logger.debug(f"📥 成功向表 '{table_name}' upsert {len(df)} 条记录")
-            return True
-
-        except Exception as e:
-            logger.error(f"❌ upsert 操作失败 - 表: {table_name}, 错误: {e}")
-            raise
-
-    def _perform_upsert(
-        self, conn, table_name: str, df: pd.DataFrame, primary_key: List[str]
-    ) -> None:
-        """执行实际的 upsert 操作
+    def _get_table_config(self, table_key: str):
+        """获取表配置
 
         Args:
-            conn: 数据库连接
+            table_key: 表在schema配置中的键名
+
+        Returns:
+            表配置对象
+        """
+        return self.schema_loader.load_schema(table_key)
+
+    def _get_parquet_path_pattern(self, table_name: str) -> str:
+        """获取 Parquet 文件路径模式
+
+        Args:
             table_name: 表名
-            df: 数据DataFrame
-            primary_key: 主键列表
+
+        Returns:
+            Parquet 文件路径模式
         """
-        # 构建 upsert SQL
-        columns = df.columns.tolist()
-        placeholders = ", ".join(["?" for _ in columns])
-        column_names = ", ".join(columns)
+        table_path = self.parquet_base_path / table_name
+        # 使用 DuckDB 的通配符模式匹配所有分区
+        return str(table_path / "**" / "*.parquet")
 
-        # 构建 ON CONFLICT 子句
-        " AND ".join([f"excluded.{col} = {table_name}.{col}" for col in primary_key])
-        update_columns = [col for col in columns if col not in primary_key]
-
-        if update_columns:
-            update_clause = ", ".join(
-                [f"{col} = excluded.{col}" for col in update_columns]
-            )
-            sql = f"""
-                INSERT INTO {table_name} ({column_names})
-                VALUES ({placeholders})
-                ON CONFLICT ({", ".join(primary_key)})
-                DO UPDATE SET {update_clause}
-            """
-        else:
-            # 如果没有非主键列，则忽略冲突
-            sql = f"""
-                INSERT INTO {table_name} ({column_names})
-                VALUES ({placeholders})
-                ON CONFLICT ({", ".join(primary_key)})
-                DO NOTHING
-            """
-
-        # 批量插入数据
-        self._upsert_batch_records(conn, sql, df)
-
-    def _upsert_batch_records(self, conn, sql: str, df: pd.DataFrame) -> None:
-        """执行批量upsert记录
+    def _parquet_files_exist(self, table_name: str) -> bool:
+        """检查 Parquet 文件是否存在
 
         Args:
-            conn: 数据库连接
-            sql: SQL语句
-            df: 数据DataFrame
-        """
-        data_tuples = [tuple(row) for row in df.values]
-        conn.executemany(sql, data_tuples)
-        conn.commit()
+            table_name: 表名
 
-    def get_max_date(self, table_key: str, ts_codes: Optional[List[str]] = None) -> Dict[str, str]:
+        Returns:
+            Parquet 文件是否存在
+        """
+        table_path = self.parquet_base_path / table_name
+        if not table_path.exists():
+            return False
+
+        # 检查是否有 .parquet 文件
+        return any(table_path.rglob("*.parquet"))
+
+
+
+    def get_max_date(
+        self, table_key: str, ts_codes: List[str]
+    ) -> Dict[str, str]:
         """根据 schema 中定义的 date_col，查询指定表中一个或多个股票的最新日期
 
         Args:
             table_key: 表在schema配置中的键名 (e.g., 'stock_daily')
-            ts_codes: 股票代码列表。如果为 None 或空，则查询全表的最新日期。
+            ts_codes: 股票代码列表
 
         Returns:
-            一个字典，key为股票代码，value为对应的最新日期 (YYYYMMDD格式字符串)。
-            如果查询全表，则key为特殊值 '__all__'。
+            一个字典，key为股票代码，value为对应的最新日期 (YYYYMMDD格式字符串)
         """
         if not self._table_exists_in_schema(table_key):
-            raise ValueError(f"表配置 '{table_key}' 不存在于 schema 中")
+            logger.warning(f"表配置 '{table_key}' 不存在于 schema 中")
+            return {}
 
         table_config = self._get_table_config(table_key)
-        table_name = table_config.get("table_name")
+        table_name = table_config.table_name
 
-        if "date_col" not in table_config or not table_config["date_col"]:
+        if not hasattr(table_config, "date_col") or not table_config.date_col:
             logger.debug(f"表 '{table_name}' 未定义 date_col 字段，无法查询最大日期")
             return {}
 
-        date_col = table_config["date_col"]
-        
-        params = []
-        if ts_codes:
-            # 查询指定股票列表的最新日期
-            placeholders = ", ".join(["?" for _ in ts_codes])
-            sql = f"SELECT ts_code, MAX({date_col}) as max_date FROM {table_name} WHERE ts_code IN ({placeholders}) GROUP BY ts_code"
-            params.extend(ts_codes)
-        else:
-            # 查询全表的最新日期
-            sql = f"SELECT MAX({date_col}) as max_date FROM {table_name}"
+        # 检查 Parquet 文件是否存在
+        if not self._parquet_files_exist(table_name):
+            logger.debug(f"表 '{table_name}' 的 Parquet 文件不存在，返回空结果")
+            return {}
+
+        date_col = table_config.date_col
+        parquet_pattern = self._get_parquet_path_pattern(table_name)
 
         try:
-            if callable(self.conn):
-                with self.conn() as conn:
-                    results = conn.execute(sql, params).fetchall()
-            else:
-                results = self.conn.execute(sql, params).fetchall()
+            # 使用 DuckDB 查询 Parquet 文件
+            conn = duckdb.connect(":memory:")
 
-            max_dates = {}
-            if ts_codes:
-                for row in results:
-                    max_dates[row[0]] = str(row[1])
-            elif results and results[0][0] is not None:
-                max_dates['__all__'] = str(results[0][0])
+            # 标准化股票代码格式（例如：600519 -> 600519.SH）
+            from ..helpers.utils import normalize_stock_code
+            normalized_codes = [normalize_stock_code(code) for code in ts_codes]
             
+            # 查询指定股票列表的最新日期
+            placeholders = ", ".join([f"'{code}'" for code in normalized_codes])
+            sql = f"""
+                SELECT ts_code, MAX({date_col}) as max_date 
+                FROM read_parquet('{parquet_pattern}') 
+                WHERE ts_code IN ({placeholders}) 
+                GROUP BY ts_code
+            """
+
+            results = conn.execute(sql).fetchall()
+            conn.close()
+
+            # 创建标准化代码到原始代码的映射
+            code_mapping = {normalize_stock_code(code): code for code in ts_codes}
+            
+            max_dates = {}
+            for row in results:
+                if row[1] is not None:
+                    # 将标准化的股票代码映射回原始格式
+                    original_code = code_mapping.get(row[0], row[0])
+                    max_dates[original_code] = str(row[1])
+
+            logger.debug(
+                f"查询表 '{table_name}' 最大日期成功，返回 {len(max_dates)} 条记录"
+            )
             return max_dates
 
         except Exception as e:
-            logger.error(f"❌ 查询表 '{table_name}' 最大日期失败: {e}")
-            raise
+            logger.error(f"❌ 查询表 '{table_name}' Parquet 文件最大日期失败: {e}")
+            # 在出错时返回空字典，而不是抛出异常，保持与原有逻辑一致
+            return {}
 
     @lru_cache(maxsize=1)
     def get_all_symbols(self) -> List[str]:
         """获取所有股票代码
 
+        从 stock_basic 表的 Parquet 文件中获取所有股票代码。
+
         Returns:
             股票代码列表
         """
-        table_name = TableName.STOCK_BASIC.value
+        table_key = "stock_basic"
 
-        # 构建查询SQL，添加过滤条件
-        sql = f"SELECT DISTINCT ts_code FROM {table_name} WHERE ts_code IS NOT NULL AND ts_code != ''"
+        if not self._table_exists_in_schema(table_key):
+            logger.warning(f"表配置 '{table_key}' 不存在于 schema 中")
+            return []
+
+        table_config = self._get_table_config(table_key)
+        table_name = table_config.table_name
+
+        # 检查 Parquet 文件是否存在
+        if not self._parquet_files_exist(table_name):
+            logger.debug(f"表 '{table_name}' 的 Parquet 文件不存在，返回空列表")
+            return []
+
+        parquet_pattern = self._get_parquet_path_pattern(table_name)
 
         try:
-            if callable(self.conn):
-                with self.conn() as conn:
-                    result = conn.execute(sql).fetchall()
-            else:
-                result = self.conn.execute(sql).fetchall()
+            # 使用 DuckDB 查询 Parquet 文件
+            conn = duckdb.connect(":memory:")
+
+            sql = f"""
+                SELECT DISTINCT ts_code 
+                FROM read_parquet('{parquet_pattern}') 
+                WHERE ts_code IS NOT NULL AND ts_code != ''
+            """
+
+            results = conn.execute(sql).fetchall()
+            conn.close()
 
             # 提取 ts_code 列表，过滤空值
-            ts_codes = [row[0] for row in result if row[0] is not None and row[0] != ""]
-            logger.debug(f"从表 '{table_name}' 查询到 {len(ts_codes)} 个股票代码")
+            ts_codes = [
+                row[0] for row in results if row[0] is not None and row[0] != ""
+            ]
+            logger.debug(
+                f"从表 '{table_name}' Parquet 文件查询到 {len(ts_codes)} 个股票代码"
+            )
             return ts_codes
 
         except Exception as e:
-            logger.error(f"❌ 查询表 '{table_name}' 的 ts_code 失败: {e}")
-            raise
+            logger.error(f"❌ 查询表 '{table_name}' Parquet 文件的 ts_code 失败: {e}")
+            return []

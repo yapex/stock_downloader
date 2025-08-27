@@ -16,6 +16,16 @@ else
     DEBUG_FLAG=""
 fi
 
+# --- 新增步骤：预初始化Huey数据库 ---
+echo "预初始化Huey数据库..."
+uv run python -m scripts.init_huey_db
+if [ $? -ne 0 ]; then
+    echo "数据库初始化失败，退出。"
+    exit 1
+fi
+echo "Huey数据库预初始化完成。"
+# ------------------------------------
+
 # 启动快速队列消费者
 { uv run python -m neo.main dp fast $DEBUG_FLAG > logs/consumer_fast.log 2>&1; } &
 FAST_DP_PID=$!
@@ -31,12 +41,13 @@ echo "慢速消费者已启动 (PID: $SLOW_DP_PID)"
 MAINT_DP_PID=$!
 echo "维护消费者已启动 (PID: $MAINT_DP_PID)"
 
-
 # 等待一段时间确保消费者已经启动
 sleep 3
 
 # 运行监控器
 uv run python -m scripts.huey_monitor
+
+# ... (后续的停止进程部分保持不变) ...
 
 # 当监控器结束时，终止所有消费者进程
 echo "正在停止消费者进程..."

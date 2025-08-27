@@ -79,6 +79,10 @@ def _setup_file_handler(log_type: str, log_level: str) -> None:
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
+    # 如果 log_type 为空，则不配置文件处理器
+    if not log_type:
+        return
+
     log_filename = f"{log_type}.log"
 
     # 配置根日志记录器
@@ -90,11 +94,18 @@ def _setup_file_handler(log_type: str, log_level: str) -> None:
         root_logger.removeHandler(handler)
 
     # 创建文件处理器
-    file_handler = TimedRotatingFileHandler(
+    # file_handler = TimedRotatingFileHandler(
+    #     filename=os.path.join(log_dir, log_filename),
+    #     when="midnight",
+    #     interval=1,
+    #     backupCount=1,
+    #     encoding="utf-8",
+    # )
+
+    # 创建文件处理器，使用 FileHandler 并设置模式为 'w' 以实现覆盖
+    file_handler = logging.FileHandler(
         filename=os.path.join(log_dir, log_filename),
-        when="midnight",
-        interval=1,
-        backupCount=1,
+        mode="w",  # 设置模式为覆盖写入
         encoding="utf-8",
     )
 
@@ -111,7 +122,7 @@ def _setup_file_handler(log_type: str, log_level: str) -> None:
         with open(log_file_path, "a", encoding="utf-8") as f:
             f.write("\n==== new start here ====\n")
     except Exception:
-        pass
+        raise ValueError(f"无法写入日志文件: {log_file_path}")
 
 
 def _configure_third_party_loggers(log_level: str) -> None:
@@ -141,7 +152,7 @@ def _configure_third_party_loggers(log_level: str) -> None:
     warnings.filterwarnings("ignore", category=FutureWarning, module="tushare")
 
 
-def setup_logging(log_type: str = "download", log_level: str = "INFO"):
+def setup_logging(log_type: str, log_level: str = "INFO"):
     """配置日志记录
 
     Args:
@@ -153,7 +164,9 @@ def setup_logging(log_type: str = "download", log_level: str = "INFO"):
     _configure_third_party_loggers(log_level.upper())
 
 
-def get_next_day_str(date_str: Optional[str], date_format: str = "%Y%m%d") -> Optional[str]:
+def get_next_day_str(
+    date_str: Optional[str], date_format: str = "%Y%m%d"
+) -> Optional[str]:
     """计算给定日期的后一天
 
     Args:
@@ -165,7 +178,7 @@ def get_next_day_str(date_str: Optional[str], date_format: str = "%Y%m%d") -> Op
     """
     if date_str is None:
         return None
-    
+
     try:
         current_date = datetime.strptime(date_str, date_format)
         next_day = current_date + timedelta(days=1)

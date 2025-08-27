@@ -161,6 +161,23 @@ class TestFetcherBuilder:
 
     @patch.object(TushareApiManager, "get_api_function")
     @patch("neo.downloader.fetcher_builder.normalize_stock_code")
+    def test_build_by_task_stock_basic_with_empty_symbol(self, mock_normalize, mock_get_api):
+        """测试 stock_basic 任务传入空字符串时不调用 normalize_stock_code"""
+        mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
+        mock_get_api.return_value = mock_api_func
+
+        fetcher = self.builder.build_by_task(TaskType.stock_basic, symbol="")
+        result = fetcher()
+
+        # 验证 normalize_stock_code 没有被调用
+        mock_normalize.assert_not_called()
+        mock_get_api.assert_called_once_with("pro", "stock_basic")
+        # stock_basic 任务不需要 ts_code 参数
+        mock_api_func.assert_called_once_with()
+        assert isinstance(result, pd.DataFrame)
+
+    @patch.object(TushareApiManager, "get_api_function")
+    @patch("neo.downloader.fetcher_builder.normalize_stock_code")
     def test_build_by_task_with_overrides(self, mock_normalize, mock_get_api):
         """测试带参数覆盖的任务构建"""
         mock_normalize.return_value = "600519.SH"

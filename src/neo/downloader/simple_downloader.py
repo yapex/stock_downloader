@@ -7,7 +7,7 @@ import logging
 from typing import Optional
 import pandas as pd
 
-from neo.database.operator import DBOperator
+# DBOperator 不再使用，已移除导入
 from neo.helpers.interfaces import IRateLimitManager
 from neo.task_bus.types import TaskType
 from neo.downloader.fetcher_builder import FetcherBuilder
@@ -49,6 +49,9 @@ class SimpleDownloader(IDownloader):
             下载的数据，或在失败时返回 None
         """
         try:
+            # 应用速率限制
+            self.rate_limit_manager.apply_rate_limiting(task_type)
+            
             # 从构建器获取一个配置好的、可执行的 fetcher 函数
             fetcher = self.fetcher_builder.build_by_task(task_type, symbol=symbol, **kwargs)
             # 执行 fetcher 函数
