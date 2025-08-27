@@ -110,8 +110,8 @@ class DownloadTaskManager:
         current_time = datetime.now().time()
         market_close_time = time(18, 0)  # 下午6点
 
-        # 如果最大日期是今天且当前时间未到下午6点，跳过该任务
-        if latest_date == today_str and current_time < market_close_time:
+        # 如果最大日期是今天，说明今天已经下载过数据了，直接跳过
+        if latest_date == today_str:
             return True
 
         # 如果最大日期是昨天且当前时间未到下午6点，也跳过该任务
