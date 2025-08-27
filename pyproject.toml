@@ -99,6 +99,8 @@ source = ["src"]
 omit = [
     "*/tests/*",
     "*/test_*.py",
+    "*/__init__.py", 
+    "*/interfaces.py",
 ]
 
 [tool.coverage.report]
