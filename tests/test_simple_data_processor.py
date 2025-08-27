@@ -5,7 +5,7 @@
 
 import pandas as pd
 import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch, ANY
 
 from src.neo.data_processor.simple_data_processor import SimpleDataProcessor
 from src.neo.writers.interfaces import IParquetWriter
@@ -73,3 +73,65 @@ def test_shutdown(mock_parquet_writer: MagicMock):
     processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
     # 应该不会抛出异常
     processor.shutdown()
+
+
+@pytest.fixture
+def sample_data_with_end_date() -> pd.DataFrame:
+    """示例数据，包含 end_date 列"""
+    return pd.DataFrame(
+        {
+            "end_date": ["20221231", "20230331"],
+            "symbol": ["600000", "000001"],
+            "value": [100.0, 200.0],
+        }
+    )
+
+
+def test_process_with_end_date(mock_parquet_writer: MagicMock, sample_data_with_end_date: pd.DataFrame):
+    """测试处理包含 end_date 列的数据"""
+    processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
+    result = processor.process("finance_report", sample_data_with_end_date)
+
+    assert result is True
+    mock_parquet_writer.write.assert_called_once_with(
+        ANY,
+        "finance_report",
+        ["year"]
+    )
+
+
+@pytest.fixture
+def sample_data_no_date_cols() -> pd.DataFrame:
+    """示例数据，不包含日期列"""
+    return pd.DataFrame(
+        {
+            "id": [1, 2],
+            "name": ["A", "B"],
+        }
+    )
+
+
+def test_process_no_date_columns(mock_parquet_writer: MagicMock, sample_data_no_date_cols: pd.DataFrame):
+    """测试处理不包含日期列的数据"""
+    processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
+    result = processor.process("some_other_data", sample_data_no_date_cols)
+
+    assert result is True
+    mock_parquet_writer.write.assert_called_once_with(
+        sample_data_no_date_cols,
+        "some_other_data",
+        []
+    )
+
+
+def test_process_exception_handling(mock_parquet_writer: MagicMock, sample_data: pd.DataFrame):
+    """测试 process 方法中的异常处理"""
+    mock_parquet_writer.write.side_effect = Exception("Test write error")
+    processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
+
+    with patch('src.neo.data_processor.simple_data_processor.logger') as mock_logger:
+        result = processor.process("stock_daily", sample_data)
+
+        assert result is False
+        mock_logger.error.assert_called_once()
+        assert "Test write error" in mock_logger.error.call_args[0][0]
