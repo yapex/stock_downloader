@@ -1,133 +1,208 @@
 """DataProcessorFactory 单元测试"""
 
-from unittest.mock import Mock
+from unittest.mock import Mock, patch, PropertyMock
 
 import pytest
 
 from src.neo.data_processor.data_processor_factory import DataProcessorFactory
 from src.neo.data_processor.full_replace_data_processor import FullReplaceDataProcessor
 from src.neo.data_processor.simple_data_processor import SimpleDataProcessor
-from src.neo.database.interfaces import IDBQueryer
-from src.neo.database.schema_loader import SchemaLoader
-from src.neo.writers.interfaces import IParquetWriter
 
 
 class TestDataProcessorFactory:
     """DataProcessorFactory 测试类"""
 
     @pytest.fixture
-    def mock_parquet_writer(self):
-        """模拟 ParquetWriter"""
-        return Mock(spec=IParquetWriter)
+    def mock_container(self):
+        """模拟依赖注入容器"""
+        container = Mock()
+        container.full_replace_data_processor.return_value = Mock(spec=FullReplaceDataProcessor)
+        container.data_processor.return_value = Mock(spec=SimpleDataProcessor)
+        return container
 
     @pytest.fixture
-    def mock_db_queryer(self):
-        """模拟数据库查询器"""
-        return Mock(spec=IDBQueryer)
+    def mock_config(self):
+        """模拟配置对象"""
+        config = Mock()
+        config.download_tasks = Mock()
+        
+        # 设置 stock_basic 为全量替换
+        stock_basic_config = Mock()
+        stock_basic_config.update_strategy = "full_replace"
+        config.download_tasks.stock_basic = stock_basic_config
+        
+        # 其他任务类型没有特殊配置，使用默认策略
+        return config
 
     @pytest.fixture
-    def mock_schema_loader(self):
-        """模拟 Schema 加载器"""
-        return Mock(spec=SchemaLoader)
-
-    @pytest.fixture
-    def factory(self, mock_parquet_writer, mock_db_queryer, mock_schema_loader):
+    def factory(self, mock_container, mock_config):
         """创建工厂实例"""
-        return DataProcessorFactory(
-            parquet_writer=mock_parquet_writer,
-            db_queryer=mock_db_queryer,
-            schema_loader=mock_schema_loader,
-        )
+        with patch('src.neo.data_processor.data_processor_factory.get_config', return_value=mock_config):
+            return DataProcessorFactory(mock_container)
 
-    def test_create_full_replace_processor_for_stock_basic(self, factory):
+    def test_create_full_replace_processor_for_stock_basic(self, factory, mock_container):
         """测试为 stock_basic 创建全量替换处理器"""
         processor = factory.create_processor('stock_basic')
         
-        assert isinstance(processor, FullReplaceDataProcessor)
+        # 验证调用了正确的容器方法
+        mock_container.full_replace_data_processor.assert_called_once()
+        mock_container.data_processor.assert_not_called()
+        
+        # 验证返回的是全量替换处理器
+        assert processor is mock_container.full_replace_data_processor.return_value
 
-    def test_create_simple_processor_for_stock_daily(self, factory):
+    def test_create_simple_processor_for_stock_daily(self, factory, mock_container):
         """测试为 stock_daily 创建简单处理器"""
         processor = factory.create_processor('stock_daily')
         
-        assert isinstance(processor, SimpleDataProcessor)
-
-    def test_create_simple_processor_for_daily_basic(self, factory):
-        """测试为 daily_basic 创建简单处理器"""
-        processor = factory.create_processor('daily_basic')
+        # 验证调用了正确的容器方法
+        mock_container.data_processor.assert_called_once()
+        mock_container.full_replace_data_processor.assert_not_called()
         
-        assert isinstance(processor, SimpleDataProcessor)
+        # 验证返回的是简单处理器
+        assert processor is mock_container.data_processor.return_value
 
-    def test_create_simple_processor_for_trade_cal(self, factory):
-        """测试为 trade_cal 创建简单处理器"""
-        processor = factory.create_processor('trade_cal')
-        
-        assert isinstance(processor, SimpleDataProcessor)
-
-    def test_create_simple_processor_for_unknown_table(self, factory):
+    def test_create_simple_processor_for_unknown_table(self, factory, mock_container):
         """测试为未知表类型创建简单处理器（默认行为）"""
         processor = factory.create_processor('unknown_table')
         
-        assert isinstance(processor, SimpleDataProcessor)
-
-    def test_create_processor_with_different_cases(self, factory):
-        """测试不同大小写的表名"""
-        # 测试大写
-        processor_upper = factory.create_processor('STOCK_BASIC')
-        assert isinstance(processor_upper, SimpleDataProcessor)  # 大小写敏感，应该返回默认处理器
+        # 验证调用了正确的容器方法
+        mock_container.data_processor.assert_called_once()
+        mock_container.full_replace_data_processor.assert_not_called()
         
-        # 测试小写（正确的）
-        processor_lower = factory.create_processor('stock_basic')
-        assert isinstance(processor_lower, FullReplaceDataProcessor)
+        # 验证返回的是简单处理器
+        assert processor is mock_container.data_processor.return_value
 
-    def test_factory_dependencies_injection(self, mock_parquet_writer, mock_db_queryer, mock_schema_loader):
-        """测试工厂正确注入依赖"""
-        factory = DataProcessorFactory(
-            parquet_writer=mock_parquet_writer,
-            db_queryer=mock_db_queryer,
-            schema_loader=mock_schema_loader,
-        )
+    def test_get_update_strategy_from_config(self, mock_container):
+        """测试从配置中获取更新策略"""
+        # 创建配置，包含多种更新策略
+        config = Mock()
+        config.download_tasks = Mock()
         
-        # 验证依赖被正确存储
-        assert factory.parquet_writer is mock_parquet_writer
-        assert factory.db_queryer is mock_db_queryer
-        assert factory.schema_loader is mock_schema_loader
+        # stock_basic 使用全量替换
+        stock_basic_config = Mock()
+        stock_basic_config.update_strategy = "full_replace"
+        config.download_tasks.stock_basic = stock_basic_config
+        
+        # stock_daily 使用增量更新
+        stock_daily_config = Mock()
+        stock_daily_config.update_strategy = "incremental"
+        config.download_tasks.stock_daily = stock_daily_config
+        
+        with patch('src.neo.data_processor.data_processor_factory.get_config', return_value=config):
+            factory = DataProcessorFactory(mock_container)
+            
+            # 测试获取配置的策略
+            assert factory._get_update_strategy('stock_basic') == "full_replace"
+            assert factory._get_update_strategy('stock_daily') == "incremental"
 
-    def test_multiple_processor_creation(self, factory):
+    def test_get_update_strategy_default(self, mock_container):
+        """测试获取默认更新策略"""
+        config = Mock()
+        config.download_tasks = Mock(spec=[])
+        
+        with patch('src.neo.data_processor.data_processor_factory.get_config', return_value=config):
+            factory = DataProcessorFactory(mock_container)
+            
+            # 测试未配置的任务类型返回默认策略
+            assert factory._get_update_strategy('unknown_table') == "incremental"
+
+    def test_get_update_strategy_missing_attribute(self, mock_container):
+        """测试任务配置存在但缺少 update_strategy 属性"""
+        config = Mock()
+        config.download_tasks = Mock()
+        
+        # 任务配置存在但没有 update_strategy 属性
+        task_config = Mock(spec=[])
+        config.download_tasks.stock_basic = task_config
+        
+        with patch('src.neo.data_processor.data_processor_factory.get_config', return_value=config):
+            factory = DataProcessorFactory(mock_container)
+            
+            # 应该返回默认策略
+            assert factory._get_update_strategy('stock_basic') == "incremental"
+
+    def test_get_update_strategy_exception_handling(self, mock_container):
+        """测试获取更新策略时的异常处理"""
+        config = Mock()
+        
+        # 模拟 download_tasks 属性访问时抛出异常
+        type(config).download_tasks = PropertyMock(side_effect=AttributeError("Config access error"))
+        
+        with patch('src.neo.data_processor.data_processor_factory.get_config', return_value=config):
+            factory = DataProcessorFactory(mock_container)
+            
+            # 异常情况下应该返回默认策略
+            assert factory._get_update_strategy('stock_basic') == "incremental"
+
+    def test_multiple_processor_creation(self, factory, mock_container):
         """测试多次创建处理器"""
+        # 重置 mock 调用计数
+        mock_container.reset_mock()
+        
         # 创建多个不同类型的处理器
         processor1 = factory.create_processor('stock_basic')
         processor2 = factory.create_processor('stock_daily')
         processor3 = factory.create_processor('stock_basic')
         
-        # 验证类型正确
-        assert isinstance(processor1, FullReplaceDataProcessor)
-        assert isinstance(processor2, SimpleDataProcessor)
-        assert isinstance(processor3, FullReplaceDataProcessor)
+        # 验证调用次数
+        assert mock_container.full_replace_data_processor.call_count == 2
+        assert mock_container.data_processor.call_count == 1
         
-        # 验证每次都创建新实例
-        assert processor1 is not processor3
+        # 验证返回的处理器
+        assert processor1 is mock_container.full_replace_data_processor.return_value
+        assert processor2 is mock_container.data_processor.return_value
+        assert processor3 is mock_container.full_replace_data_processor.return_value
 
-    def test_processor_has_correct_dependencies(self, factory, mock_parquet_writer, mock_db_queryer, mock_schema_loader):
-        """测试创建的处理器具有正确的依赖"""
-        processor = factory.create_processor('stock_basic')
-        
-        # 验证依赖注入正确
-        assert processor.parquet_writer is mock_parquet_writer
-        assert processor.db_queryer is mock_db_queryer
-        assert processor.schema_loader is mock_schema_loader
-
-    @pytest.mark.parametrize("table_name,expected_type", [
-        ('stock_basic', FullReplaceDataProcessor),
-        ('stock_daily', SimpleDataProcessor),
-        ('daily_basic', SimpleDataProcessor),
-        ('trade_cal', SimpleDataProcessor),
-        ('stock_adj_qfq', SimpleDataProcessor),
-        ('income', SimpleDataProcessor),
-        ('balancesheet', SimpleDataProcessor),
-        ('cashflow', SimpleDataProcessor),
-        ('random_table', SimpleDataProcessor),
+    @pytest.mark.parametrize("task_type,expected_strategy,expected_method", [
+        ('stock_basic', 'full_replace', 'full_replace_data_processor'),
+        ('stock_daily', 'incremental', 'data_processor'),
+        ('daily_basic', 'incremental', 'data_processor'),
+        ('trade_cal', 'incremental', 'data_processor'),
+        ('unknown_table', 'incremental', 'data_processor'),
     ])
-    def test_processor_type_mapping(self, factory, table_name, expected_type):
-        """参数化测试不同表名对应的处理器类型"""
-        processor = factory.create_processor(table_name)
-        assert isinstance(processor, expected_type)
+    def test_processor_type_mapping(self, mock_container, task_type, expected_strategy, expected_method):
+        """参数化测试不同任务类型对应的处理器选择"""
+        config = Mock()
+        config.download_tasks = Mock()
+        
+        if expected_strategy == 'full_replace':
+            # 为需要全量替换的任务类型设置配置
+            task_config = Mock()
+            task_config.update_strategy = "full_replace"
+            setattr(config.download_tasks, task_type, task_config)
+        
+        with patch('src.neo.data_processor.data_processor_factory.get_config', return_value=config):
+            factory = DataProcessorFactory(mock_container)
+            
+            # 重置 mock 调用计数
+            mock_container.reset_mock()
+            
+            # 创建处理器
+            processor = factory.create_processor(task_type)
+            
+            # 验证调用了正确的容器方法
+            expected_mock = getattr(mock_container, expected_method)
+            expected_mock.assert_called_once()
+            
+            # 验证返回的处理器
+            assert processor is expected_mock.return_value
+
+    def test_factory_initialization(self, mock_container, mock_config):
+        """测试工厂初始化"""
+        with patch('src.neo.data_processor.data_processor_factory.get_config', return_value=mock_config):
+            factory = DataProcessorFactory(mock_container)
+            
+            # 验证依赖被正确存储
+            assert factory.container is mock_container
+            assert factory.config is mock_config
+
+    def test_config_access_during_initialization(self, mock_container):
+        """测试初始化时配置访问"""
+        mock_config = Mock()
+        
+        with patch('src.neo.data_processor.data_processor_factory.get_config', return_value=mock_config) as mock_get_config:
+            DataProcessorFactory(mock_container)
+            
+            # 验证配置被正确获取
+            mock_get_config.assert_called_once()

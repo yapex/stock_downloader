@@ -62,6 +62,7 @@ class DownloadTaskManager:
         db_queryer: "ParquetDBQueryer",
         task_types: List[str],
         symbols: Optional[List[str]],
+        task_date_col_map: Dict[str, bool],
     ) -> Dict[Tuple[str, str], Optional[str]]:
         """批量查询每个任务类型下所有股票的最新日期
 
@@ -69,22 +70,38 @@ class DownloadTaskManager:
             db_queryer: 数据库查询器实例
             task_types: 任务类型列表
             symbols: 股票代码列表
+            task_date_col_map: 任务类型到是否有date_col的映射
 
         Returns:
             Dict[Tuple[symbol, task_type], date]: 最新日期映射
         """
         max_dates = {}
         for task_type in task_types:
-            if symbols:  # 有具体股票代码的任务类型
+            # 检查表是否定义了 date_col
+            has_date_col = task_date_col_map.get(task_type, False)
+            
+            if has_date_col and symbols:  # 有日期列且有具体股票代码的任务类型
                 logger.debug(
                     f"正在为 {task_type} 查询 {len(symbols)} 个股票的最新日期..."
                 )
                 task_max_dates = db_queryer.get_max_date(task_type, symbols)
                 for symbol, date in task_max_dates.items():
                     max_dates[(symbol, task_type)] = date
-            else:  # stock_basic 等不需要具体股票代码的任务类型
-                logger.debug(f"任务类型 {task_type} 不需要具体股票代码")
-                max_dates[("", task_type)] = None
+            elif has_date_col:  # 有日期列但不需要具体股票代码的任务类型（如 trade_cal）
+                logger.debug(f"正在为 {task_type} 查询最新日期...")
+                # 对于不需要股票代码的任务，传入空字符串列表查询最新日期
+                task_max_dates = db_queryer.get_max_date(task_type, [""]) 
+                # 获取查询结果中的最新日期
+                latest_date = task_max_dates.get("") if task_max_dates else None
+                max_dates[("", task_type)] = latest_date
+            else:  # 没有日期列的任务类型（如 stock_basic）
+                logger.debug(f"任务类型 {task_type} 没有定义 date_col，跳过日期查询")
+                # 对于没有日期列的表，不查询日期，直接设置为 None
+                if symbols:
+                    for symbol in symbols:
+                        max_dates[(symbol, task_type)] = None
+                else:
+                    max_dates[("", task_type)] = None
 
         return max_dates
 
@@ -148,6 +165,7 @@ class DownloadTaskManager:
         task_types: List[str],
         symbols: Optional[List[str]],
         max_dates: Dict[Tuple[str, str], Optional[str]],
+        task_date_col_map: Dict[str, bool],
     ) -> int:
         """派发下载任务到快速队列
 
@@ -156,6 +174,7 @@ class DownloadTaskManager:
             task_types: 任务类型列表
             symbols: 股票代码列表
             max_dates: 最新日期映射
+            task_date_col_map: 任务类型到是否有date_col的映射
 
         Returns:
             int: 派发的任务数量
@@ -164,7 +183,9 @@ class DownloadTaskManager:
         enqueued_count = 0
 
         for task_type in task_types:
-            if symbols:  # 有具体股票代码的任务类型
+            has_date_col = task_date_col_map.get(task_type, False)
+            
+            if has_date_col and symbols:  # 有日期列且有具体股票代码的任务类型
                 for symbol in symbols:
                     latest_date = max_dates.get((symbol, task_type))
 
@@ -182,11 +203,31 @@ class DownloadTaskManager:
                         task_type=task_type, symbol=symbol, start_date=start_date
                     )
                     enqueued_count += 1
-            else:  # stock_basic 等不需要具体股票代码的任务类型
-                download_task(
-                    task_type=task_type, symbol="", start_date=default_start_date
+            elif has_date_col:  # 有日期列但不需要具体股票代码的任务类型（如 trade_cal）
+                latest_date = max_dates.get(("", task_type))
+
+                if self._should_skip_task(latest_date, latest_trading_day):
+                    continue
+
+                start_date = (
+                    get_next_day_str(latest_date) if latest_date else default_start_date
                 )
+                
+                # 派发任务到快速队列
+                download_task(task_type=task_type, symbol="", start_date=start_date)
                 enqueued_count += 1
+            else:  # 没有日期列的任务类型（如 stock_basic），总是执行
+                 if symbols:
+                     for symbol in symbols:
+                         # 派发任务到快速队列
+                         download_task(
+                             task_type=task_type, symbol=symbol, start_date=default_start_date
+                         )
+                         enqueued_count += 1
+                 else:
+                     # 派发任务到快速队列
+                     download_task(task_type=task_type, symbol="", start_date=default_start_date)
+                     enqueued_count += 1
 
         return enqueued_count
 
@@ -209,10 +250,13 @@ def build_and_enqueue_downloads_task(
 
     try:
         # 0. 初始化
-        task_manager = DownloadTaskManager()
-        from ..database.operator import ParquetDBQueryer
+        from ..app import container
 
-        db_queryer = ParquetDBQueryer.create_default()
+        task_manager = DownloadTaskManager()
+
+        db_queryer = container.db_queryer()
+        schema_loader = container.schema_loader()
+        
 
         # 1. 获取最新交易日 (只执行一次)
         latest_trading_day = db_queryer.get_latest_trading_day()
@@ -227,13 +271,23 @@ def build_and_enqueue_downloads_task(
         )
         if not task_types:
             return
+        
+        # 2.1 检查各任务类型是否有date_col定义
+        task_date_col_map = {}
+        for task_type in task_types:
+            try:
+                table_config = schema_loader.get_table_config(task_type)
+                has_date_col = hasattr(table_config, "date_col") and table_config.date_col is not None
+                task_date_col_map[task_type] = has_date_col
+            except (KeyError, AttributeError):
+                task_date_col_map[task_type] = False
 
         # 3. 批量查询本地数据的最新日期
-        max_dates = task_manager._query_max_dates(db_queryer, task_types, symbols)
+        max_dates = task_manager._query_max_dates(db_queryer, task_types, symbols, task_date_col_map)
 
         # 4. 派发下载任务
         enqueued_count = task_manager._enqueue_download_tasks(
-            latest_trading_day, task_types, symbols, max_dates
+            latest_trading_day, task_types, symbols, max_dates, task_date_col_map
         )
 
         logger.debug(f"✅ [HUEY_SLOW] 成功派发 {enqueued_count} 个增量下载任务。")

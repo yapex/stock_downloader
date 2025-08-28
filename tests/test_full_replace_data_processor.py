@@ -2,9 +2,10 @@
 
 import logging
 import os
+import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 
 import pandas as pd
 import pytest
@@ -19,9 +20,17 @@ class TestFullReplaceDataProcessor:
     """FullReplaceDataProcessor 测试类"""
 
     @pytest.fixture
-    def mock_parquet_writer(self):
+    def temp_dir(self):
+        """创建临时目录"""
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    @pytest.fixture
+    def mock_parquet_writer(self, temp_dir):
         """模拟 ParquetWriter"""
         writer = Mock()
+        writer.base_path = temp_dir
         writer.write_full_replace = Mock(return_value=None)
         return writer
 
@@ -271,3 +280,195 @@ class TestFullReplaceDataProcessor:
 
         # 验证异常被正确处理，不会向上抛出
         processor.process("stock_basic", sample_df)
+
+    def test_atomic_replace_table_success(self, processor, temp_dir):
+        """测试成功的原子性替换"""
+        # 创建临时表目录
+        temp_path = Path(temp_dir) / "test_temp"
+        temp_path.mkdir()
+        
+        result = processor._atomic_replace_table("test", "test_temp")
+        
+        assert result is True
+        assert (Path(temp_dir) / "test").exists()
+        assert not temp_path.exists()
+
+    def test_atomic_replace_table_temp_not_exists(self, processor, temp_dir):
+        """测试临时表不存在的情况"""
+        result = processor._atomic_replace_table("test", "test_temp")
+        
+        assert result is False
+
+    def test_atomic_replace_table_with_existing_table(self, processor, temp_dir):
+        """测试替换已存在的表"""
+        # 创建临时表和现有表
+        temp_path = Path(temp_dir) / "test_temp"
+        temp_path.mkdir()
+        existing_path = Path(temp_dir) / "test"
+        existing_path.mkdir()
+        
+        result = processor._atomic_replace_table("test", "test_temp")
+        
+        assert result is True
+        assert existing_path.exists()
+        assert not temp_path.exists()
+        assert not (Path(temp_dir) / "test_backup").exists()
+
+    def test_atomic_replace_table_exception_with_restore(self, processor, temp_dir):
+        """测试原子性替换异常时的备份恢复"""
+        # 创建临时表
+        temp_path = Path(temp_dir) / "test_temp"
+        temp_path.mkdir()
+        
+        with patch('shutil.move', side_effect=Exception("Move error")), \
+             patch.object(processor, '_restore_backup') as mock_restore:
+            
+            result = processor._atomic_replace_table("test", "test_temp")
+            
+            assert result is False
+            mock_restore.assert_called_once_with("test")
+
+    def test_restore_backup_success(self, processor, temp_dir):
+        """测试成功恢复备份"""
+        # 创建备份目录
+        backup_path = Path(temp_dir) / "test_backup"
+        backup_path.mkdir()
+        
+        processor._restore_backup("test")
+        
+        assert (Path(temp_dir) / "test").exists()
+        assert not backup_path.exists()
+
+    def test_restore_backup_no_backup_exists(self, processor, temp_dir):
+        """测试备份不存在时的恢复操作"""
+        # 不应该抛出异常
+        processor._restore_backup("test")
+        
+        assert not (Path(temp_dir) / "test").exists()
+
+    def test_restore_backup_exception(self, processor, temp_dir):
+        """测试恢复备份时的异常处理"""
+        # 创建备份目录
+        backup_path = Path(temp_dir) / "test_backup"
+        backup_path.mkdir()
+        
+        with patch('shutil.move', side_effect=Exception("Restore error")):
+            # 不应该抛出异常
+            processor._restore_backup("test")
+
+    def test_cleanup_temp_table_success(self, processor, temp_dir):
+        """测试成功清理临时表"""
+        # 创建临时表目录
+        temp_path = Path(temp_dir) / "test_temp"
+        temp_path.mkdir()
+        
+        processor._cleanup_temp_table("test_temp")
+        
+        assert not temp_path.exists()
+
+    def test_cleanup_temp_table_not_exists(self, processor, temp_dir):
+        """测试清理不存在的临时表"""
+        # 不应该抛出异常
+        processor._cleanup_temp_table("test_temp")
+
+    def test_cleanup_temp_table_exception(self, processor, temp_dir):
+        """测试清理临时表时的异常处理"""
+        # 创建临时表目录
+        temp_path = Path(temp_dir) / "test_temp"
+        temp_path.mkdir()
+        
+        with patch('shutil.rmtree', side_effect=Exception("Cleanup error")):
+            # 不应该抛出异常
+            processor._cleanup_temp_table("test_temp")
+
+    def test_write_to_temp_table_success(self, processor, sample_df):
+        """测试成功写入临时表"""
+        with patch.object(processor, '_add_partition_columns', return_value=sample_df), \
+             patch.object(processor, '_get_partition_columns', return_value=["year"]):
+            
+            result = processor._write_to_temp_table("test_temp", sample_df)
+            
+            assert result is True
+            processor.parquet_writer.write_full_replace.assert_called_once_with(
+                sample_df, "test_temp", ["year"]
+            )
+
+    def test_write_to_temp_table_exception(self, processor, sample_df):
+        """测试写入临时表异常"""
+        processor.parquet_writer.write_full_replace.side_effect = Exception("Write error")
+        
+        with patch.object(processor, '_add_partition_columns', return_value=sample_df), \
+             patch.object(processor, '_get_partition_columns', return_value=["year"]):
+            
+            result = processor._write_to_temp_table("test_temp", sample_df)
+            
+            assert result is False
+
+    def test_process_atomic_replace_failure_with_cleanup(self, processor, sample_df, temp_dir):
+        """测试原子性替换失败时的清理操作"""
+        with patch.object(processor, '_write_to_temp_table', return_value=True), \
+             patch.object(processor, '_atomic_replace_table', return_value=False), \
+             patch.object(processor, '_cleanup_temp_table') as mock_cleanup:
+            
+            result = processor.process("stock_basic", sample_df)
+            
+            assert result is False
+            mock_cleanup.assert_called_once_with("stock_basic_temp")
+
+    def test_add_partition_columns_direct(self, processor):
+        """直接测试添加分区列方法"""
+        df = pd.DataFrame({
+            "ts_code": ["000001.SZ"],
+            "name": ["平安银行"]
+        })
+        
+        with patch("src.neo.data_processor.full_replace_data_processor.datetime") as mock_datetime:
+            mock_datetime.now.return_value.year = 2024
+            
+            result = processor._add_partition_columns(df)
+            
+            assert "year" in result.columns
+            assert result["year"].iloc[0] == 2024
+
+    def test_add_partition_columns_with_existing_date(self, processor):
+        """测试已有日期列时不添加年份分区"""
+        df = pd.DataFrame({
+            "ts_code": ["000001.SZ"],
+            "trade_date": ["20231201"]
+        })
+        
+        result = processor._add_partition_columns(df)
+        
+        assert "trade_date" in result.columns
+        assert "year" not in result.columns
+
+    def test_get_partition_columns_direct(self, processor):
+        """直接测试获取分区列方法"""
+        # 测试 trade_date
+        df_trade = pd.DataFrame({"trade_date": ["20231201"]})
+        assert processor._get_partition_columns(df_trade) == ["trade_date"]
+        
+        # 测试 end_date
+        df_end = pd.DataFrame({"end_date": ["20231201"]})
+        assert processor._get_partition_columns(df_end) == ["end_date"]
+        
+        # 测试 year
+        df_year = pd.DataFrame({"year": [2023]})
+        assert processor._get_partition_columns(df_year) == ["year"]
+        
+        # 测试无分区列
+        df_none = pd.DataFrame({"name": ["test"]})
+        assert processor._get_partition_columns(df_none) == []
+
+    def test_large_dataframe_processing(self, processor, mock_parquet_writer):
+        """测试大数据框处理"""
+        large_df = pd.DataFrame({
+            "ts_code": [f"{i:06d}.SZ" for i in range(1000)],
+            "name": [f"股票{i}" for i in range(1000)]
+        })
+        
+        with patch.object(processor, '_atomic_replace_table', return_value=True):
+            result = processor.process("stock_basic", large_df)
+            
+            assert result is True
+            mock_parquet_writer.write_full_replace.assert_called_once()
