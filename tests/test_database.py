@@ -180,11 +180,18 @@ class TestParquetDBQueryer:
         stock_daily_config.table_name = "stock_daily"
         stock_daily_config.date_col = "trade_date"
 
+        # 模拟 trade_cal 表配置
+        trade_cal_config = Mock()
+        trade_cal_config.table_name = "trade_cal"
+        trade_cal_config.date_col = "cal_date"
+
         def load_schema_side_effect(table_key):
             if table_key == "stock_basic":
                 return stock_basic_config
             elif table_key == "stock_daily":
                 return stock_daily_config
+            elif table_key == "trade_cal":
+                return trade_cal_config
             else:
                 raise KeyError(f"Table {table_key} not found")
 
@@ -488,6 +495,208 @@ class TestParquetDBQueryer:
             result2 = mock_db_operator.get_all_symbols()
 
             assert result1 == result2 == ["000001.SZ"]
+            # 由于缓存，DuckDB 连接只应该被调用一次
+            mock_connect.assert_called_once()
+
+    def test_get_latest_trading_day_table_not_in_schema(self, mock_db_operator):
+        """测试 trade_cal 表不在 schema 中的情况"""
+        # 修改 mock 使 trade_cal 不存在
+        def side_effect(table_key):
+            if table_key == "trade_cal":
+                raise KeyError("trade_cal not found")
+            return Mock()
+        
+        mock_db_operator.schema_loader.load_schema.side_effect = side_effect
+        
+        result = mock_db_operator.get_latest_trading_day()
+        assert result is None
+
+    def test_get_latest_trading_day_no_parquet_files(self, mock_db_operator):
+        """测试 trade_cal Parquet 文件不存在的情况"""
+        result = mock_db_operator.get_latest_trading_day()
+        assert result is None
+
+    @patch("neo.database.operator.datetime")
+    @patch("neo.database.operator.duckdb.connect")
+    def test_get_latest_trading_day_today_is_trading_day(self, mock_connect, mock_datetime, mock_db_operator):
+        """测试今天是交易日的情况"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "trade_cal"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        # 模拟当前日期
+        mock_now = Mock()
+        mock_now.strftime.return_value = "20240115"
+        mock_datetime.now.return_value = mock_now
+
+        # 模拟 DuckDB 连接和查询结果（今天是交易日）
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+        mock_conn.execute.return_value.fetchone.return_value = (1, "20240112")  # is_open=1, pretrade_date
+
+        result = mock_db_operator.get_latest_trading_day()
+        
+        assert result == "20240115"  # 返回今天
+        mock_conn.close.assert_called_once()
+
+    @patch("neo.database.operator.datetime")
+    @patch("neo.database.operator.duckdb.connect")
+    def test_get_latest_trading_day_today_is_not_trading_day(self, mock_connect, mock_datetime, mock_db_operator):
+        """测试今天不是交易日的情况"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "trade_cal"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        # 模拟当前日期
+        mock_now = Mock()
+        mock_now.strftime.return_value = "20240113"  # 假设是周六
+        mock_datetime.now.return_value = mock_now
+
+        # 模拟 DuckDB 连接和查询结果（今天不是交易日）
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+        mock_conn.execute.return_value.fetchone.return_value = (0, "20240112")  # is_open=0, pretrade_date
+
+        result = mock_db_operator.get_latest_trading_day()
+        
+        assert result == "20240112"  # 返回上一个交易日
+        mock_conn.close.assert_called_once()
+
+    @patch("neo.database.operator.datetime")
+    @patch("neo.database.operator.duckdb.connect")
+    def test_get_latest_trading_day_no_today_data_fallback(self, mock_connect, mock_datetime, mock_db_operator):
+        """测试今天数据不存在时的回退查询"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "trade_cal"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        # 模拟当前日期
+        mock_now = Mock()
+        mock_now.strftime.return_value = "20240120"
+        mock_datetime.now.return_value = mock_now
+
+        # 模拟 DuckDB 连接和查询结果
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+        
+        # 第一次查询（今天的数据）返回 None
+        # 第二次查询（回退查询）返回最新交易日
+        mock_conn.execute.return_value.fetchone.side_effect = [None, ("20240119",)]
+
+        result = mock_db_operator.get_latest_trading_day()
+        
+        assert result == "20240119"  # 返回最新交易日
+        mock_conn.close.assert_called_once()
+
+    @patch("neo.database.operator.datetime")
+    @patch("neo.database.operator.duckdb.connect")
+    def test_get_latest_trading_day_no_data_at_all(self, mock_connect, mock_datetime, mock_db_operator):
+        """测试完全没有数据的情况"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "trade_cal"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        # 模拟当前日期
+        mock_now = Mock()
+        mock_now.strftime.return_value = "20240120"
+        mock_datetime.now.return_value = mock_now
+
+        # 模拟 DuckDB 连接和查询结果（都返回 None）
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+        mock_conn.execute.return_value.fetchone.return_value = None
+
+        result = mock_db_operator.get_latest_trading_day()
+        
+        assert result is None
+        mock_conn.close.assert_called_once()
+
+    @patch("neo.database.operator.datetime")
+    @patch("neo.database.operator.duckdb.connect")
+    def test_get_latest_trading_day_with_custom_exchange(self, mock_connect, mock_datetime, mock_db_operator):
+        """测试使用自定义交易所的情况"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "trade_cal"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        # 模拟当前日期
+        mock_now = Mock()
+        mock_now.strftime.return_value = "20240115"
+        mock_datetime.now.return_value = mock_now
+
+        # 模拟 DuckDB 连接和查询结果
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+        mock_conn.execute.return_value.fetchone.return_value = (1, "20240112")
+
+        result = mock_db_operator.get_latest_trading_day("SZSE")
+        
+        assert result == "20240115"
+        # 验证 SQL 中包含正确的交易所参数
+        call_args = mock_conn.execute.call_args[0][0]
+        assert "exchange = 'SZSE'" in call_args
+        mock_conn.close.assert_called_once()
+
+    @patch("neo.database.operator.datetime")
+    @patch("neo.database.operator.duckdb.connect")
+    def test_get_latest_trading_day_exception_handling(self, mock_connect, mock_datetime, mock_db_operator):
+        """测试查询异常处理"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "trade_cal"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        # 模拟当前日期
+        mock_now = Mock()
+        mock_now.strftime.return_value = "20240115"
+        mock_datetime.now.return_value = mock_now
+
+        # 模拟 DuckDB 连接异常
+        mock_connect.side_effect = Exception("Database connection failed")
+
+        result = mock_db_operator.get_latest_trading_day()
+        
+        assert result is None  # 异常时返回 None
+
+    def test_get_latest_trading_day_cache_behavior(self, mock_db_operator):
+        """测试 get_latest_trading_day 的缓存行为"""
+        # 创建 parquet 文件
+        table_path = mock_db_operator.parquet_base_path / "trade_cal"
+        table_path.mkdir(parents=True, exist_ok=True)
+        parquet_file = table_path / "test.parquet"
+        parquet_file.touch()
+
+        with (
+            patch("neo.database.operator.datetime") as mock_datetime,
+            patch("neo.database.operator.duckdb.connect") as mock_connect
+        ):
+            # 模拟当前日期
+            mock_now = Mock()
+            mock_now.strftime.return_value = "20240115"
+            mock_datetime.now.return_value = mock_now
+
+            # 模拟 DuckDB 连接和查询结果
+            mock_conn = Mock()
+            mock_connect.return_value = mock_conn
+            mock_conn.execute.return_value.fetchone.return_value = (1, "20240112")
+
+            # 第一次调用
+            result1 = mock_db_operator.get_latest_trading_day()
+            # 第二次调用应该使用缓存
+            result2 = mock_db_operator.get_latest_trading_day()
+
+            assert result1 == result2 == "20240115"
             # 由于缓存，DuckDB 连接只应该被调用一次
             mock_connect.assert_called_once()
 

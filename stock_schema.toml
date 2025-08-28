@@ -464,3 +464,20 @@ columns = [
     { name = "beg_bal_cash_equ", type = "REAL" },
     { name = "update_flag", type = "TEXT" },
 ]
+
+[trade_cal]
+table_name = "trade_cal"
+primary_key = [
+    "exchange",
+    "cal_date",
+]
+date_col = "cal_date"
+description = "交易日历"
+api_method = "trade_cal"
+required_params = { exchange = "SSE" }
+columns = [
+    { name = "exchange", type = "TEXT" },
+    { name = "cal_date", type = "TEXT" },
+    { name = "is_open", type = "INTEGER" },
+    { name = "pretrade_date", type = "TEXT" },
+]

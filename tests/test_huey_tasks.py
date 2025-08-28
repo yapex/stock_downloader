@@ -437,11 +437,10 @@ class TestBuildAndEnqueueTask:
     """测试 build_and_enqueue_downloads_task 任务"""
 
     @patch("neo.tasks.download_tasks.download_task")
-    @patch("neo.database.schema_loader.SchemaLoader")
-    @patch("neo.database.operator.ParquetDBQueryer")
+    @patch("neo.database.operator.ParquetDBQueryer.create_default")
     @patch("neo.tasks.download_tasks.get_config")
     @patch("neo.app.container")
-    def test_build_and_enqueue_logic(self, mock_container_func, mock_get_config, mock_parquet_operator, mock_schema_loader, mock_download_task):
+    def test_build_and_enqueue_logic(self, mock_container_func, mock_get_config, mock_parquet_db_create_default, mock_download_task):
         """测试构建和派发任务的核心逻辑"""
         from neo.tasks.download_tasks import build_and_enqueue_downloads_task
         from neo.helpers.utils import get_next_day_str
@@ -458,7 +457,10 @@ class TestBuildAndEnqueueTask:
         mock_get_config.return_value = mock_config
         
         # 设置ParquetDBQueryer mock
-        mock_parquet_operator.return_value.get_max_date.return_value = {"000001.SZ": "20240110"}
+        mock_db_queryer = Mock()
+        mock_db_queryer.get_latest_trading_day.return_value = "20240115"
+        mock_db_queryer.get_max_date.return_value = {"000001.SZ": "20240110"}
+        mock_parquet_db_create_default.return_value = mock_db_queryer
 
         # 执行任务
         print("开始执行build_and_enqueue_downloads_task")
@@ -479,11 +481,8 @@ class TestBuildAndEnqueueTask:
         mock_container._group_handler_instance.get_task_types_for_group.assert_called_once_with("all_stocks")
         mock_container._group_handler_instance.get_symbols_for_group.assert_called_once_with("all_stocks")
         
-        # 验证ParquetDBQueryer被正确调用
-        mock_parquet_operator.assert_called_once_with(
-            schema_loader=mock_schema_loader.return_value,
-            parquet_base_path=mock_container.config.return_value.storage.parquet_base_path,
-        )
+        # 验证ParquetDBQueryer.create_default被正确调用
+        mock_parquet_db_create_default.assert_called_once()
         
         # 验证download_task的派发
         assert mock_download_task.call_count == 2
@@ -502,11 +501,10 @@ class TestBuildAndEnqueueTask:
         assert call_2_args["start_date"] == "19900101"
 
     @patch("neo.tasks.download_tasks.download_task")
-    @patch("neo.database.schema_loader.SchemaLoader")
-    @patch("neo.database.operator.ParquetDBQueryer")
+    @patch("neo.database.operator.ParquetDBQueryer.create_default")
     @patch("neo.tasks.download_tasks.get_config")
     @patch("neo.app.container")
-    def test_build_and_enqueue_with_specific_stock_codes(self, mock_container_func, mock_get_config, mock_parquet_operator, mock_schema_loader, mock_download_task):
+    def test_build_and_enqueue_with_specific_stock_codes(self, mock_container_func, mock_get_config, mock_parquet_db_create_default, mock_download_task):
         """测试使用指定股票代码的构建和派发任务逻辑"""
         from neo.tasks.download_tasks import build_and_enqueue_downloads_task
         from neo.helpers.utils import get_next_day_str
@@ -523,7 +521,10 @@ class TestBuildAndEnqueueTask:
         mock_get_config.return_value = mock_config
         
         # 设置ParquetDBQueryer mock
-        mock_parquet_operator.return_value.get_max_date.return_value = {"600519.SH": "20240110"}
+        mock_db_queryer = Mock()
+        mock_db_queryer.get_latest_trading_day.return_value = "20240115"
+        mock_db_queryer.get_max_date.return_value = {"600519.SH": "20240110"}
+        mock_parquet_db_create_default.return_value = mock_db_queryer
 
         # 执行任务，指定特定股票代码
         build_and_enqueue_downloads_task.func("all_stocks", stock_codes=["600519.SH"])
@@ -533,6 +534,9 @@ class TestBuildAndEnqueueTask:
         mock_container._group_handler_instance.get_task_types_for_group.assert_called_once_with("all_stocks")
         # get_symbols_for_group 不应该被调用，因为使用了指定的股票代码
         mock_container._group_handler_instance.get_symbols_for_group.assert_not_called()
+        
+        # 验证ParquetDBQueryer.create_default被正确调用
+        mock_parquet_db_create_default.assert_called_once()
         
         # 验证download_task的派发
         assert mock_download_task.call_count == 1

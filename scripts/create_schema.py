@@ -1,4 +1,5 @@
 import sys
+import os
 import argparse
 from pathlib import Path
 from typing import List, Union, Dict, Any
@@ -10,8 +11,6 @@ from box import Box
 # 添加项目根目录到 Python 路径
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
-
-import neo.config as neo_config  # noqa: E402
 
 
 def generate_schema_toml(
@@ -36,15 +35,14 @@ def generate_schema_toml(
         columns_list = list(columns)
 
     # 格式化列名
-    columns_formatted = ",\n".join(f'    "{col}"' for col in columns_list)
+    columns_formatted = ",\n".join(f'"{col}"' for col in columns_list)
 
     # 构建 TOML 内容
     toml_content = f"""[{table_name}]
 description = "{description}"
 columns = [
 {columns_formatted}
-]
-"""
+]"""
 
     # 确保输出路径是 Path 对象
     path = Path(output_path)
@@ -249,14 +247,33 @@ TABLE_CONFIGS = Box(
             "fields": [],
             "output_file": "src/stock_schema.toml",
         },
+        "trade_cal": {
+            "table_name": "trade_cal",
+            "primary_key": ["exchange", "cal_date"],
+            "date_col": "cal_date",
+            "description": "交易日历",
+            "api_method": "trade_cal",
+            "default_params": {
+                "exchange": "SSE",
+                "start_date": "20240101",
+                "end_date": "20240131",
+            },
+            "required_params": {
+                "exchange": "SSE",
+            },
+            "fields": [],
+            "output_file": "src/stock_schema.toml",
+        },
     }
 )
 
 
 def get_tushare_api():
     """获取配置好的 tushare API 实例"""
-    config = neo_config.get_config()
-    tushare_token = config.tushare.token
+
+    tushare_token = os.getenv("TUSHARE_TOKEN")
+    if not tushare_token:
+        raise ValueError("TUSHARE_TOKEN 环境变量未设置")
     tushare.set_token(tushare_token)
     return tushare.pro_api()
 

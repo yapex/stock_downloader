@@ -19,10 +19,6 @@ path = "data/stock.db" # 旧的、包含物理数据的主数据库
 metadata_path = "data/metadata.db" # 新的、仅含元数据的数据库
 schema_file_path = "stock_schema.toml" # 相对于项目根目录
 
-[data_processor]
-batch_size = 1000
-flush_interval_seconds = 30
-
 [cron_tasks]
 sync_metadata_schedule = "*/10 * * * *" # 每10分钟执行一次
 
@@ -31,6 +27,9 @@ default_start_date = "19900101"
 
 # 注意：这里的键名必须与 TaskTemplateRegistry 中的 api_method 匹配
 [download_tasks.stock_basic]  # api_method: stock_basic
+rate_limit_per_minute = 195  # 基础数据访问频率较低
+# 交易日历
+[download_tasks.trade_cal]  # api_method: trade_cal
 rate_limit_per_minute = 195  # 基础数据访问频率较低
 
 [download_tasks.daily]  # api_method: daily (对应 stock_daily 任务)
@@ -53,7 +52,8 @@ rate_limit_per_minute = 195  # 财务数据访问频率中等
 
 [task_groups]
 sys=[
-    "stock_basic"
+    "stock_basic",
+    "trade_cal"
 ]
 daily = [
     "stock_daily",

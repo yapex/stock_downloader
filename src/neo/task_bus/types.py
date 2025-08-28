@@ -34,6 +34,9 @@ class TaskType:
     # 股票基本信息
     stock_basic = "stock_basic"
 
+    # 交易日历
+    trade_cal = "trade_cal"
+
     # 股票日线数据
     stock_daily = "stock_daily"
 
@@ -85,6 +88,7 @@ class TaskTemplateRegistry:
             api_method="balancesheet", base_object="pro"
         ),
         TaskType.cash_flow: TaskTemplate(api_method="cashflow", base_object="pro"),
+        TaskType.trade_cal: TaskTemplate(api_method="trade_cal", base_object="pro"),
     }
 
     @classmethod

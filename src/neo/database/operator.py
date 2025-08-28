@@ -9,6 +9,7 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, List, Optional, Union, Any
 from functools import lru_cache
+from datetime import datetime
 
 from .schema_loader import SchemaLoader
 from .interfaces import IDBQueryer, ISchemaLoader
@@ -230,3 +231,75 @@ class ParquetDBQueryer(IDBQueryer):
         except Exception as e:
             logger.error(f"❌ 查询表 '{table_name}' Parquet 文件的 ts_code 失败: {e}")
             return []
+
+    @lru_cache(maxsize=1)
+    def get_latest_trading_day(self, exchange: str = "SSE") -> Optional[str]:
+        """获取最近的交易日
+
+        如果今天是交易日，返回今天；否则返回上一个交易日。
+        结果会被缓存，在单次运行中只查询一次。
+
+        Args:
+            exchange: 交易所代码，默认为 'SSE'
+
+        Returns:
+            最近交易日的字符串 (YYYYMMDD)，如果查询失败则返回 None
+        """
+        table_key = "trade_cal"
+        if not self._table_exists_in_schema(table_key):
+            logger.warning(f"表配置 '{table_key}' 不存在于 schema 中")
+            return None
+
+        table_config = self._get_table_config(table_key)
+        table_name = table_config.table_name
+
+        if not self._parquet_files_exist(table_name):
+            logger.warning(f"表 '{table_name}' 的 Parquet 文件不存在，无法确定交易日")
+            return None
+
+        parquet_pattern = self._get_parquet_path_pattern(table_name)
+        today_str = datetime.now().strftime("%Y%m%d")
+        conn = None
+        try:
+            conn = duckdb.connect(":memory:")
+            
+            # 1. 尝试查询今天的日期
+            sql_today = f"""
+                SELECT is_open, pretrade_date
+                FROM read_parquet('{parquet_pattern}')
+                WHERE cal_date = '{today_str}' AND exchange = '{exchange}'
+                LIMIT 1
+            """
+            result = conn.execute(sql_today).fetchone()
+
+            if result:
+                is_open, pretrade_date = result
+                if is_open == 1:
+                    logger.debug(f"今天是交易日: {today_str}")
+                    return today_str
+                else:
+                    logger.debug(f"今天 ({today_str}) 非交易日，返回上一个交易日: {pretrade_date}")
+                    return str(pretrade_date)
+            else:
+                # 2. 如果今天的数据不存在，则查询表中最新的一个交易日作为备用
+                logger.debug(f"交易日历表中未找到今天 ({today_str}) 的数据，将返回记录中最新的交易日。")
+                sql_fallback = f"""
+                    SELECT MAX(cal_date)
+                    FROM read_parquet('{parquet_pattern}')
+                    WHERE is_open = 1 AND exchange = '{exchange}'
+                """
+                fallback_result = conn.execute(sql_fallback).fetchone()
+                if fallback_result and fallback_result[0]:
+                    latest_day = str(fallback_result[0])
+                    logger.debug(f"回退查询成功，返回最新交易日: {latest_day}")
+                    return latest_day
+                else:
+                    logger.error(f"无法在表中找到任何交易日数据，交易所: {exchange}")
+                    return None
+
+        except Exception as e:
+            logger.error(f"❌ 查询最近交易日失败: {e}", exc_info=True)
+            return None
+        finally:
+            if conn:
+                conn.close()
