@@ -217,7 +217,7 @@ def build_and_enqueue_downloads_task(
         # 1. 获取最新交易日 (只执行一次)
         latest_trading_day = db_queryer.get_latest_trading_day()
         if latest_trading_day:
-            logger.info(f"获取到最新交易日: {latest_trading_day}")
+            logger.debug(f"获取到最新交易日: {latest_trading_day}")
         else:
             logger.warning("未能获取到最新交易日，将使用备用逻辑。")
 

@@ -68,11 +68,11 @@ class TestConfig:
 
         # 测试 Box 特有功能
         config = get_config()
-        
+
         # 测试字典式访问
         assert config["tushare"]["token"] == "test_token"
         assert config["database"]["type"] == "duckdb"
-        
+
         # 测试 get 方法
         assert config.get("tushare").get("token") == "test_token"
         assert config.get("nonexistent", "default") == "default"
@@ -192,12 +192,16 @@ class TestStockCodeNormalization:
         with pytest.raises(ValueError, match="无法识别的股票代码前缀: 123456"):
             normalize_stock_code("123456")
 
-        with pytest.raises(ValueError, match="无法从 'invalid' 中提取有效的6位股票代码"):
+        with pytest.raises(
+            ValueError, match="无法从 'invalid' 中提取有效的6位股票代码"
+        ):
             normalize_stock_code("invalid")
 
     def test_non_string_input(self):
         """测试非字符串输入"""
-        with pytest.raises(TypeError, match="股票代码必须是字符串，而不是 <class 'int'>"):
+        with pytest.raises(
+            TypeError, match="股票代码必须是字符串，而不是 <class 'int'>"
+        ):
             normalize_stock_code(600519)
 
 
@@ -208,13 +212,13 @@ class TestDateUtils:
         """测试日期间隔判断"""
         # 测试间隔大于 7 天的情况
         assert is_interval_greater_than_7_days("20250101", "20250110")
-        
+
         # 测试间隔小于 7 天的情况
         assert not is_interval_greater_than_7_days("20250101", "20250105")
-        
+
         # 测试间隔等于 7 天的情况
         assert not is_interval_greater_than_7_days("20250101", "20250108")
-        
+
         # 测试无效日期格式的情况
         with pytest.raises(ValueError):
             is_interval_greater_than_7_days("invalid", "20250110")

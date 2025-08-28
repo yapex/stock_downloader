@@ -56,7 +56,12 @@ def format_time(seconds):
     return f"{seconds / 3600:.1f}小时"
 
 
-def generate_table(fast_monitor: TaskMonitor, slow_monitor: TaskMonitor, maint_monitor: TaskMonitor, start_time: float) -> Table:
+def generate_table(
+    fast_monitor: TaskMonitor,
+    slow_monitor: TaskMonitor,
+    maint_monitor: TaskMonitor,
+    start_time: float,
+) -> Table:
     """生成并返回一个包含三个Huey队列状态的Rich Table"""
     table = Table(title="Huey 三队列实时监控")
 
@@ -93,10 +98,24 @@ def generate_table(fast_monitor: TaskMonitor, slow_monitor: TaskMonitor, maint_m
     eta_maint = maint_monitor.get_eta(pending_maint)
 
     # 添加表格行
-    table.add_row("等待中的任务数", str(pending_fast), str(pending_slow), str(pending_maint))
-    table.add_row("计划中的任务数", str(scheduled_fast), str(scheduled_slow), str(scheduled_maint))
-    table.add_row("处理速率 (任务/秒)", f"{rate_fast:.2f}", f"{rate_slow:.2f}", f"{rate_maint:.2f}")
-    table.add_row("预计剩余时间", format_time(eta_fast), format_time(eta_slow), format_time(eta_maint))
+    table.add_row(
+        "等待中的任务数", str(pending_fast), str(pending_slow), str(pending_maint)
+    )
+    table.add_row(
+        "计划中的任务数", str(scheduled_fast), str(scheduled_slow), str(scheduled_maint)
+    )
+    table.add_row(
+        "处理速率 (任务/秒)",
+        f"{rate_fast:.2f}",
+        f"{rate_slow:.2f}",
+        f"{rate_maint:.2f}",
+    )
+    table.add_row(
+        "预计剩余时间",
+        format_time(eta_fast),
+        format_time(eta_slow),
+        format_time(eta_maint),
+    )
 
     # 添加总计信息和运行时间
     total_pending = pending_fast + pending_slow + pending_maint
@@ -119,10 +138,18 @@ if __name__ == "__main__":
     start_time = time.time()
 
     try:
-        with Live(generate_table(fast_monitor, slow_monitor, maint_monitor, start_time), screen=True, redirect_stderr=False) as live:
+        with Live(
+            generate_table(fast_monitor, slow_monitor, maint_monitor, start_time),
+            screen=True,
+            redirect_stderr=False,
+        ) as live:
             while True:
                 time.sleep(1)  # 每秒刷新一次
-                live.update(generate_table(fast_monitor, slow_monitor, maint_monitor, start_time))
+                live.update(
+                    generate_table(
+                        fast_monitor, slow_monitor, maint_monitor, start_time
+                    )
+                )
     except KeyboardInterrupt:
         print("\n监控已停止。")
     except Exception:

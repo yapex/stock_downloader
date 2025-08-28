@@ -72,7 +72,6 @@ def is_interval_greater_than_7_days(start_date: str, end_date: str) -> bool:
 def _setup_file_handler(log_type: str, log_level: str) -> None:
     """配置文件日志处理器"""
     import os
-    from logging.handlers import TimedRotatingFileHandler
 
     # 确保logs目录存在
     log_dir = "logs"

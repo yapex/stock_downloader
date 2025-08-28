@@ -161,7 +161,9 @@ class TestFetcherBuilder:
 
     @patch.object(TushareApiManager, "get_api_function")
     @patch("neo.downloader.fetcher_builder.normalize_stock_code")
-    def test_build_by_task_stock_basic_with_empty_symbol(self, mock_normalize, mock_get_api):
+    def test_build_by_task_stock_basic_with_empty_symbol(
+        self, mock_normalize, mock_get_api
+    ):
         """测试 stock_basic 任务传入空字符串时不调用 normalize_stock_code"""
         mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
         mock_get_api.return_value = mock_api_func
@@ -223,15 +225,13 @@ class TestFetcherBuilder:
             TaskType.stock_daily,
             symbol="600519.SH",
             start_date="20240101",
-            end_date="20240131"
+            end_date="20240131",
         )
         fetcher()
 
         # 验证传递给 Tushare API 的参数是否正确
         mock_api_func.assert_called_once_with(
-            ts_code="600519.SH",
-            start_date="20240101",
-            end_date="20240131"
+            ts_code="600519.SH", start_date="20240101", end_date="20240131"
         )
 
     @patch.object(TushareApiManager, "get_api_function")

@@ -16,7 +16,9 @@ from neo.configs import get_config
 from neo.helpers.utils import normalize_stock_code
 
 # 配置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 app = typer.Typer(help="从 Parquet 数据湖中查询数据的工具。", no_args_is_help=True)
 
@@ -32,9 +34,17 @@ def get_db_path() -> Path:
 
 @app.command()
 def query(
-    sql: Optional[str] = typer.Option(None, "--sql", help="要执行的原始 SQL 查询语句。如果使用此选项，将忽略其他所有参数。"),
-    table_name: Optional[str] = typer.Argument(None, help="要查询的表名 (例如: stock_daily)"),
-    symbol: Optional[str] = typer.Option(None, "-s", "--symbol", help="要查询的股票代码 (例如: 600519 或 000001.SZ)"),
+    sql: Optional[str] = typer.Option(
+        None,
+        "--sql",
+        help="要执行的原始 SQL 查询语句。如果使用此选项，将忽略其他所有参数。",
+    ),
+    table_name: Optional[str] = typer.Argument(
+        None, help="要查询的表名 (例如: stock_daily)"
+    ),
+    symbol: Optional[str] = typer.Option(
+        None, "-s", "--symbol", help="要查询的股票代码 (例如: 600519 或 000001.SZ)"
+    ),
     limit: int = typer.Option(10, "-l", "--limit", help="要返回的最大行数"),
 ):
     """连接到元数据数据库，并根据条件查询指定的表。"""
@@ -51,15 +61,17 @@ def query(
             params = []
 
             if sql:
-                logging.info("检测到 --sql 参数，将直接执行提供的 SQL 查询。" )
+                logging.info("检测到 --sql 参数，将直接执行提供的 SQL 查询。")
                 final_query = sql
             elif table_name:
                 logging.info(f"成功连接数据库。查询表: {table_name}")
-                
+
                 # 检查表是否存在
-                tables = con.execute("SHOW TABLES").fetchdf()['name'].tolist()
+                tables = con.execute("SHOW TABLES").fetchdf()["name"].tolist()
                 if table_name not in tables:
-                    logging.error(f"错误：表 '{table_name}' 在元数据数据库中不存在。可用表: {tables}")
+                    logging.error(
+                        f"错误：表 '{table_name}' 在元数据数据库中不存在。可用表: {tables}"
+                    )
                     raise typer.Exit(1)
 
                 # 构建查询
@@ -68,17 +80,30 @@ def query(
                 if symbol:
                     try:
                         normalized_symbol = normalize_stock_code(symbol)
-                        logging.info(f"标准化股票代码: '{symbol}' -> '{normalized_symbol}'")
-                        
+                        logging.info(
+                            f"标准化股票代码: '{symbol}' -> '{normalized_symbol}'"
+                        )
+
                         desc_df = con.execute(f"DESCRIBE {table_name}").fetchdf()
-                        possible_cols = ['ts_code', 'symbol']
-                        symbol_col = next((col for col in possible_cols if col in desc_df['column_name'].tolist()), None)
+                        possible_cols = ["ts_code", "symbol"]
+                        symbol_col = next(
+                            (
+                                col
+                                for col in possible_cols
+                                if col in desc_df["column_name"].tolist()
+                            ),
+                            None,
+                        )
 
                         if not symbol_col:
-                            logging.error(f"错误：在表 '{table_name}' 中未找到可用于查询股票代码的列。")
+                            logging.error(
+                                f"错误：在表 '{table_name}' 中未找到可用于查询股票代码的列。"
+                            )
                             raise typer.Exit(1)
-                        
-                        logging.info(f"在表 '{table_name}' 中使用 '{symbol_col}' 列进行查询。")
+
+                        logging.info(
+                            f"在表 '{table_name}' 中使用 '{symbol_col}' 列进行查询。"
+                        )
                         final_query += f" WHERE {symbol_col} = ?"
                         params.append(normalized_symbol)
 
@@ -88,15 +113,24 @@ def query(
 
                 # 动态添加排序逻辑
                 desc_df = con.execute(f"DESCRIBE {table_name}").fetchdf()
-                available_columns = desc_df['column_name'].tolist()
-                possible_date_cols = ['trade_date', 'ann_date', 'end_date', 'cal_date', 'list_date']
-                date_col_to_sort = next((col for col in possible_date_cols if col in available_columns), None)
+                available_columns = desc_df["column_name"].tolist()
+                possible_date_cols = [
+                    "trade_date",
+                    "ann_date",
+                    "end_date",
+                    "cal_date",
+                    "list_date",
+                ]
+                date_col_to_sort = next(
+                    (col for col in possible_date_cols if col in available_columns),
+                    None,
+                )
 
                 if date_col_to_sort:
                     logging.info(f"将按最新日期列 '{date_col_to_sort}' 排序。")
                     final_query += f" ORDER BY {date_col_to_sort} DESC"
 
-                final_query += f" LIMIT ?"
+                final_query += " LIMIT ?"
                 params.append(limit)
             else:
                 logging.error("错误：必须提供 --sql 参数或 table_name 参数。")
@@ -109,8 +143,8 @@ def query(
             if result_df.empty:
                 logging.warning("查询成功，但未返回任何数据。")
             else:
-                pd.set_option('display.max_columns', None)
-                pd.set_option('display.width', 200)
+                pd.set_option("display.max_columns", None)
+                pd.set_option("display.width", 200)
                 print("\n--- 查询结果 ---")
                 print(result_df)
                 print("--- End ---")

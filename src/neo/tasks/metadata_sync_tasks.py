@@ -5,8 +5,7 @@
 
 import logging
 from pathlib import Path
-from typing import List, Optional
-import os
+from typing import List
 
 import duckdb
 from huey import crontab
@@ -130,23 +129,25 @@ class MetadataSyncManager:
         """
         valid_files = []
         parquet_files = list(table_dir.rglob("*.parquet"))
-        
+
         for file_path in parquet_files:
             try:
                 # 检查文件大小，空文件或过小的文件可能损坏
                 if file_path.stat().st_size < 100:  # 至少100字节
                     logger.warning(f"跳过过小的文件: {file_path}")
                     continue
-                
+
                 # 尝试用 DuckDB 读取文件头部验证格式
                 with duckdb.connect(":memory:") as test_con:
-                    test_con.execute(f"SELECT COUNT(*) FROM read_parquet('{file_path}') LIMIT 1")
+                    test_con.execute(
+                        f"SELECT COUNT(*) FROM read_parquet('{file_path}') LIMIT 1"
+                    )
                     valid_files.append(str(file_path))
-                    
+
             except Exception as e:
                 logger.warning(f"跳过损坏的 Parquet 文件 {file_path}: {e}")
                 continue
-        
+
         return valid_files
 
     def _create_metadata_view(
@@ -163,14 +164,14 @@ class MetadataSyncManager:
 
         # 验证 Parquet 文件
         valid_files = self._validate_parquet_files(table_dir)
-        
+
         if not valid_files:
             logger.warning(f"表 {table_name} 没有有效的 Parquet 文件，跳过视图创建")
             return
-        
+
         # 构建文件路径列表用于 read_parquet
         files_str = "[" + ", ".join(f"'{f}'" for f in valid_files) + "]"
-        
+
         # 使用VIEW而不是TABLE，避免将所有数据加载到内存
         # VIEW只存储查询定义，不存储实际数据
         # 使用 CREATE OR REPLACE VIEW 避免视图已存在的错误
@@ -179,7 +180,9 @@ class MetadataSyncManager:
         SELECT * FROM read_parquet({files_str}, hive_partitioning=1, union_by_name=True);
         """
         con.execute(sql)
-        logger.info(f"✅ 表 {table_name} 元数据视图同步完成，包含 {len(valid_files)} 个有效文件。")
+        logger.info(
+            f"✅ 表 {table_name} 元数据视图同步完成，包含 {len(valid_files)} 个有效文件。"
+        )
 
     def _sync_table_metadata(
         self, con: duckdb.DuckDBPyConnection, table_dir: Path

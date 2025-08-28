@@ -3,7 +3,7 @@
 定义数据处理相关的接口规范。
 """
 
-from typing import Protocol, Callable, Optional, Awaitable, Union
+from typing import Protocol
 import pandas as pd
 
 

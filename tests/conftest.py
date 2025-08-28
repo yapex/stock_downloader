@@ -30,9 +30,11 @@ def mock_fetcher():
 def mock_huey_config():
     """自动模拟 huey_config，避免数据库锁定问题"""
     # 创建内存模式的 huey 实例，immediate=True 让任务立即执行
-    memory_huey_fast = MemoryHuey('test_fast', immediate=True)
-    memory_huey_slow = MemoryHuey('test_slow', immediate=True)
-    
-    with patch('neo.configs.huey_config.huey_fast', memory_huey_fast), \
-         patch('neo.configs.huey_config.huey_slow', memory_huey_slow):
+    memory_huey_fast = MemoryHuey("test_fast", immediate=True)
+    memory_huey_slow = MemoryHuey("test_slow", immediate=True)
+
+    with (
+        patch("neo.configs.huey_config.huey_fast", memory_huey_fast),
+        patch("neo.configs.huey_config.huey_slow", memory_huey_slow),
+    ):
         yield

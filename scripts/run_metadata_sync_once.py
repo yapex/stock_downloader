@@ -3,7 +3,9 @@
 import logging
 
 # 必须先配置日志，才能看到 huey 任务中的日志输出
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 from neo.tasks.huey_tasks import sync_metadata
 

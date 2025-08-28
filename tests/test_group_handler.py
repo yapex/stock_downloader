@@ -35,7 +35,9 @@ class TestGroupHandler:
         assert isinstance(handler, GroupHandler)
         assert handler._db_operator is mock_db_operator_instance
         mock_schema_loader_class.assert_called_once_with()
-        mock_db_operator_class.assert_called_once_with(schema_loader=mock_schema_loader_instance)
+        mock_db_operator_class.assert_called_once_with(
+            schema_loader=mock_schema_loader_instance
+        )
 
     @patch("neo.helpers.group_handler.get_config")
     def test_get_task_types_for_group_valid_group(self, mock_get_config):
@@ -103,7 +105,9 @@ class TestGroupHandler:
     @patch("neo.database.operator.ParquetDBQueryer")
     @patch("neo.database.schema_loader.SchemaLoader")
     @patch("neo.helpers.group_handler.get_config")
-    def test_get_symbols_for_group_without_db_operator(self, mock_get_config, mock_schema_loader_class, mock_parquet_queryer_class):
+    def test_get_symbols_for_group_without_db_operator(
+        self, mock_get_config, mock_schema_loader_class, mock_parquet_queryer_class
+    ):
         """测试没有 db_operator 时获取组的股票代码"""
         # 设置 mock 配置
         mock_config = Mock()
@@ -124,7 +128,9 @@ class TestGroupHandler:
         assert result == ["000001.SZ", "000002.SZ"]
         # 验证 ParquetDBQueryer 被正确创建和调用
         mock_schema_loader_class.assert_called_once()
-        mock_parquet_queryer_class.assert_called_once_with(schema_loader=mock_schema_loader_class.return_value)
+        mock_parquet_queryer_class.assert_called_once_with(
+            schema_loader=mock_schema_loader_class.return_value
+        )
         mock_parquet_queryer.get_all_symbols.assert_called_once()
 
     @patch("neo.helpers.group_handler.get_config")
@@ -132,9 +138,7 @@ class TestGroupHandler:
         """测试 stock_basic 组不需要具体股票代码"""
         # 设置 mock 配置
         mock_config = Mock()
-        mock_config.task_groups = {
-            "stock_basic_group": ["stock_basic", "other_task"]
-        }
+        mock_config.task_groups = {"stock_basic_group": ["stock_basic", "other_task"]}
         mock_get_config.return_value = mock_config
 
         handler = GroupHandler()
@@ -159,13 +163,13 @@ class TestGroupHandler:
     @patch("neo.database.operator.ParquetDBQueryer")
     @patch("neo.database.schema_loader.SchemaLoader")
     @patch("neo.helpers.group_handler.get_config")
-    def test_get_symbols_for_group_db_exception(self, mock_get_config, mock_schema_loader_class, mock_parquet_queryer_class):
+    def test_get_symbols_for_group_db_exception(
+        self, mock_get_config, mock_schema_loader_class, mock_parquet_queryer_class
+    ):
         """测试数据库异常情况"""
         # 设置 mock 配置
         mock_config = Mock()
-        mock_config.task_groups = {
-            "test_group": ["stock_daily"]
-        }
+        mock_config.task_groups = {"test_group": ["stock_daily"]}
         mock_get_config.return_value = mock_config
 
         # 设置 mock ParquetDBQueryer 抛出异常

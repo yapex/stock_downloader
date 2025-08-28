@@ -35,9 +35,11 @@ class SimpleDownloader(IDownloader):
         """
         self.rate_limit_manager = rate_limit_manager
         self.fetcher_builder = fetcher_builder
-        self.db_operator = None # No longer used
+        self.db_operator = None  # No longer used
 
-    def download(self, task_type: TaskType, symbol: str, **kwargs) -> Optional[pd.DataFrame]:
+    def download(
+        self, task_type: TaskType, symbol: str, **kwargs
+    ) -> Optional[pd.DataFrame]:
         """下载指定任务类型和股票代码的数据
 
         Args:
@@ -51,13 +53,17 @@ class SimpleDownloader(IDownloader):
         try:
             # 应用速率限制
             self.rate_limit_manager.apply_rate_limiting(task_type)
-            
+
             # 从构建器获取一个配置好的、可执行的 fetcher 函数
-            fetcher = self.fetcher_builder.build_by_task(task_type, symbol=symbol, **kwargs)
+            fetcher = self.fetcher_builder.build_by_task(
+                task_type, symbol=symbol, **kwargs
+            )
             # 执行 fetcher 函数
             return fetcher()
         except Exception as e:
-            logger.error(f"下载器执行失败 - 任务: {task_type}, 代码: {symbol}, 错误: {e}")
+            logger.error(
+                f"下载器执行失败 - 任务: {task_type}, 代码: {symbol}, 错误: {e}"
+            )
             return None
 
     def _apply_rate_limiting(self, task_type: str) -> None:
@@ -88,7 +94,9 @@ class SimpleDownloader(IDownloader):
             # 以确保能拉取到全量或最新的数据。
             # 具体的增量逻辑由处理任务负责。
             start_date = "19901218"
-            logger.debug(f"开始为 {symbol}_{task_type} 获取数据，起始日期: {start_date}")
+            logger.debug(
+                f"开始为 {symbol}_{task_type} 获取数据，起始日期: {start_date}"
+            )
 
             # 使用 FetcherBuilder 构建数据获取器
             fetcher = self.fetcher_builder.build_by_task(

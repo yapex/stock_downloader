@@ -9,6 +9,7 @@ from neo.helpers.group_handler import GroupHandler
 from neo.services.consumer_runner import ConsumerRunner
 from neo.services.downloader_service import DownloaderService
 from neo.writers.parquet_writer import ParquetWriter
+from neo.data_processor.full_replace_data_processor import FullReplaceDataProcessor
 from neo.configs import get_config
 
 
@@ -25,22 +26,28 @@ class AppContainer(containers.DeclarativeContainer):
     # Core Components
     fetcher_builder = providers.Factory(FetcherBuilder)
     rate_limit_manager = providers.Singleton(RateLimitManager.singleton)
-    
+
     # Schema and Database Components
     schema_loader = providers.Singleton(SchemaLoader)
-    
+
     # Database Components - 职责分离
     db_queryer = providers.Factory(
-        ParquetDBQueryer,
-        schema_loader=schema_loader
+        ParquetDBQueryer, schema_loader=schema_loader
     )  # 专门负责查询
     task_builder = providers.Singleton(TaskBuilder)
     group_handler = providers.Singleton(GroupHandler)
 
     # Writers
     parquet_writer = providers.Factory(
-        ParquetWriter,
-        base_path=config.storage.parquet_base_path
+        ParquetWriter, base_path=config.storage.parquet_base_path
+    )
+
+    # 全量替换数据处理器，用于需要全量替换的表
+    full_replace_data_processor = providers.Factory(
+        FullReplaceDataProcessor,
+        parquet_writer=parquet_writer,
+        db_queryer=db_queryer,
+        schema_loader=schema_loader,
     )
 
     # Core Components

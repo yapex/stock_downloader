@@ -80,6 +80,7 @@ class GroupHandler:
         if not self._db_operator:
             from neo.database.operator import ParquetDBQueryer
             from neo.database.schema_loader import SchemaLoader
+
             schema_loader = SchemaLoader()
             self._db_operator = ParquetDBQueryer(schema_loader=schema_loader)
 

@@ -1,11 +1,13 @@
 """
 应用服务 - 外观模式实现
 """
+
 from typing import List
 
 from ..task_bus.types import DownloadTaskConfig
 from ..services.consumer_runner import ConsumerRunner
 from ..services.downloader_service import DownloaderService
+
 
 class AppService:
     """

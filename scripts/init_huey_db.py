@@ -1,5 +1,4 @@
 # scripts/init_huey_db.py
-import os
 from neo.configs.huey_config import (
     huey_fast,
     huey_slow,

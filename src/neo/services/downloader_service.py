@@ -1,18 +1,18 @@
 """
 下载器服务
 """
+
 import logging
 from typing import List
 
 from ..task_bus.types import DownloadTaskConfig
 from ..tasks.huey_tasks import download_task
 
+
 class DownloaderService:
     """下载器服务实现"""
 
-    def run(
-        self, tasks: List[DownloadTaskConfig], dry_run: bool = False
-    ) -> None:
+    def run(self, tasks: List[DownloadTaskConfig], dry_run: bool = False) -> None:
         """运行下载器 (同步阻塞版本)
 
         Args:

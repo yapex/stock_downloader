@@ -28,6 +28,7 @@ default_start_date = "19900101"
 # 注意：这里的键名必须与 TaskTemplateRegistry 中的 api_method 匹配
 [download_tasks.stock_basic]  # api_method: stock_basic
 rate_limit_per_minute = 195  # 基础数据访问频率较低
+update_strategy = "full_replace"  # 全量替换策略，避免重复数据
 # 交易日历
 [download_tasks.trade_cal]  # api_method: trade_cal
 rate_limit_per_minute = 195  # 基础数据访问频率较低

@@ -5,7 +5,7 @@
 from dataclasses import dataclass
 
 # 移除 Enum 导入，改用常量类
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 
 @dataclass(frozen=True)
@@ -65,7 +65,7 @@ class TaskType:
             return False
 
     @classmethod
-    def get_all_task_types(cls) -> list[str]:
+    def get_all_task_types(cls) -> List[str]:
         """获取所有任务类型名称"""
         return [task_type.name for task_type in cls]
 

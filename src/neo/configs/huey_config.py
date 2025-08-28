@@ -12,14 +12,14 @@ config = get_config()
 
 # 为数据库连接启用 WAL (Write-Ahead Logging) 模式以提高并发性
 pragmas = [
-    'PRAGMA journal_mode=wal',
-    'PRAGMA synchronous=normal',
+    "PRAGMA journal_mode=wal",
+    "PRAGMA synchronous=normal",
 ]
 
 # 快速队列实例
 os.makedirs(os.path.dirname(config.huey_fast.sqlite_path), exist_ok=True)
 huey_fast = SqliteHuey(
-    name='fast_queue',
+    name="fast_queue",
     filename=config.huey_fast.sqlite_path,
     utc=False,
 )
@@ -27,7 +27,7 @@ huey_fast = SqliteHuey(
 # 慢速队列实例
 os.makedirs(os.path.dirname(config.huey_slow.sqlite_path), exist_ok=True)
 huey_slow = SqliteHuey(
-    name='slow_queue',
+    name="slow_queue",
     filename=config.huey_slow.sqlite_path,
     utc=False,
 )
@@ -35,7 +35,7 @@ huey_slow = SqliteHuey(
 # 维护队列实例
 os.makedirs(os.path.dirname(config.huey_maint.sqlite_path), exist_ok=True)
 huey_maint = SqliteHuey(
-    name='maint_queue',
+    name="maint_queue",
     filename=config.huey_maint.sqlite_path,
     utc=False,
 )

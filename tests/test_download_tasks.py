@@ -1,7 +1,6 @@
 """测试下载任务相关功能"""
 
-import pytest
-from datetime import datetime, time, timedelta
+from datetime import time
 from unittest.mock import Mock, patch
 
 from neo.tasks.download_tasks import DownloadTaskManager
@@ -31,7 +30,7 @@ class TestDownloadTaskManager:
 
     def test_should_skip_task_today_is_trading_day_before_market_close(self):
         """测试今天是交易日且当前时间在收盘前的情况"""
-        with patch('neo.tasks.download_tasks.datetime') as mock_datetime:
+        with patch("neo.tasks.download_tasks.datetime") as mock_datetime:
             # 模拟今天是 2024-01-15，当前时间是下午5点
             mock_now = Mock()
             mock_now.strftime.return_value = "20240115"  # 今天
@@ -44,7 +43,7 @@ class TestDownloadTaskManager:
 
     def test_should_skip_task_today_is_trading_day_after_market_close(self):
         """测试今天是交易日且当前时间在收盘后的情况"""
-        with patch('neo.tasks.download_tasks.datetime') as mock_datetime:
+        with patch("neo.tasks.download_tasks.datetime") as mock_datetime:
             # 模拟今天是 2024-01-15，当前时间是下午7点
             mock_now = Mock()
             mock_now.strftime.return_value = "20240115"  # 今天
@@ -69,7 +68,7 @@ class TestDownloadTaskManager:
 
     def test_should_skip_task_edge_case_market_close_time(self):
         """测试边界条件：正好在收盘时间点"""
-        with patch('neo.tasks.download_tasks.datetime') as mock_datetime:
+        with patch("neo.tasks.download_tasks.datetime") as mock_datetime:
             # 模拟今天是 2024-01-15，当前时间是下午6点整（收盘时间）
             mock_now = Mock()
             mock_now.strftime.return_value = "20240115"  # 今天
@@ -82,13 +81,13 @@ class TestDownloadTaskManager:
 
     def test_should_skip_task_no_latest_trading_day(self):
         """测试没有最新交易日时使用备用逻辑"""
-        with patch('neo.tasks.download_tasks.datetime') as mock_datetime:
+        with patch("neo.tasks.download_tasks.datetime") as mock_datetime:
             # 模拟今天是 2024-01-15，当前时间是下午5点
             mock_now = Mock()
             mock_now.strftime.return_value = "20240115"  # 今天
             mock_now.time.return_value = time(17, 0)  # 下午5点
             mock_datetime.now.return_value = mock_now
-            
+
             # 模拟 datetime.now() - timedelta(days=1) 的结果
             mock_yesterday = Mock()
             mock_yesterday.strftime.return_value = "20240114"  # 昨天
@@ -97,21 +96,21 @@ class TestDownloadTaskManager:
             # 没有最新交易日，使用备用逻辑：本地数据是今天的，应该跳过
             result = self.service._should_skip_task("20240115", None)
             assert result is True
-            
+
             # 本地数据是昨天的，且在收盘前，应该跳过
             result = self.service._should_skip_task("20240114", None)
             assert result is True
-        
+
     def test_should_skip_task_with_different_date_formats(self):
         """测试不同日期格式的处理"""
         # 测试正确的日期格式 - 当本地数据日期等于最新交易日时应该跳过
         result = self.service._should_skip_task("20240115", "20240115")
         assert result is True
-        
+
         # 测试错误的日期格式 - 由于字符串比较，"invalid_date" > "20240115"，所以会跳过
         result = self.service._should_skip_task("invalid_date", "20240115")
         assert result is True  # 字符串比较时 "invalid_date" >= "20240115" 为 True
-        
+
         # 测试一个会返回 False 的无效格式
         result = self.service._should_skip_task("123", "20240115")
         assert result is False  # "123" < "20240115" 为 True，所以不跳过

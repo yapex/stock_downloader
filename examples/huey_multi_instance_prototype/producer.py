@@ -5,14 +5,19 @@ import logging
 from .tasks import download_task
 
 # 配置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 
 # --- 模拟的业务参数 ---
 TOTAL_TASKS = 1200
 TASK_TYPES = [
-    "stock_daily", "stock_adj_qfq", "daily_basic",
-    "balance_sheet", "income_statement", "cash_flow"
+    "stock_daily",
+    "stock_adj_qfq",
+    "daily_basic",
+    "balance_sheet",
+    "income_statement",
+    "cash_flow",
 ]
+
 
 def run_producer():
     """运行生产者，提交所有任务。"""
@@ -27,7 +32,10 @@ def run_producer():
         download_task(task_type=task_type, symbol=symbol)
 
     end_time = time.time()
-    logging.info(f"✅ 所有 {TOTAL_TASKS} 个任务已提交，耗时 {end_time - start_time:.2f} 秒.")
+    logging.info(
+        f"✅ 所有 {TOTAL_TASKS} 个任务已提交，耗时 {end_time - start_time:.2f} 秒."
+    )
+
 
 if __name__ == "__main__":
     run_producer()

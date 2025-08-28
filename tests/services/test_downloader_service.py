@@ -1,7 +1,8 @@
 """
 测试 DownloaderService 类 (纯单元测试)
 """
-from unittest.mock import Mock, patch
+
+from unittest.mock import patch
 
 from neo.services.downloader_service import DownloaderService
 from neo.task_bus.types import DownloadTaskConfig, TaskType

@@ -2,7 +2,6 @@
 """Consumer - 任务消费者"""
 
 from config import huey
-import tasks  # 导入任务模块，以便 Huey 能找到并执行任务定义
 
 
 def main():

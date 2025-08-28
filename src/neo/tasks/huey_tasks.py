@@ -22,12 +22,12 @@ from .metadata_sync_tasks import (
 
 # 重新导出所有任务函数，保持原有的导入路径可用
 __all__ = [
-    'build_and_enqueue_downloads_task',
-    'download_task', 
-    'process_data_task',
-    '_process_data_sync',
-    'sync_metadata',
-    'get_sync_metadata_crontab',
+    "build_and_enqueue_downloads_task",
+    "download_task",
+    "process_data_task",
+    "_process_data_sync",
+    "sync_metadata",
+    "get_sync_metadata_crontab",
 ]
 
 

@@ -5,9 +5,8 @@
 
 import logging
 import duckdb
-import pandas as pd
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional
 from functools import lru_cache
 from datetime import datetime
 
@@ -34,8 +33,8 @@ class ParquetDBQueryer(IDBQueryer):
         """
         if parquet_base_path is None:
             config = get_config()
-            parquet_base_path = config.get('storage.parquet_base_path', 'data/parquet')
-        
+            parquet_base_path = config.get("storage.parquet_base_path", "data/parquet")
+
         self.parquet_base_path = Path(parquet_base_path)
         self.schema_loader = schema_loader
 
@@ -108,11 +107,7 @@ class ParquetDBQueryer(IDBQueryer):
         # 检查是否有 .parquet 文件
         return any(table_path.rglob("*.parquet"))
 
-
-
-    def get_max_date(
-        self, table_key: str, ts_codes: List[str]
-    ) -> Dict[str, str]:
+    def get_max_date(self, table_key: str, ts_codes: List[str]) -> Dict[str, str]:
         """根据 schema 中定义的 date_col，查询指定表中一个或多个股票的最新日期
 
         Args:
@@ -140,41 +135,66 @@ class ParquetDBQueryer(IDBQueryer):
 
         date_col = table_config.date_col
         parquet_pattern = self._get_parquet_path_pattern(table_name)
+        primary_key = table_config.primary_key
 
         try:
             # 使用 DuckDB 查询 Parquet 文件
             conn = duckdb.connect(":memory:")
 
-            # 标准化股票代码格式（例如：600519 -> 600519.SH）
-            from ..helpers.utils import normalize_stock_code
-            normalized_codes = [normalize_stock_code(code) for code in ts_codes]
-            
-            # 查询指定股票列表的最新日期
-            placeholders = ", ".join([f"'{code}'" for code in normalized_codes])
-            sql = f"""
-                SELECT ts_code, MAX({date_col}) as max_date 
-                FROM read_parquet('{parquet_pattern}') 
-                WHERE ts_code IN ({placeholders}) 
-                GROUP BY ts_code
-            """
+            # 检查表是否有 ts_code 字段（股票相关表）
+            if "ts_code" in primary_key:
+                # 标准化股票代码格式（例如：600519 -> 600519.SH）
+                from ..helpers.utils import normalize_stock_code
 
-            results = conn.execute(sql).fetchall()
-            conn.close()
+                normalized_codes = [normalize_stock_code(code) for code in ts_codes]
 
-            # 创建标准化代码到原始代码的映射
-            code_mapping = {normalize_stock_code(code): code for code in ts_codes}
-            
-            max_dates = {}
-            for row in results:
-                if row[1] is not None:
-                    # 将标准化的股票代码映射回原始格式
-                    original_code = code_mapping.get(row[0], row[0])
-                    max_dates[original_code] = str(row[1])
+                # 查询指定股票列表的最新日期
+                placeholders = ", ".join([f"'{code}'" for code in normalized_codes])
+                sql = f"""
+                    SELECT ts_code, MAX({date_col}) as max_date 
+                    FROM read_parquet('{parquet_pattern}') 
+                    WHERE ts_code IN ({placeholders}) 
+                    GROUP BY ts_code
+                """
 
-            logger.debug(
-                f"查询表 '{table_name}' 最大日期成功，返回 {len(max_dates)} 条记录"
-            )
-            return max_dates
+                results = conn.execute(sql).fetchall()
+                conn.close()
+
+                # 创建标准化代码到原始代码的映射
+                code_mapping = {normalize_stock_code(code): code for code in ts_codes}
+
+                max_dates = {}
+                for row in results:
+                    if row[1] is not None:
+                        # 将标准化的股票代码映射回原始格式
+                        original_code = code_mapping.get(row[0], row[0])
+                        max_dates[original_code] = str(row[1])
+
+                logger.debug(
+                    f"查询表 '{table_name}' 最大日期成功，返回 {len(max_dates)} 条记录"
+                )
+                return max_dates
+            else:
+                # 对于非股票表（如 trade_cal），直接查询最大日期
+                sql = f"""
+                    SELECT MAX({date_col}) as max_date 
+                    FROM read_parquet('{parquet_pattern}')
+                """
+
+                result = conn.execute(sql).fetchone()
+                conn.close()
+
+                if result and result[0] is not None:
+                    max_date = str(result[0])
+                    # 对于非股票表，为所有请求的代码返回相同的最大日期
+                    max_dates = {code: max_date for code in ts_codes}
+                    logger.debug(
+                        f"查询表 '{table_name}' 最大日期成功，最大日期为 {max_date}"
+                    )
+                    return max_dates
+                else:
+                    logger.debug(f"表 '{table_name}' 中没有找到有效的日期数据")
+                    return {}
 
         except Exception as e:
             logger.error(f"❌ 查询表 '{table_name}' Parquet 文件最大日期失败: {e}")
@@ -262,7 +282,7 @@ class ParquetDBQueryer(IDBQueryer):
         conn = None
         try:
             conn = duckdb.connect(":memory:")
-            
+
             # 1. 尝试查询今天的日期
             sql_today = f"""
                 SELECT is_open, pretrade_date
@@ -278,11 +298,15 @@ class ParquetDBQueryer(IDBQueryer):
                     logger.debug(f"今天是交易日: {today_str}")
                     return today_str
                 else:
-                    logger.debug(f"今天 ({today_str}) 非交易日，返回上一个交易日: {pretrade_date}")
+                    logger.debug(
+                        f"今天 ({today_str}) 非交易日，返回上一个交易日: {pretrade_date}"
+                    )
                     return str(pretrade_date)
             else:
                 # 2. 如果今天的数据不存在，则查询表中最新的一个交易日作为备用
-                logger.debug(f"交易日历表中未找到今天 ({today_str}) 的数据，将返回记录中最新的交易日。")
+                logger.debug(
+                    f"交易日历表中未找到今天 ({today_str}) 的数据，将返回记录中最新的交易日。"
+                )
                 sql_fallback = f"""
                     SELECT MAX(cal_date)
                     FROM read_parquet('{parquet_pattern}')
