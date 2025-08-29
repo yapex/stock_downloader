@@ -5,12 +5,15 @@
 
 import logging
 from datetime import datetime, time, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from ..configs.app_config import get_config
 from ..configs.huey_config import huey_fast, huey_slow
 from ..helpers.utils import get_next_day_str
 from ..task_bus.types import TaskType
+
+if TYPE_CHECKING:
+    from ..database.operator import ParquetDBQueryer
 
 logger = logging.getLogger(__name__)
 
@@ -135,16 +138,25 @@ class DownloadTaskManager:
             return False
 
         # --- 新的核心逻辑 ---
-        # 如果本地最新日期 >= 最新交易日，说明数据已经是最新的了
-        if latest_date >= latest_trading_day:
+        # 1. 如果本地数据落后于最新交易日，立即下载（不管今天是否收盘）
+        if latest_date < latest_trading_day:
+            logger.info(
+                f"📥 执行任务：本地数据落后 (本地: {latest_date}, 最新交易日: {latest_trading_day})"
+            )
+            return False
+        
+        # 2. 如果本地数据已经是最新交易日的数据，说明数据已经是最新的了
+        if latest_date > latest_trading_day:
             logger.info(
                 f"⏭️ 跳过任务：数据已是最新 (本地: {latest_date}, 最新交易日: {latest_trading_day})"
             )
             return True
-
-        # 如果今天是交易日，但现在还没到收盘时间，则暂时不下载今天的数据
+        
+        # 3. 如果本地数据等于最新交易日，需要判断今天是否收盘来决定是否下载今天的数据
+        # latest_date == latest_trading_day 的情况
         today_str = datetime.now().strftime("%Y%m%d")
         if today_str == latest_trading_day:
+            # 今天是交易日，需要判断是否收盘
             current_time = datetime.now().time()
             market_close_time = time(18, 0)  # 假设下午6点后数据稳定
             if current_time < market_close_time:
@@ -152,12 +164,17 @@ class DownloadTaskManager:
                     f"⏭️ 跳过任务：等待 {latest_trading_day} 收盘数据 (本地: {latest_date}, 当前时间: {current_time.strftime('%H:%M')})"
                 )
                 return True
-
-        # 其他情况，例如：
-        # 1. 本地数据落后于最新交易日 (latest_date < latest_trading_day)
-        # 2. 今天不是交易日，但需要补上一个交易日的数据
-        # 这些情况都应该执行下载
-        return False
+            else:
+                logger.info(
+                    f"📥 执行任务：{latest_trading_day} 已收盘，下载今日数据 (本地: {latest_date})"
+                )
+                return False
+        else:
+            # 今天不是交易日，本地数据已经是最新的
+            logger.info(
+                f"⏭️ 跳过任务：数据已是最新 (本地: {latest_date}, 最新交易日: {latest_trading_day})"
+            )
+            return True
 
     def _enqueue_download_tasks(
         self,

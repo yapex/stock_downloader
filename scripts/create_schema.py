@@ -220,7 +220,7 @@ TABLE_CONFIGS = Box(
         "income_statement": {
             "table_name": "income_statement",
             "primary_key": ["ts_code", "ann_date"],
-            "date_col": "ann_date",
+            "date_col": "f_ann_date",
             "description": "利润表字段",
             "api_method": "income",
             "default_params": {"ts_code": "600519.SH", "period": "20241231"},
@@ -230,7 +230,7 @@ TABLE_CONFIGS = Box(
         "balance_sheet": {
             "table_name": "balance_sheet",
             "primary_key": ["ts_code", "ann_date"],
-            "date_col": "ann_date",
+            "date_col": "f_ann_date",
             "description": "资产负债表字段",
             "api_method": "balancesheet",
             "default_params": {"ts_code": "600519.SH", "period": "20241231"},
@@ -240,7 +240,7 @@ TABLE_CONFIGS = Box(
         "cash_flow": {
             "table_name": "cash_flow",
             "primary_key": ["ts_code", "ann_date"],
-            "date_col": "ann_date",
+            "date_col": "f_ann_date",
             "description": "现金流量表字段",
             "api_method": "cashflow",
             "default_params": {"ts_code": "600519.SH", "period": "20241231"},

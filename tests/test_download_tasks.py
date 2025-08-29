@@ -28,8 +28,8 @@ class TestDownloadTaskManager:
         result = self.service._should_skip_task(latest_trading_day, latest_trading_day)
         assert result is True
 
-    def test_should_skip_task_today_is_trading_day_before_market_close(self):
-        """测试今天是交易日且当前时间在收盘前的情况"""
+    def test_should_skip_task_data_behind_should_download_immediately(self):
+        """测试本地数据落后时应立即下载，不管收盘时间"""
         with patch("neo.tasks.download_tasks.datetime") as mock_datetime:
             # 模拟今天是 2024-01-15，当前时间是下午5点
             mock_now = Mock()
@@ -38,11 +38,12 @@ class TestDownloadTaskManager:
             mock_datetime.now.return_value = mock_now
 
             # 本地数据是昨天的，今天是交易日，但还没到收盘时间
+            # 根据新逻辑：本地数据落后时立即下载，不管收盘时间
             result = self.service._should_skip_task("20240112", "20240115")
-            assert result is True
+            assert result is False  # 应该下载，不跳过
 
-    def test_should_skip_task_today_is_trading_day_after_market_close(self):
-        """测试今天是交易日且当前时间在收盘后的情况"""
+    def test_should_skip_task_data_behind_should_download_after_close(self):
+        """测试本地数据落后时应立即下载，即使在收盘后"""
         with patch("neo.tasks.download_tasks.datetime") as mock_datetime:
             # 模拟今天是 2024-01-15，当前时间是下午7点
             mock_now = Mock()
@@ -51,6 +52,7 @@ class TestDownloadTaskManager:
             mock_datetime.now.return_value = mock_now
 
             # 本地数据是昨天的，今天是交易日，已经过了收盘时间
+            # 根据新逻辑：本地数据落后时立即下载
             result = self.service._should_skip_task("20240112", "20240115")
             assert result is False
 
@@ -66,8 +68,34 @@ class TestDownloadTaskManager:
         result = self.service._should_skip_task("20240120", "20240115")
         assert result is True
 
-    def test_should_skip_task_edge_case_market_close_time(self):
-        """测试边界条件：正好在收盘时间点"""
+    def test_should_skip_task_data_current_before_market_close(self):
+        """测试本地数据已是最新交易日，收盘前应跳过"""
+        with patch("neo.tasks.download_tasks.datetime") as mock_datetime:
+            # 模拟今天是 2024-01-15，当前时间是下午5点
+            mock_now = Mock()
+            mock_now.strftime.return_value = "20240115"  # 今天
+            mock_now.time.return_value = time(17, 0)  # 下午5点
+            mock_datetime.now.return_value = mock_now
+
+            # 本地数据已经是最新交易日的，今天是交易日，但还没到收盘时间
+            result = self.service._should_skip_task("20240115", "20240115")
+            assert result is True  # 应该跳过，等待收盘
+    
+    def test_should_skip_task_data_current_after_market_close(self):
+        """测试本地数据已是最新交易日，收盘后应下载今日数据"""
+        with patch("neo.tasks.download_tasks.datetime") as mock_datetime:
+            # 模拟今天是 2024-01-15，当前时间是下午7点
+            mock_now = Mock()
+            mock_now.strftime.return_value = "20240115"  # 今天
+            mock_now.time.return_value = time(19, 0)  # 下午7点
+            mock_datetime.now.return_value = mock_now
+
+            # 本地数据已经是最新交易日的，今天是交易日，已经过了收盘时间
+            result = self.service._should_skip_task("20240115", "20240115")
+            assert result is False  # 应该下载今日数据
+    
+    def test_should_skip_task_data_current_at_market_close_time(self):
+        """测试边界条件：本地数据是最新的，正好在收盘时间点"""
         with patch("neo.tasks.download_tasks.datetime") as mock_datetime:
             # 模拟今天是 2024-01-15，当前时间是下午6点整（收盘时间）
             mock_now = Mock()
@@ -75,8 +103,8 @@ class TestDownloadTaskManager:
             mock_now.time.return_value = time(18, 0)  # 下午6点整
             mock_datetime.now.return_value = mock_now
 
-            # 本地数据是昨天的，今天是交易日，正好到收盘时间（应该可以下载）
-            result = self.service._should_skip_task("20240112", "20240115")
+            # 本地数据已经是最新交易日的，今天是交易日，正好到收盘时间（应该可以下载）
+            result = self.service._should_skip_task("20240115", "20240115")
             assert result is False  # 等于收盘时间时不跳过
 
     def test_should_skip_task_no_latest_trading_day(self):
