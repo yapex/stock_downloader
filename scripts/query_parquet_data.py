@@ -1,6 +1,6 @@
 "查询 Parquet 数据湖的命令行工具"
 
-import duckdb
+import ibis
 import pandas as pd
 import logging
 import typer
@@ -56,98 +56,98 @@ def query(
     logging.info(f"准备查询元数据数据库: {db_path}")
 
     try:
-        with duckdb.connect(str(db_path), read_only=True) as con:
-            final_query = ""
-            params = []
+        # 使用 ibis 连接 DuckDB
+        con = ibis.duckdb.connect(str(db_path), read_only=True)
 
-            if sql:
-                logging.info("检测到 --sql 参数，将直接执行提供的 SQL 查询。")
-                final_query = sql
-            elif table_name:
-                logging.info(f"成功连接数据库。查询表: {table_name}")
+        result_df = None
 
-                # 检查表是否存在
-                tables = con.execute("SHOW TABLES").fetchdf()["name"].tolist()
-                if table_name not in tables:
-                    logging.error(
-                        f"错误：表 '{table_name}' 在元数据数据库中不存在。可用表: {tables}"
-                    )
-                    raise typer.Exit(1)
+        if sql:
+            logging.info("检测到 --sql 参数，将直接执行提供的 SQL 查询。")
+            # 直接使用 ibis 底层的 duckdb 连接对象执行原始 SQL
+            result_df = con.con.execute(sql).fetch_df()
+        elif table_name:
+            logging.info(f"成功连接数据库。查询表: {table_name}")
 
-                # 构建查询
-                final_query = f"SELECT * FROM {table_name}"
-
-                if symbol:
-                    try:
-                        normalized_symbol = normalize_stock_code(symbol)
-                        logging.info(
-                            f"标准化股票代码: '{symbol}' -> '{normalized_symbol}'"
-                        )
-
-                        desc_df = con.execute(f"DESCRIBE {table_name}").fetchdf()
-                        possible_cols = ["ts_code", "symbol"]
-                        symbol_col = next(
-                            (
-                                col
-                                for col in possible_cols
-                                if col in desc_df["column_name"].tolist()
-                            ),
-                            None,
-                        )
-
-                        if not symbol_col:
-                            logging.error(
-                                f"错误：在表 '{table_name}' 中未找到可用于查询股票代码的列。"
-                            )
-                            raise typer.Exit(1)
-
-                        logging.info(
-                            f"在表 '{table_name}' 中使用 '{symbol_col}' 列进行查询。"
-                        )
-                        final_query += f" WHERE {symbol_col} = ?"
-                        params.append(normalized_symbol)
-
-                    except ValueError as e:
-                        logging.error(f"错误：无效的股票代码 '{symbol}' - {e}")
-                        raise typer.Exit(1)
-
-                # 动态添加排序逻辑
-                desc_df = con.execute(f"DESCRIBE {table_name}").fetchdf()
-                available_columns = desc_df["column_name"].tolist()
-                possible_date_cols = [
-                    "trade_date",
-                    "ann_date",
-                    "end_date",
-                    "cal_date",
-                    "list_date",
-                ]
-                date_col_to_sort = next(
-                    (col for col in possible_date_cols if col in available_columns),
-                    None,
+            # 检查表是否存在
+            if table_name not in con.list_tables():
+                logging.error(
+                    f"错误：表 '{table_name}' 在元数据数据库中不存在。可用表: {con.list_tables()}"
                 )
-
-                if date_col_to_sort:
-                    logging.info(f"将按最新日期列 '{date_col_to_sort}' 排序。")
-                    final_query += f" ORDER BY {date_col_to_sort} DESC"
-
-                final_query += " LIMIT ?"
-                params.append(limit)
-            else:
-                logging.error("错误：必须提供 --sql 参数或 table_name 参数。")
                 raise typer.Exit(1)
 
-            # 执行查询
-            logging.info(f"执行查询: {final_query} | 参数: {params}")
-            result_df = con.execute(final_query, params).fetch_df()
+            # 使用 Ibis API 构建查询表达式
+            table_expr = con.table(table_name)
 
-            if result_df.empty:
-                logging.warning("查询成功，但未返回任何数据。")
-            else:
-                pd.set_option("display.max_columns", None)
-                pd.set_option("display.width", 200)
-                print("\n--- 查询结果 ---")
-                print(result_df)
-                print("--- End ---")
+            if symbol:
+                try:
+                    normalized_symbol = normalize_stock_code(symbol)
+                    logging.info(
+                        f"标准化股票代码: '{symbol}' -> '{normalized_symbol}'"
+                    )
+
+                    schema = table_expr.schema()
+                    possible_cols = ["ts_code", "symbol"]
+                    symbol_col = next(
+                        (col for col in possible_cols if col in schema.names),
+                        None,
+                    )
+
+                    if not symbol_col:
+                        logging.error(
+                            f"错误：在表 '{table_name}' 中未找到可用于查询股票代码的列。"
+                        )
+                        raise typer.Exit(1)
+
+                    logging.info(
+                        f"在表 '{table_name}' 中使用 '{symbol_col}' 列进行查询。"
+                    )
+                    # 使用 Ibis filter API
+                    table_expr = table_expr.filter(
+                        table_expr[symbol_col] == normalized_symbol
+                    )
+
+                except ValueError as e:
+                    logging.error(f"错误：无效的股票代码 '{symbol}' - {e}")
+                    raise typer.Exit(1)
+
+            # 动态添加排序逻辑
+            schema = table_expr.schema()
+            possible_date_cols = [
+                "trade_date",
+                "ann_date",
+                "end_date",
+                "cal_date",
+                "list_date",
+            ]
+            date_col_to_sort = next(
+                (col for col in possible_date_cols if col in schema.names),
+                None,
+            )
+
+            if date_col_to_sort:
+                logging.info(f"将按最新日期列 '{date_col_to_sort}' 排序。")
+                # 使用 Ibis order_by API
+                table_expr = table_expr.order_by(ibis.desc(date_col_to_sort))
+
+            # 使用 Ibis limit API
+            table_expr = table_expr.limit(limit)
+
+            # 执行 Ibis 表达式
+            logging.info(f"执行 Ibis 表达式: \n{table_expr}")
+            result_df = table_expr.execute()
+
+        else:
+            logging.error("错误：必须提供 --sql 参数或 table_name 参数。")
+            raise typer.Exit(1)
+
+        if result_df.empty:
+            logging.warning("查询成功，但未返回任何数据。")
+        else:
+            pd.set_option("display.max_columns", None)
+            pd.set_option("display.width", 200)
+            print("\n--- 查询结果 ---")
+            print(result_df)
+            print("--- End ---")
 
     except Exception as e:
         logging.error(f"查询数据湖时发生错误: {e}")

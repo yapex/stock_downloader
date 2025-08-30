@@ -113,8 +113,8 @@ class MetadataSyncManager:
             table_name: 表名
         """
         try:
-            con.execute(f"DROP TABLE IF EXISTS {table_name}")
             con.execute(f"DROP VIEW IF EXISTS {table_name}")
+            con.execute(f"DROP TABLE IF EXISTS {table_name}")
         except Exception as e:
             logger.debug(f"删除表/视图时出现异常（可忽略）: {e}")
 
