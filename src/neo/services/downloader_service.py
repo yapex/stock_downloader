@@ -5,7 +5,7 @@
 import logging
 from typing import List
 
-from ..task_bus.types import DownloadTaskConfig
+from ..helpers.task_builder import DownloadTaskConfig
 from ..tasks.huey_tasks import download_task
 
 

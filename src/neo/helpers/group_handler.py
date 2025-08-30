@@ -5,8 +5,8 @@
 
 from typing import List, Optional, Protocol
 from neo.configs import get_config
-from neo.database.interfaces import IDBOperator
-from neo.task_bus.types import TaskType
+from neo.database.interfaces import IDBOperator, ISchemaLoader
+from neo.database.schema_loader import SchemaLoader
 
 
 class IGroupHandler(Protocol):
@@ -23,14 +23,14 @@ class IGroupHandler(Protocol):
         """
         ...
 
-    def get_task_types_for_group(self, group_name: str) -> List[TaskType]:
+    def get_task_types_for_group(self, group_name: str) -> List[str]:
         """获取指定组的任务类型列表
 
         Args:
             group_name: 组名
 
         Returns:
-            任务类型列表
+            任务类型字符串列表
         """
         ...
 
@@ -38,8 +38,11 @@ class IGroupHandler(Protocol):
 class GroupHandler:
     """组处理器实现"""
 
-    def __init__(self, db_operator: Optional[IDBOperator] = None):
+    def __init__(
+        self, db_operator: Optional[IDBOperator] = None, schema_loader: Optional[ISchemaLoader] = None
+    ):
         self._db_operator = db_operator
+        self._schema_loader = schema_loader or SchemaLoader()
 
     @classmethod
     def create_default(cls) -> "GroupHandler":
@@ -49,11 +52,10 @@ class GroupHandler:
             GroupHandler: 带有默认 DBOperator 的 GroupHandler 实例
         """
         from neo.database.operator import ParquetDBQueryer
-        from neo.database.schema_loader import SchemaLoader
 
         schema_loader = SchemaLoader()
         db_operator = ParquetDBQueryer(schema_loader=schema_loader)
-        return cls(db_operator=db_operator)
+        return cls(db_operator=db_operator, schema_loader=schema_loader)
 
     def get_symbols_for_group(self, group_name: str) -> List[str]:
         """获取指定组的股票代码列表
@@ -79,21 +81,19 @@ class GroupHandler:
         # 其他组需要从数据库获取所有股票代码
         if not self._db_operator:
             from neo.database.operator import ParquetDBQueryer
-            from neo.database.schema_loader import SchemaLoader
 
-            schema_loader = SchemaLoader()
-            self._db_operator = ParquetDBQueryer(schema_loader=schema_loader)
+            self._db_operator = ParquetDBQueryer(schema_loader=self._schema_loader)
 
         return self._get_all_symbols_from_db()
 
-    def get_task_types_for_group(self, group_name: str) -> List[TaskType]:
+    def get_task_types_for_group(self, group_name: str) -> List[str]:
         """获取指定组的任务类型列表
 
         Args:
             group_name: 组名
 
         Returns:
-            任务类型列表
+            任务类型字符串列表
         """
         config = get_config()
 
@@ -102,18 +102,14 @@ class GroupHandler:
 
         # 获取任务类型字符串列表
         task_type_names = config.task_groups[group_name]
+        valid_task_types = self._schema_loader.get_table_names()
 
-        # 转换为 TaskType 枚举
-        task_types = []
+        # 验证任务类型
         for name in task_type_names:
-            try:
-                # 直接使用原始名称访问枚举
-                task_type = getattr(TaskType, name)
-                task_types.append(task_type)
-            except AttributeError:
+            if name not in valid_task_types:
                 raise ValueError(f"未知的任务类型: {name}")
 
-        return task_types
+        return task_type_names
 
     def _get_all_symbols_from_db(self) -> List[str]:
         """从数据库获取所有股票代码

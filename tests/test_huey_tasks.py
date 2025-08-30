@@ -11,7 +11,7 @@ from pathlib import Path
 # 在导入任何 neo 模块之前先 patch huey_config
 pytestmark = pytest.mark.usefixtures("mock_huey_config")
 
-from neo.task_bus.types import TaskType
+# TaskType 已移除，现在使用字符串表示任务类型
 
 
 class MockContainer:
@@ -143,11 +143,11 @@ class TestDownloadTask:
         mock_container.downloader.return_value = mock_downloader_instance
 
         # 执行任务
-        download_task.func(TaskType.stock_basic, "000001.SZ")
+        download_task.func("stock_basic", "000001.SZ")
 
         # 验证调用
         mock_downloader_instance.download.assert_called_once_with(
-            TaskType.stock_basic, "000001.SZ"
+            "stock_basic", "000001.SZ"
         )
         mock_process_task.assert_called_once()
 
@@ -168,11 +168,11 @@ class TestDownloadTask:
         mock_container.downloader.return_value = mock_downloader_instance
 
         # 执行任务
-        download_task.func(TaskType.stock_basic, "000001.SZ")
+        download_task.func("stock_basic", "000001.SZ")
 
         # 验证调用
         mock_downloader_instance.download.assert_called_once_with(
-            TaskType.stock_basic, "000001.SZ"
+            "stock_basic", "000001.SZ"
         )
         # 验证没有调用后续处理任务
         mock_process_task.assert_not_called()
@@ -194,11 +194,11 @@ class TestDownloadTask:
         mock_container.downloader.return_value = mock_downloader_instance
 
         # 执行任务
-        download_task.func(TaskType.stock_basic, "000001.SZ")
+        download_task.func("stock_basic", "000001.SZ")
 
         # 验证调用
         mock_downloader_instance.download.assert_called_once_with(
-            TaskType.stock_basic, "000001.SZ"
+            "stock_basic", "000001.SZ"
         )
         # 验证没有调用后续处理任务
         mock_process_task.assert_not_called()
@@ -222,10 +222,10 @@ class TestDownloadTask:
 
         # 执行任务并验证异常
         with pytest.raises(Exception, match="Download failed"):
-            download_task.func(TaskType.stock_basic, "000001.SZ")
+            download_task.func("stock_basic", "000001.SZ")
 
         mock_downloader_instance.download.assert_called_once_with(
-            TaskType.stock_basic, "000001.SZ"
+            "stock_basic", "000001.SZ"
         )
         mock_logger.error.assert_called_once()
         mock_process_task.assert_not_called()
@@ -257,13 +257,13 @@ class TestProcessDataTask:
         data = [{"ts_code": "000001.SZ"}]
 
         # 调用函数
-        result = process_data_task.func(TaskType.stock_basic, "000001.SZ", data)
+        result = process_data_task.func("stock_basic", "000001.SZ", data)
 
         # 验证结果
         assert result is True
         mock_data_processor_class.assert_called_once()
         mock_processor_instance.process_data.assert_called_once_with(
-            TaskType.stock_basic, "000001.SZ", data
+            "stock_basic", "000001.SZ", data
         )
 
     @patch("neo.tasks.data_processing_tasks.DataProcessor")
@@ -279,13 +279,13 @@ class TestProcessDataTask:
         mock_data_processor_class.return_value = mock_processor_instance
 
         # 测试空列表
-        result = process_data_task.func(TaskType.stock_basic, "000001.SZ", [])
+        result = process_data_task.func("stock_basic", "000001.SZ", [])
 
         # 验证结果
         assert result is False
         mock_data_processor_class.assert_called_once()
         mock_processor_instance.process_data.assert_called_once_with(
-            TaskType.stock_basic, "000001.SZ", []
+            "stock_basic", "000001.SZ", []
         )
 
         # 重置mock
@@ -298,10 +298,10 @@ class TestProcessDataTask:
         mock_data_processor_class.return_value = mock_processor_instance
 
         # 测试None
-        result = process_data_task.func(TaskType.stock_basic, "000001.SZ", None)
+        result = process_data_task.func("stock_basic", "000001.SZ", None)
         assert result is False
         mock_processor_instance.process_data.assert_called_with(
-            TaskType.stock_basic, "000001.SZ", None
+            "stock_basic", "000001.SZ", None
         )
 
     @patch("neo.tasks.data_processing_tasks.logger")
@@ -326,11 +326,11 @@ class TestProcessDataTask:
 
         # 验证异常被抛出
         with pytest.raises(Exception, match="Processing failed"):
-            process_data_task.func(TaskType.stock_basic, "000001.SZ", data)
+            process_data_task.func("stock_basic", "000001.SZ", data)
 
         mock_data_processor_class.assert_called_once()
         mock_processor_instance.process_data.assert_called_once_with(
-            TaskType.stock_basic, "000001.SZ", data
+            "stock_basic", "000001.SZ", data
         )
         # 验证错误日志被记录
         mock_logger.error.assert_called_once()

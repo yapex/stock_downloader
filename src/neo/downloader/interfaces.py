@@ -5,8 +5,6 @@
 from typing import Protocol, Optional
 import pandas as pd
 
-from neo.task_bus.types import TaskType
-
 
 class IDownloader(Protocol):
     """下载器接口
@@ -15,7 +13,7 @@ class IDownloader(Protocol):
     """
 
     def download(
-        self, task_type: TaskType, symbol: str, **kwargs
+        self, task_type: str, symbol: str, **kwargs
     ) -> Optional[pd.DataFrame]:
         """执行下载任务
 

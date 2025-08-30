@@ -1,7 +1,6 @@
 """TaskBuilder 类的测试用例"""
 
-from neo.helpers.task_builder import TaskBuilder
-from neo.task_bus.types import DownloadTaskConfig, TaskType
+from neo.helpers.task_builder import TaskBuilder, DownloadTaskConfig
 
 
 class TestTaskBuilder:
@@ -20,7 +19,7 @@ class TestTaskBuilder:
         """测试有股票代码和任务类型的情况"""
         builder = TaskBuilder()
         symbols = ["000001.SZ", "000002.SZ"]
-        task_types = [TaskType.stock_daily, TaskType.daily_basic]
+        task_types = ["stock_daily", "daily_basic"]
 
         tasks = builder.build_tasks(symbols, task_types)
 
@@ -29,10 +28,10 @@ class TestTaskBuilder:
 
         # 验证任务内容
         expected_tasks = [
-            ("000001.SZ", TaskType.stock_daily),
-            ("000001.SZ", TaskType.daily_basic),
-            ("000002.SZ", TaskType.stock_daily),
-            ("000002.SZ", TaskType.daily_basic),
+            ("000001.SZ", "stock_daily"),
+            ("000001.SZ", "daily_basic"),
+            ("000002.SZ", "stock_daily"),
+            ("000002.SZ", "daily_basic"),
         ]
 
         for i, (expected_symbol, expected_task_type) in enumerate(expected_tasks):
@@ -44,7 +43,7 @@ class TestTaskBuilder:
         """测试无股票代码的情况（如 stock_basic 组）"""
         builder = TaskBuilder()
         symbols = []
-        task_types = [TaskType.stock_basic, TaskType.income]
+        task_types = ["stock_basic", "income"]
 
         tasks = builder.build_tasks(symbols, task_types)
 
@@ -53,9 +52,9 @@ class TestTaskBuilder:
 
         # 验证任务内容
         assert tasks[0].symbol == ""
-        assert tasks[0].task_type == TaskType.stock_basic
+        assert tasks[0].task_type == "stock_basic"
         assert tasks[1].symbol == ""
-        assert tasks[1].task_type == TaskType.income
+        assert tasks[1].task_type == "income"
 
         for task in tasks:
             assert isinstance(task, DownloadTaskConfig)
@@ -64,14 +63,14 @@ class TestTaskBuilder:
         """测试 symbols 为 None 的情况"""
         builder = TaskBuilder()
         symbols = None
-        task_types = [TaskType.stock_basic]
+        task_types = ["stock_basic"]
 
         # symbols 为 None 时，应该按照无股票代码的逻辑处理
         tasks = builder.build_tasks(symbols, task_types)
 
         assert len(tasks) == 1
         assert tasks[0].symbol == ""
-        assert tasks[0].task_type == TaskType.stock_basic
+        assert tasks[0].task_type == "stock_basic"
 
     def test_build_tasks_empty_task_types(self):
         """测试空任务类型列表"""
@@ -112,20 +111,20 @@ class TestTaskBuilder:
         """测试单个股票代码和单个任务类型"""
         builder = TaskBuilder()
         symbols = ["600000.SH"]
-        task_types = [TaskType.stock_daily]
+        task_types = ["stock_daily"]
 
         tasks = builder.build_tasks(symbols, task_types)
 
         assert len(tasks) == 1
         assert tasks[0].symbol == "600000.SH"
-        assert tasks[0].task_type == TaskType.stock_daily
+        assert tasks[0].task_type == "stock_daily"
         assert isinstance(tasks[0], DownloadTaskConfig)
 
     def test_build_tasks_multiple_symbols_single_task_type(self):
         """测试多个股票代码和单个任务类型"""
         builder = TaskBuilder()
         symbols = ["000001.SZ", "000002.SZ", "600000.SH"]
-        task_types = [TaskType.stock_daily]
+        task_types = ["stock_daily"]
 
         tasks = builder.build_tasks(symbols, task_types)
 
@@ -134,25 +133,25 @@ class TestTaskBuilder:
 
         for i, expected_symbol in enumerate(expected_symbols):
             assert tasks[i].symbol == expected_symbol
-            assert tasks[i].task_type == TaskType.stock_daily
+            assert tasks[i].task_type == "stock_daily"
 
     def test_build_tasks_single_symbol_multiple_task_types(self):
         """测试单个股票代码和多个任务类型"""
         builder = TaskBuilder()
         symbols = ["000001.SZ"]
         task_types = [
-            TaskType.stock_daily,
-            TaskType.daily_basic,
-            TaskType.stock_adj_hfq,
+            "stock_daily",
+            "daily_basic",
+            "stock_adj_qfq",
         ]
 
         tasks = builder.build_tasks(symbols, task_types)
 
         assert len(tasks) == 3
         expected_task_types = [
-            TaskType.stock_daily,
-            TaskType.daily_basic,
-            TaskType.stock_adj_hfq,
+            "stock_daily",
+            "daily_basic",
+            "stock_adj_qfq",
         ]
 
         for i, expected_task_type in enumerate(expected_task_types):
@@ -165,14 +164,14 @@ class TestTaskBuilder:
 
         # 测试有股票代码的场景
         symbols_with_codes = ["000001.SZ"]
-        task_types_with_codes = [TaskType.stock_daily]
+        task_types_with_codes = ["stock_daily"]
         tasks_with_codes = builder.build_tasks(
             symbols_with_codes, task_types_with_codes
         )
 
         # 测试无股票代码的场景
         symbols_without_codes = []
-        task_types_without_codes = [TaskType.stock_basic]
+        task_types_without_codes = ["stock_basic"]
         tasks_without_codes = builder.build_tasks(
             symbols_without_codes, task_types_without_codes
         )
@@ -180,11 +179,11 @@ class TestTaskBuilder:
         # 验证结果
         assert len(tasks_with_codes) == 1
         assert tasks_with_codes[0].symbol == "000001.SZ"
-        assert tasks_with_codes[0].task_type == TaskType.stock_daily
+        assert tasks_with_codes[0].task_type == "stock_daily"
 
         assert len(tasks_without_codes) == 1
         assert tasks_without_codes[0].symbol == ""
-        assert tasks_without_codes[0].task_type == TaskType.stock_basic
+        assert tasks_without_codes[0].task_type == "stock_basic"
 
     def test_task_builder_implements_interface(self):
         """测试 TaskBuilder 实现了 ITaskBuilder 接口"""
@@ -198,7 +197,7 @@ class TestTaskBuilder:
         """测试 build_tasks 方法的返回类型"""
         builder = TaskBuilder()
         symbols = ["000001.SZ"]
-        task_types = [TaskType.stock_daily]
+        task_types = ["stock_daily"]
 
         tasks = builder.build_tasks(symbols, task_types)
 

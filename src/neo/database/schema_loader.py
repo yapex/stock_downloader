@@ -52,6 +52,7 @@ class SchemaLoader(ISchemaLoader):
             schema = TableSchema(
                 table_name=config_box.get("table_name", table_name),
                 api_method=config_box.get("api_method", ""),
+                base_object=config_box.get("base_object", ""),
                 default_params=config_box.get("default_params", {}),
                 primary_key=config_box.get("primary_key", []),
                 description=config_box.get("description", ""),

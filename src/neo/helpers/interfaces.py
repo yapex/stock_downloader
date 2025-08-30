@@ -7,8 +7,6 @@ from abc import ABC, abstractmethod
 
 from pyrate_limiter import Limiter
 
-from neo.task_bus.types import TaskType
-
 
 class IRateLimitManager(ABC):
     """速率限制管理器接口
@@ -17,11 +15,11 @@ class IRateLimitManager(ABC):
     """
 
     @abstractmethod
-    def get_limiter(self, task_type: TaskType) -> Limiter:
+    def get_limiter(self, task_type: str) -> Limiter:
         """获取指定任务类型的速率限制器
 
         Args:
-            task_type: 任务类型枚举
+            task_type: 任务类型字符串
 
         Returns:
             Limiter: 对应的速率限制器实例
@@ -29,11 +27,11 @@ class IRateLimitManager(ABC):
         pass
 
     @abstractmethod
-    def apply_rate_limiting(self, task_type: TaskType) -> None:
+    def apply_rate_limiting(self, task_type: str) -> None:
         """对指定任务类型应用速率限制
 
         Args:
-            task_type: 任务类型枚举
+            task_type: 任务类型字符串
         """
         pass
 
@@ -46,11 +44,11 @@ class IRateLimitManager(ABC):
         pass
 
     @abstractmethod
-    def get_rate_limit_config(self, task_type: TaskType) -> int:
+    def get_rate_limit_config(self, task_type: str) -> int:
         """获取指定任务类型的速率限制配置
 
         Args:
-            task_type: 任务类型枚举
+            task_type: 任务类型字符串
 
         Returns:
             int: 每分钟允许的请求数

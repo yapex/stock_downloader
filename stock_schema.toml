@@ -5,6 +5,7 @@ primary_key = [
 ]
 description = "股票基本信息表字段"
 api_method = "stock_basic"
+base_object = "pro"
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "symbol", type = "TEXT" },
@@ -27,6 +28,7 @@ primary_key = [
 date_col = "trade_date"
 description = "股票日线数据字段"
 api_method = "daily"
+base_object = "pro"
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "trade_date", type = "TEXT" },
@@ -50,6 +52,7 @@ primary_key = [
 date_col = "trade_date"
 description = "复权行情数据字段"
 api_method = "pro_bar"
+base_object = "ts"
 required_params = { adj = "qfq" }
 columns = [
     { name = "ts_code", type = "TEXT" },
@@ -74,6 +77,7 @@ primary_key = [
 date_col = "trade_date"
 description = "获取全部股票每日重要的基本面指标"
 api_method = "daily_basic"
+base_object = "pro"
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "trade_date", type = "TEXT" },
@@ -104,6 +108,7 @@ primary_key = [
 date_col = "f_ann_date"
 description = "利润表字段"
 api_method = "income"
+base_object = "pro"
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "ann_date", type = "TEXT" },
@@ -201,6 +206,7 @@ primary_key = [
 date_col = "f_ann_date"
 description = "资产负债表字段"
 api_method = "balancesheet"
+base_object = "pro"
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "ann_date", type = "TEXT" },
@@ -365,6 +371,7 @@ primary_key = [
 date_col = "f_ann_date"
 description = "现金流量表字段"
 api_method = "cashflow"
+base_object = "pro"
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "ann_date", type = "TEXT" },
@@ -474,6 +481,7 @@ primary_key = [
 date_col = "cal_date"
 description = "交易日历"
 api_method = "trade_cal"
+base_object = "pro"
 required_params = { exchange = "SSE" }
 columns = [
     { name = "exchange", type = "TEXT" },

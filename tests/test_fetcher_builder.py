@@ -3,7 +3,8 @@ import pandas as pd
 from unittest.mock import Mock, patch
 from threading import Lock
 from neo.downloader.fetcher_builder import TushareApiManager, FetcherBuilder
-from neo.task_bus.types import TaskTemplate, TaskType, TaskTemplateRegistry
+from neo.downloader.fetcher_builder import TaskTemplate
+# TaskType 和 TaskTemplateRegistry 已移除，现在使用字符串和 schema 配置
 from neo.containers import AppContainer
 
 
@@ -29,24 +30,8 @@ class TestTaskTemplate:
         assert template.default_params == {}
 
 
-class TestTaskType:
-    """测试 TaskType 枚举"""
-
-    def test_task_type_enum_values(self):
-        """测试任务类型常量值"""
-        assert TaskType.stock_basic == "stock_basic"
-        assert TaskType.stock_daily == "stock_daily"
-        assert TaskType.stock_adj_hfq == "stock_adj_hfq"
-
-    def test_task_type_templates(self):
-        """测试任务类型模板"""
-        stock_basic_template = TaskTemplateRegistry.get_template(TaskType.stock_basic)
-        assert stock_basic_template.base_object == "pro"
-        assert stock_basic_template.api_method == "stock_basic"
-
-        stock_daily_template = TaskTemplateRegistry.get_template(TaskType.stock_daily)
-        assert stock_daily_template.base_object == "pro"
-        assert stock_daily_template.api_method == "daily"
+# TestTaskType 类已删除，因为 TaskType 和 TaskTemplateRegistry 已被移除
+# 现在使用字符串表示任务类型，配置通过 schema.toml 文件管理
 
 
 class TestTushareApiManager:
@@ -137,7 +122,7 @@ class TestFetcherBuilder:
         mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
         mock_get_api.return_value = mock_api_func
 
-        fetcher = self.builder.build_by_task(TaskType.stock_basic, symbol="600519")
+        fetcher = self.builder.build_by_task("stock_basic", symbol="600519")
         result = fetcher()
 
         mock_normalize.assert_called_once_with("600519")
@@ -151,7 +136,7 @@ class TestFetcherBuilder:
         mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
         mock_get_api.return_value = mock_api_func
 
-        fetcher = self.builder.build_by_task(TaskType.stock_basic)
+        fetcher = self.builder.build_by_task("stock_basic")
         result = fetcher()
 
         mock_get_api.assert_called_once_with("pro", "stock_basic")
@@ -168,7 +153,7 @@ class TestFetcherBuilder:
         mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
         mock_get_api.return_value = mock_api_func
 
-        fetcher = self.builder.build_by_task(TaskType.stock_basic, symbol="")
+        fetcher = self.builder.build_by_task("stock_basic", symbol="")
         result = fetcher()
 
         # 验证 normalize_stock_code 没有被调用
@@ -187,7 +172,7 @@ class TestFetcherBuilder:
         mock_get_api.return_value = mock_api_func
 
         fetcher = self.builder.build_by_task(
-            TaskType.stock_basic, symbol="600519", exchange="SZSE", list_status="L"
+            "stock_basic", symbol="600519", exchange="SZSE", list_status="L"
         )
         result = fetcher()
 
@@ -205,7 +190,7 @@ class TestFetcherBuilder:
         mock_get_api.return_value = mock_api_func
 
         # 使用有默认参数的任务类型
-        fetcher = self.builder.build_by_task(TaskType.stock_adj_hfq)
+        fetcher = self.builder.build_by_task("stock_adj_qfq")
         result = fetcher()
 
         mock_get_api.assert_called_once_with("ts", "pro_bar")
@@ -222,7 +207,7 @@ class TestFetcherBuilder:
 
         builder = FetcherBuilder()
         fetcher = builder.build_by_task(
-            TaskType.stock_daily,
+            "stock_daily",
             symbol="600519.SH",
             start_date="20240101",
             end_date="20240131",
@@ -240,7 +225,7 @@ class TestFetcherBuilder:
         mock_api_func = Mock(side_effect=Exception("API调用失败"))
         mock_get_api.return_value = mock_api_func
 
-        fetcher = self.builder.build_by_task(TaskType.stock_basic)
+        fetcher = self.builder.build_by_task("stock_basic")
 
         with pytest.raises(Exception, match="API调用失败"):
             fetcher()
@@ -255,7 +240,7 @@ class TestFetcherBuilder:
 
         # 测试运行时参数覆盖默认参数
         fetcher = self.builder.build_by_task(
-            TaskType.stock_daily,
+            "stock_daily",
             symbol="600519",
             start_date="20240101",  # 覆盖默认参数
             end_date="20240131",  # 新增参数
@@ -301,7 +286,7 @@ class TestFetcherBuilderContainer:
         fetcher_builder = container.fetcher_builder()
 
         # 测试构建任务功能
-        fetcher = fetcher_builder.build_by_task(TaskType.stock_basic)
+        fetcher = fetcher_builder.build_by_task("stock_basic")
         result = fetcher()
 
         mock_get_api.assert_called_once_with("pro", "stock_basic")

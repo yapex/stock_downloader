@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 from neo.helpers.rate_limit_manager import RateLimitManager, get_rate_limit_manager
 from neo.helpers.interfaces import IRateLimitManager
-from neo.task_bus.types import TaskType, TaskTemplateRegistry
+# TaskType 现在使用字符串，TaskTemplateRegistry 已移除
 from pyrate_limiter import Limiter
 from neo.containers import AppContainer
 
@@ -44,7 +44,7 @@ class TestRateLimitManager:
         mock_get_config.return_value = mock_config
 
         manager = RateLimitManager()
-        rate_limit = manager.get_rate_limit_config(TaskType.stock_basic)
+        rate_limit = manager.get_rate_limit_config("stock_basic")
         assert rate_limit == 190  # 默认值
 
     @patch("neo.helpers.rate_limit_manager.get_config")
@@ -53,31 +53,29 @@ class TestRateLimitManager:
         # 模拟配置返回自定义的rate_limit_per_minute
         mock_config = Mock()
         # 使用 api_method 作为配置键
-        template = TaskTemplateRegistry.get_template(TaskType.stock_basic)
         mock_config.download_tasks = {
-            template.api_method: {"rate_limit_per_minute": 100}
+            "stock_basic": {"rate_limit_per_minute": 100}
         }
         mock_get_config.return_value = mock_config
 
         manager = RateLimitManager()
-        rate_limit = manager.get_rate_limit_config(TaskType.stock_basic)
+        rate_limit = manager.get_rate_limit_config("stock_basic")
         assert rate_limit == 100
 
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_get_limiter_creates_new(self, mock_get_config):
         """测试获取限制器时创建新实例"""
         mock_config = Mock()
-        template = TaskTemplateRegistry.get_template(TaskType.stock_basic)
         mock_config.download_tasks = {
-            template.api_method: {"rate_limit_per_minute": 150}
+            "stock_basic": {"rate_limit_per_minute": 150}
         }
         mock_get_config.return_value = mock_config
 
         manager = RateLimitManager()
-        limiter = manager.get_limiter(TaskType.stock_basic)
+        limiter = manager.get_limiter("stock_basic")
 
         assert isinstance(limiter, Limiter)
-        assert str(TaskType.stock_basic) in manager.rate_limiters
+        assert "stock_basic" in manager.rate_limiters
 
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_get_limiter_reuses_existing(self, mock_get_config):
@@ -88,9 +86,9 @@ class TestRateLimitManager:
 
         manager = RateLimitManager()
         # 第一次获取
-        limiter1 = manager.get_limiter(TaskType.stock_basic)
+        limiter1 = manager.get_limiter("stock_basic")
         # 第二次获取
-        limiter2 = manager.get_limiter(TaskType.stock_basic)
+        limiter2 = manager.get_limiter("stock_basic")
 
         # 应该是同一个实例
         assert limiter1 is limiter2
@@ -105,7 +103,7 @@ class TestRateLimitManager:
 
         manager = RateLimitManager()
         # 应该不抛出异常
-        manager.apply_rate_limiting(TaskType.stock_basic)
+        manager.apply_rate_limiting("stock_basic")
 
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_cleanup_removes_all_limiters(self, mock_get_config):
@@ -116,7 +114,7 @@ class TestRateLimitManager:
 
         manager = RateLimitManager()
         # 创建一些限制器
-        manager.get_limiter(TaskType.stock_basic)
+        manager.get_limiter("stock_basic")
         assert len(manager.rate_limiters) == 1
 
         # 清理
@@ -131,8 +129,8 @@ class TestRateLimitManager:
         mock_get_config.return_value = mock_config
 
         manager = RateLimitManager()
-        limiter1 = manager.get_limiter(TaskType.stock_basic)
-        limiter2 = manager.get_limiter(TaskType.daily_basic)
+        limiter1 = manager.get_limiter("stock_basic")
+        limiter2 = manager.get_limiter("daily_basic")
 
         # 应该是不同的实例
         assert limiter1 is not limiter2
@@ -223,7 +221,7 @@ class TestRateLimitManagerSingleton:
         original_rate_limiters = manager1.rate_limiters
 
         # 添加一些数据
-        manager1.get_limiter(TaskType.stock_basic)
+        manager1.get_limiter("stock_basic")
         assert len(manager1.rate_limiters) == 1
 
         # 第二次获取单例应该保持状态
@@ -249,7 +247,7 @@ class TestRateLimitManagerSingleton:
         assert manager1 is not manager2
 
         # 每个实例都有自己的状态
-        manager1.get_limiter(TaskType.stock_basic)
+        manager1.get_limiter("stock_basic")
         assert len(manager1.rate_limiters) == 1
         assert len(manager2.rate_limiters) == 0
 
@@ -300,9 +298,8 @@ class TestRateLimitManagerContainer:
     def test_container_rate_limit_manager_functionality(self, mock_get_config):
         """测试从容器获取的 RateLimitManager 功能正常"""
         mock_config = Mock()
-        template = TaskTemplateRegistry.get_template(TaskType.stock_basic)
         mock_config.download_tasks = {
-            template.api_method: {"rate_limit_per_minute": 120}
+            "stock_basic": {"rate_limit_per_minute": 120}
         }
         mock_get_config.return_value = mock_config
 
@@ -310,15 +307,15 @@ class TestRateLimitManagerContainer:
         rate_limit_manager = container.rate_limit_manager()
 
         # 测试获取速率限制配置
-        rate_limit = rate_limit_manager.get_rate_limit_config(TaskType.stock_basic)
+        rate_limit = rate_limit_manager.get_rate_limit_config("stock_basic")
         assert rate_limit == 120
 
         # 测试获取限制器
-        limiter = rate_limit_manager.get_limiter(TaskType.stock_basic)
+        limiter = rate_limit_manager.get_limiter("stock_basic")
         assert isinstance(limiter, Limiter)
 
         # 测试应用速率限制
-        rate_limit_manager.apply_rate_limiting(TaskType.stock_basic)
+        rate_limit_manager.apply_rate_limiting("stock_basic")
 
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_different_containers_share_same_global_singleton(self, mock_get_config):
@@ -348,7 +345,7 @@ class TestRateLimitManagerContainer:
         rate_limit_manager1 = container.rate_limit_manager()
 
         # 添加一些数据
-        rate_limit_manager1.get_limiter(TaskType.stock_basic)
+        rate_limit_manager1.get_limiter("stock_basic")
         assert len(rate_limit_manager1.rate_limiters) == 1
 
         # 再次获取应该保持状态

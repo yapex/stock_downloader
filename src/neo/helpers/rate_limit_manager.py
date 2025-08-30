@@ -8,7 +8,8 @@ from typing import Dict, Optional
 from pyrate_limiter import Limiter, InMemoryBucket, Rate, Duration
 
 from neo.configs.app_config import get_config
-from neo.task_bus.types import TaskType, TaskTemplateRegistry
+from neo.database.interfaces import ISchemaLoader
+from neo.database.schema_loader import SchemaLoader
 from .interfaces import IRateLimitManager
 
 logger = logging.getLogger(__name__)
@@ -25,8 +26,11 @@ class RateLimitManager(IRateLimitManager):
     _singleton_lock = threading.Lock()
 
     @classmethod
-    def singleton(cls) -> "RateLimitManager":
+    def singleton(cls, schema_loader: Optional[ISchemaLoader] = None) -> "RateLimitManager":
         """获取单例实例
+
+        Args:
+            schema_loader: Schema加载器实例
 
         Returns:
             RateLimitManager: 单例实例
@@ -34,19 +38,20 @@ class RateLimitManager(IRateLimitManager):
         if cls._singleton_instance is None:
             with cls._singleton_lock:
                 if cls._singleton_instance is None:
-                    cls._singleton_instance = cls()
+                    cls._singleton_instance = cls(schema_loader)
         return cls._singleton_instance
 
-    def __init__(self):
+    def __init__(self, schema_loader: Optional[ISchemaLoader] = None):
         """初始化速率限制管理器"""
         self.config = get_config()
         self.rate_limiters: Dict[str, Limiter] = {}  # 按需创建的速率限制器缓存
+        self.schema_loader = schema_loader or SchemaLoader()
 
-    def get_limiter(self, task_type: TaskType) -> Limiter:
+    def get_limiter(self, task_type: str) -> Limiter:
         """获取指定任务类型的速率限制器
 
         Args:
-            task_type: 任务类型枚举
+            task_type: 任务类型字符串
 
         Returns:
             Limiter: 对应的速率限制器实例
@@ -68,29 +73,29 @@ class RateLimitManager(IRateLimitManager):
 
         return self.rate_limiters[task_key]
 
-    def apply_rate_limiting(self, task_type: TaskType) -> None:
+    def apply_rate_limiting(self, task_type: str) -> None:
         """对指定任务类型应用速率限制
 
         Args:
-            task_type: 任务类型枚举
+            task_type: 任务类型字符串
         """
         logger.debug(f"Rate limiting check for task: {task_type}")
         rate_limiter = self.get_limiter(task_type)
         rate_limiter.try_acquire(str(task_type), 1)
 
-    def get_rate_limit_config(self, task_type: TaskType) -> int:
+    def get_rate_limit_config(self, task_type: str) -> int:
         """获取指定任务类型的速率限制配置
 
         Args:
-            task_type: 任务类型枚举
+            task_type: 任务类型字符串
 
         Returns:
             int: 每分钟允许的请求数
         """
         try:
             # 从配置中获取任务类型的速率限制，使用 api_method 作为键
-            template = TaskTemplateRegistry.get_template(task_type)
-            api_method = template.api_method
+            schema = self.schema_loader.load_schema(task_type)
+            api_method = schema.api_method
             task_config = self.config.download_tasks.get(api_method, {})
             rate_limit = task_config.get("rate_limit_per_minute", 190)  # 默认值190
             logger.debug(f"Task {api_method} rate limit: {rate_limit} requests/minute")

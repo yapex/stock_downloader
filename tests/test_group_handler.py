@@ -19,7 +19,7 @@ class TestGroupHandler:
         assert handler._db_operator is None
 
     @patch("neo.database.operator.ParquetDBQueryer")
-    @patch("neo.database.schema_loader.SchemaLoader")
+    @patch("neo.helpers.group_handler.SchemaLoader")
     def test_create_default(self, mock_schema_loader_class, mock_db_operator_class):
         """测试 create_default 工厂方法"""
         # 设置 mock
@@ -47,15 +47,16 @@ class TestGroupHandler:
         mock_config.task_groups = {"test_group": ["stock_basic", "stock_daily"]}
         mock_get_config.return_value = mock_config
 
+        # Mock schema_loader 的 get_table_names 方法
         handler = GroupHandler()
+        handler._schema_loader.get_table_names = Mock(return_value=["stock_basic", "stock_daily", "stock_adj_qfq"])
+        
         task_types = handler.get_task_types_for_group("test_group")
 
         # 验证结果
         assert len(task_types) == 2
-        from neo.task_bus.types import TaskType
-
-        assert TaskType.stock_basic in task_types
-        assert TaskType.stock_daily in task_types
+        assert "stock_basic" in task_types
+        assert "stock_daily" in task_types
 
     @patch("neo.helpers.group_handler.get_config")
     def test_get_task_types_for_group_invalid_group(self, mock_get_config):
@@ -78,7 +79,9 @@ class TestGroupHandler:
         mock_config.task_groups = {"test_group": ["invalid_task_type"]}
         mock_get_config.return_value = mock_config
 
+        # Mock schema_loader 的 get_table_names 方法，不包含 invalid_task_type
         handler = GroupHandler()
+        handler._schema_loader.get_table_names = Mock(return_value=["stock_basic", "stock_daily", "stock_adj_qfq"])
 
         with pytest.raises(ValueError, match="未知的任务类型: invalid_task_type"):
             handler.get_task_types_for_group("test_group")
@@ -103,7 +106,7 @@ class TestGroupHandler:
         mock_db_operator.get_all_symbols.assert_called_once()
 
     @patch("neo.database.operator.ParquetDBQueryer")
-    @patch("neo.database.schema_loader.SchemaLoader")
+    @patch("neo.helpers.group_handler.SchemaLoader")
     @patch("neo.helpers.group_handler.get_config")
     def test_get_symbols_for_group_without_db_operator(
         self, mock_get_config, mock_schema_loader_class, mock_parquet_queryer_class
@@ -161,7 +164,7 @@ class TestGroupHandler:
             handler.get_symbols_for_group("invalid_group")
 
     @patch("neo.database.operator.ParquetDBQueryer")
-    @patch("neo.database.schema_loader.SchemaLoader")
+    @patch("neo.helpers.group_handler.SchemaLoader")
     @patch("neo.helpers.group_handler.get_config")
     def test_get_symbols_for_group_db_exception(
         self, mock_get_config, mock_schema_loader_class, mock_parquet_queryer_class

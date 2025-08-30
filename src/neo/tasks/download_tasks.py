@@ -10,7 +10,6 @@ from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 from ..configs.app_config import get_config
 from ..configs.huey_config import huey_fast, huey_slow
 from ..helpers.utils import get_next_day_str
-from ..task_bus.types import TaskType
 
 if TYPE_CHECKING:
     from ..database.operator import ParquetDBQueryer
@@ -315,7 +314,7 @@ def build_and_enqueue_downloads_task(
 
 
 @huey_fast.task(retries=2, retry_delay=60)
-def download_task(task_type: TaskType, symbol: str, **kwargs):
+def download_task(task_type: str, symbol: str, **kwargs):
     """下载股票数据的 Huey 任务 (快速队列)
 
     下载完成后，直接调用慢速队列的数据处理任务。

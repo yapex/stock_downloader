@@ -5,7 +5,7 @@
 from unittest.mock import patch
 
 from neo.services.downloader_service import DownloaderService
-from neo.task_bus.types import DownloadTaskConfig, TaskType
+from neo.helpers.task_builder import DownloadTaskConfig
 
 
 class TestDownloaderService:
@@ -17,9 +17,10 @@ class TestDownloaderService:
         # 1. 准备 mock 和被测对象
         mock_download_task.return_value = "mocked_result"
         service = DownloaderService()
+        # 使用 DownloadTaskConfig 对象
         tasks = [
-            DownloadTaskConfig(task_type=TaskType.stock_basic, symbol="000001"),
-            DownloadTaskConfig(task_type=TaskType.stock_daily, symbol="000002"),
+            DownloadTaskConfig(task_type="stock_basic", symbol="000001"),
+            DownloadTaskConfig(task_type="stock_daily", symbol="000002"),
         ]
 
         # 2. 调用被测方法
@@ -27,8 +28,8 @@ class TestDownloaderService:
 
         # 3. 断言
         assert mock_download_task.call_count == 2
-        mock_download_task.assert_any_call(TaskType.stock_basic, "000001")
-        mock_download_task.assert_any_call(TaskType.stock_daily, "000002")
+        mock_download_task.assert_any_call("stock_basic", "000001")
+        mock_download_task.assert_any_call("stock_daily", "000002")
         assert results == ["mocked_result", "mocked_result"]
 
     @patch("neo.services.downloader_service.download_task")
@@ -36,7 +37,7 @@ class TestDownloaderService:
         """测试 dry_run=True 时，不调用 download_task"""
         # 1. 准备 mock 和被测对象
         service = DownloaderService()
-        tasks = [DownloadTaskConfig(task_type=TaskType.stock_basic, symbol="000001")]
+        tasks = [DownloadTaskConfig(task_type="stock_basic", symbol="000001")]
 
         # 2. 调用被测方法
         with patch("builtins.print") as mock_print:
@@ -54,8 +55,8 @@ class TestDownloaderService:
         mock_download_task.side_effect = [Exception("Boom!"), "mocked_result"]
         service = DownloaderService()
         tasks = [
-            DownloadTaskConfig(task_type=TaskType.stock_basic, symbol="FAIL"),
-            DownloadTaskConfig(task_type=TaskType.stock_daily, symbol="OK"),
+            DownloadTaskConfig(task_type="stock_basic", symbol="FAIL"),
+            DownloadTaskConfig(task_type="stock_daily", symbol="OK"),
         ]
 
         # 2. 调用被测方法

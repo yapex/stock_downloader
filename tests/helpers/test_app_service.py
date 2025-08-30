@@ -2,7 +2,8 @@
 
 from unittest.mock import Mock, patch
 
-from neo.task_bus.types import DownloadTaskConfig, TaskType
+# TaskType 和 DownloadTaskConfig 已被移除，现在使用字符串表示任务类型
+# from neo.task_bus.types import DownloadTaskConfig, TaskType
 
 
 class TestAppServiceFacade:
@@ -53,7 +54,8 @@ class TestAppServiceFacade:
         )
 
         # 3. 调用被测方法
-        tasks = [DownloadTaskConfig(task_type=TaskType.stock_basic, symbol="000001")]
+        # 使用字典替代 DownloadTaskConfig，因为它已被移除
+        tasks = [{"task_type": "stock_basic", "symbol": "000001"}]
         app_service.run_downloader(tasks, dry_run=True)
 
         # 4. 断言 Mock 对象的方法被正确调用

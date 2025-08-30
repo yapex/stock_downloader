@@ -4,14 +4,23 @@
 """
 
 from typing import List, Protocol
-from neo.task_bus.types import DownloadTaskConfig, TaskType
+from dataclasses import dataclass
+
+
+@dataclass
+class DownloadTaskConfig:
+    """下载任务配置"""
+
+    symbol: str
+    task_type: str
+    max_retries: int = 3
 
 
 class ITaskBuilder(Protocol):
     """任务构建器接口"""
 
     def build_tasks(
-        self, symbols: List[str], task_types: List[TaskType]
+        self, symbols: List[str], task_types: List[str]
     ) -> List[DownloadTaskConfig]:
         """构建任务列表
 
@@ -38,7 +47,7 @@ class TaskBuilder:
         return cls()
 
     def build_tasks(
-        self, symbols: List[str], task_types: List[TaskType]
+        self, symbols: List[str], task_types: List[str]
     ) -> List[DownloadTaskConfig]:
         """构建任务列表
 

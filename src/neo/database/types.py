@@ -14,6 +14,7 @@ class TableSchema:
     default_params: Dict[str, Any]
     primary_key: List[str]
     description: str
+    base_object: str = ""
     date_col: Optional[str] = None
     columns: Optional[List[Dict[str, str]]] = None
     required_params: Dict[str, Any] = None

@@ -13,7 +13,24 @@ from threading import Lock
 import os
 
 from neo.helpers import normalize_stock_code
-from neo.task_bus.types import TaskType, TaskTemplateRegistry
+from neo.database.interfaces import ISchemaLoader
+from neo.database.schema_loader import SchemaLoader
+from dataclasses import dataclass
+from typing import Dict, Any, Optional
+
+
+@dataclass
+class TaskTemplate:
+    """任务模板配置"""
+    api_method: str
+    base_object: str
+    required_params: Optional[Dict[str, Any]] = None
+    default_params: Optional[Dict[str, Any]] = None
+    
+    def __post_init__(self):
+        """初始化后处理，确保 default_params 不为 None"""
+        if self.default_params is None:
+            self.default_params = {}
 
 logger = logging.getLogger(__name__)
 
@@ -59,11 +76,12 @@ class TushareApiManager:
 class FetcherBuilder:
     """数据获取器构建器"""
 
-    def __init__(self):
+    def __init__(self, schema_loader: Optional[ISchemaLoader] = None):
         self.api_manager = TushareApiManager.get_instance()
+        self.schema_loader = schema_loader or SchemaLoader()
 
     def build_by_task(
-        self, task_type: TaskType, **kwargs: Any
+        self, task_type: str, **kwargs: Any
     ) -> Callable[[], pd.DataFrame]:
         """构建指定股票代码的数据获取器
 
@@ -76,7 +94,12 @@ class FetcherBuilder:
         """
         # 获取任务模板配置
         try:
-            template = TaskTemplateRegistry.get_template(task_type)
+            schema = self.schema_loader.load_schema(task_type)
+            template = TaskTemplate(
+                api_method=schema.api_method,
+                base_object=schema.base_object,
+                required_params=schema.required_params,
+            )
         except KeyError:
             raise ValueError(f"不支持的任务类型: {task_type}")
 
@@ -117,7 +140,7 @@ class FetcherBuilder:
 
 if __name__ == "__main__":
     # 最精简的用法示例
-    task_type = TaskType.stock_daily
+    task_type = "stock_daily"
     # print(task_type)
     fetcher = FetcherBuilder().build_by_task(task_type, "600519")
     df = fetcher()
