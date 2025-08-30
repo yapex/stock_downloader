@@ -1,7 +1,7 @@
 """下载任务模块
 
 包含股票数据下载相关的 Huey 任务。
-V2版本采用交叉生成和分批洗牌策略，以优化任务队列的均匀性并减少内存占用。
+V3版本采用交叉生成和随机优先级策略，以优化任务队列的均匀性、解决“车队效应”并减少内存占用。
 """
 
 import logging
@@ -58,7 +58,7 @@ class DownloadTaskManager:
     ) -> bool:
         """检查是否应该跳过当前任务"""
         if not latest_date:
-            return False  # 没有历史数据，必须下载
+            return False
 
         if not latest_trading_day:
             logger.warning("无法获取最新交易日，使用旧逻辑进行判断。")
@@ -78,13 +78,13 @@ class DownloadTaskManager:
                 f"📥 执行任务：本地数据落后 (本地: {latest_date}, 最新交易日: {latest_trading_day})"
             )
             return False
-        
+
         if latest_date > latest_trading_day:
             logger.info(
                 f"⏭️ 跳过任务：数据已是最新 (本地: {latest_date}, 最新交易日: {latest_trading_day})"
             )
             return True
-        
+
         today_str = datetime.now().strftime("%Y%m%d")
         if today_str == latest_trading_day:
             current_time = datetime.now().time()
@@ -115,10 +115,12 @@ class DownloadTaskManager:
         """为一个任务类型创建所有任务配置的生成器"""
         logger.debug(f"为任务类型 '{task_type}' 创建任务生成器...")
         default_start_date = self.config.download_tasks.default_start_date
-        
+
         try:
             table_config = self.schema_loader.get_table_config(task_type)
-            has_date_col = hasattr(table_config, "date_col") and table_config.date_col is not None
+            has_date_col = (
+                hasattr(table_config, "date_col") and table_config.date_col is not None
+            )
         except (KeyError, AttributeError):
             has_date_col = False
 
@@ -130,11 +132,21 @@ class DownloadTaskManager:
                 latest_date = max_dates.get(symbol)
                 if self._should_skip_task(latest_date, latest_trading_day):
                     continue
-                start_date = get_next_day_str(latest_date) if latest_date else default_start_date
-                yield {"task_type": task_type, "symbol": symbol, "start_date": start_date}
+                start_date = (
+                    get_next_day_str(latest_date) if latest_date else default_start_date
+                )
+                yield {
+                    "task_type": task_type,
+                    "symbol": symbol,
+                    "start_date": start_date,
+                }
         else:  # 没有日期列的任务类型（如 stock_basic），总是执行
             for symbol in task_symbols:
-                yield {"task_type": task_type, "symbol": symbol, "start_date": default_start_date}
+                yield {
+                    "task_type": task_type,
+                    "symbol": symbol,
+                    "start_date": default_start_date,
+                }
 
 
 @huey_slow.task()
@@ -142,19 +154,20 @@ def build_and_enqueue_downloads_task(
     group_name: str, stock_codes: Optional[List[str]] = None
 ):
     """
-    构建并派发增量下载任务 (慢速队列, V2 - 交叉生成与分批洗牌)
+    构建并派发增量下载任务 (慢速队列, V3 - 随机优先级)
 
     这是智能增量下载的第一步。它会为每个业务类型创建独立的任务生成器，
-    然后通过轮询、分批、洗牌的方式派发任务，确保队列任务的多样性，
-    避免“车队效应”导致的 worker 阻塞。
+    然后通过轮询、交叉生成的方式，为每个任务附加一个随机优先级后再派发。
+    这能确保队列任务的高度多样性，解决“车队效应”导致的 worker 阻塞。
 
     Args:
         group_name: 在 config.toml 中定义的任务组名
         stock_codes: 可选的股票代码列表，如果提供则只处理这些股票
     """
-    logger.debug(f"🛠️ [HUEY_SLOW] V2 开始构建增量下载任务, 任务组: {group_name}")
+    logger.debug(f"🛠️ [HUEY_SLOW] V3 开始构建增量下载任务, 任务组: {group_name}")
     try:
         from ..app import container
+
         db_queryer = container.db_queryer()
         schema_loader = container.schema_loader()
         task_manager = DownloadTaskManager(schema_loader)
@@ -180,13 +193,10 @@ def build_and_enqueue_downloads_task(
             for tt in task_types
         ]
 
-        # 2. 轮询、分批、洗牌、派发
-        task_buffer: List[Dict] = []
-        BATCH_SIZE = 1000  # 每1000个任务作为一个批次进行洗牌和派发
+        # 2. 轮询、交叉生成并派发带有随机优先级的任务
         enqueued_count = 0
-        
         active_generators = [iter(g) for g in generators]
-        logger.info(f"开始从 {len(active_generators)} 个生成器中轮询任务...")
+        logger.debug(f"开始从 {len(active_generators)} 个生成器中轮询并派发任务...")
 
         while active_generators:
             # 倒序遍历，方便安全地移除耗尽的生成器
@@ -194,33 +204,18 @@ def build_and_enqueue_downloads_task(
                 gen_iter = active_generators[i]
                 try:
                     task_params = next(gen_iter)
-                    task_buffer.append(task_params)
-
-                    if len(task_buffer) >= BATCH_SIZE:
-                        logger.debug(f"缓冲区已满 ({BATCH_SIZE} 个任务)，开始洗牌和派发...")
-                        random.shuffle(task_buffer)
-                        for params in task_buffer:
-                            download_task(**params)
-                        enqueued_count += len(task_buffer)
-                        logger.debug(f"派发了 {len(task_buffer)} 个任务。累计: {enqueued_count}")
-                        task_buffer.clear()
+                    # 派发任务，并附加一个0-9之间的随机优先级
+                    # Huey 会优先执行 priority 值高的任务
+                    download_task(priority=random.randint(0, 9), **task_params)
+                    enqueued_count += 1
                 except StopIteration:
                     # 这个生成器已经耗尽，将它从活跃列表中移除
                     active_generators.pop(i)
-        
-        # 3. 派发最后一批不足一个 BATCH_SIZE 的任务
-        if task_buffer:
-            logger.debug(f"派发最后一批 {len(task_buffer)} 个任务...")
-            random.shuffle(task_buffer)
-            for params in task_buffer:
-                download_task(**params)
-            enqueued_count += len(task_buffer)
-            task_buffer.clear()
 
-        logger.info(f"✅ [HUEY_SLOW] V2 成功派发 {enqueued_count} 个增量下载任务。")
+        logger.debug(f"✅ [HUEY_SLOW] V3 成功派发 {enqueued_count} 个增量下载任务。")
 
     except Exception as e:
-        logger.error(f"❌ [HUEY_SLOW] V2 构建下载任务失败: {e}", exc_info=True)
+        logger.error(f"❌ [HUEY_SLOW] V3 构建下载任务失败: {e}", exc_info=True)
         raise e
 
 
@@ -258,7 +253,10 @@ def download_task(task_type: str, symbol: str, **kwargs):
             )
 
     except Exception as e:
-        logger.error(f"❌ [HUEY_FAST] 下载任务执行失败: {symbol}, 错误: {e}")
+        logger.error(
+            f"❌ [HUEY_FAST] 下载任务执行失败，将在60秒后重试。任务: {task_type}, 代码: {symbol}, 错误: {e}",
+            exc_info=True,
+        )
         raise e
 
 
