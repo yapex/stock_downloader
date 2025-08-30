@@ -36,7 +36,7 @@ class TestTaskType:
         """测试任务类型常量值"""
         assert TaskType.stock_basic == "stock_basic"
         assert TaskType.stock_daily == "stock_daily"
-        assert TaskType.stock_adj_qfq == "stock_adj_qfq"
+        assert TaskType.stock_adj_hfq == "stock_adj_hfq"
 
     def test_task_type_templates(self):
         """测试任务类型模板"""
@@ -205,7 +205,7 @@ class TestFetcherBuilder:
         mock_get_api.return_value = mock_api_func
 
         # 使用有默认参数的任务类型
-        fetcher = self.builder.build_by_task(TaskType.stock_adj_qfq)
+        fetcher = self.builder.build_by_task(TaskType.stock_adj_hfq)
         result = fetcher()
 
         mock_get_api.assert_called_once_with("ts", "pro_bar")

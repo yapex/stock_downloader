@@ -463,7 +463,7 @@ class TestBuildAndEnqueueTask:
     @patch("neo.app.container")
     def test_build_and_enqueue_logic(
         self,
-        mock_container_func,
+        mock_container,
         mock_get_config,
         mock_parquet_db_create_default,
         mock_download_task,
@@ -472,24 +472,27 @@ class TestBuildAndEnqueueTask:
         from neo.tasks.download_tasks import build_and_enqueue_downloads_task
         from neo.helpers.utils import get_next_day_str
 
-        # 设置container mock - 直接将 mock_container_func 替换为 MockContainer 实例
-        mock_container = MockContainer()
-        # 将 mock_container_func 的所有属性和方法设置为 MockContainer 的属性和方法
-        for attr_name in dir(mock_container):
-            if not attr_name.startswith("_"):
-                setattr(
-                    mock_container_func, attr_name, getattr(mock_container, attr_name)
-                )
+        # 设置container mock
+        mock_container_instance = MockContainer()
+        mock_container.group_handler = mock_container_instance.group_handler
+        mock_container._group_handler_instance = mock_container_instance._group_handler_instance
+        
+        # 设置db_queryer mock
+        mock_db_queryer = Mock()
+        mock_db_queryer.get_latest_trading_day.return_value = "20240115"
+        mock_db_queryer.get_max_date.return_value = {"000001.SZ": "20240110"}
+        mock_container.db_queryer.return_value = mock_db_queryer
+        
+        # 设置schema_loader mock
+        mock_schema_loader = Mock()
+        mock_table_config = Mock()
+        mock_table_config.date_col = "trade_date"
+        mock_schema_loader.get_table_config.return_value = mock_table_config
+        mock_container.schema_loader.return_value = mock_schema_loader
 
         # 设置config mock
         mock_config = MockConfig()
         mock_get_config.return_value = mock_config
-
-        # 设置ParquetDBQueryer mock
-        mock_db_queryer = Mock()
-        mock_db_queryer.get_latest_trading_day.return_value = "20240115"
-        mock_db_queryer.get_max_date.return_value = {"000001.SZ": "20240110"}
-        mock_parquet_db_create_default.return_value = mock_db_queryer
 
         # 执行任务
         print("开始执行build_and_enqueue_downloads_task")
@@ -510,15 +513,15 @@ class TestBuildAndEnqueueTask:
 
         # 验证调用
         mock_container.group_handler.assert_called_once()
-        mock_container._group_handler_instance.get_task_types_for_group.assert_called_once_with(
+        mock_container_instance._group_handler_instance.get_task_types_for_group.assert_called_once_with(
             "all_stocks"
         )
-        mock_container._group_handler_instance.get_symbols_for_group.assert_called_once_with(
+        mock_container_instance._group_handler_instance.get_symbols_for_group.assert_called_once_with(
             "all_stocks"
         )
 
-        # 验证ParquetDBQueryer.create_default被正确调用
-        mock_parquet_db_create_default.assert_called_once()
+        # 验证container.db_queryer被正确调用
+        mock_container.db_queryer.assert_called_once()
 
         # 验证download_task的派发
         assert mock_download_task.call_count == 2
@@ -542,7 +545,7 @@ class TestBuildAndEnqueueTask:
     @patch("neo.app.container")
     def test_build_and_enqueue_with_specific_stock_codes(
         self,
-        mock_container_func,
+        mock_container,
         mock_get_config,
         mock_parquet_db_create_default,
         mock_download_task,
@@ -551,38 +554,41 @@ class TestBuildAndEnqueueTask:
         from neo.tasks.download_tasks import build_and_enqueue_downloads_task
         from neo.helpers.utils import get_next_day_str
 
-        # 设置container mock - 直接将 mock_container_func 替换为 MockContainer 实例
-        mock_container = MockContainer()
-        # 将 mock_container_func 的所有属性和方法设置为 MockContainer 的属性和方法
-        for attr_name in dir(mock_container):
-            if not attr_name.startswith("_"):
-                setattr(
-                    mock_container_func, attr_name, getattr(mock_container, attr_name)
-                )
+        # 设置container mock
+        mock_container_instance = MockContainer()
+        mock_container.group_handler = mock_container_instance.group_handler
+        mock_container._group_handler_instance = mock_container_instance._group_handler_instance
+        
+        # 设置db_queryer mock
+        mock_db_queryer = Mock()
+        mock_db_queryer.get_latest_trading_day.return_value = "20240115"
+        mock_db_queryer.get_max_date.return_value = {"600519.SH": "20240110"}
+        mock_container.db_queryer.return_value = mock_db_queryer
+        
+        # 设置schema_loader mock
+        mock_schema_loader = Mock()
+        mock_table_config = Mock()
+        mock_table_config.date_col = "trade_date"
+        mock_schema_loader.get_table_config.return_value = mock_table_config
+        mock_container.schema_loader.return_value = mock_schema_loader
 
         # 设置config mock
         mock_config = MockConfig()
         mock_get_config.return_value = mock_config
-
-        # 设置ParquetDBQueryer mock
-        mock_db_queryer = Mock()
-        mock_db_queryer.get_latest_trading_day.return_value = "20240115"
-        mock_db_queryer.get_max_date.return_value = {"600519.SH": "20240110"}
-        mock_parquet_db_create_default.return_value = mock_db_queryer
 
         # 执行任务，指定特定股票代码
         build_and_enqueue_downloads_task.func("all_stocks", stock_codes=["600519.SH"])
 
         # 验证调用
         mock_container.group_handler.assert_called_once()
-        mock_container._group_handler_instance.get_task_types_for_group.assert_called_once_with(
+        mock_container_instance._group_handler_instance.get_task_types_for_group.assert_called_once_with(
             "all_stocks"
         )
         # get_symbols_for_group 不应该被调用，因为使用了指定的股票代码
-        mock_container._group_handler_instance.get_symbols_for_group.assert_not_called()
+        mock_container_instance._group_handler_instance.get_symbols_for_group.assert_not_called()
 
-        # 验证ParquetDBQueryer.create_default被正确调用
-        mock_parquet_db_create_default.assert_called_once()
+        # 验证container.db_queryer被正确调用
+        mock_container.db_queryer.assert_called_once()
 
         # 验证download_task的派发
         assert mock_download_task.call_count == 1
@@ -596,22 +602,18 @@ class TestBuildAndEnqueueTask:
     @patch("neo.tasks.download_tasks.get_config")
     @patch("neo.app.container")
     def test_build_and_enqueue_exception_handling(
-        self, mock_container_func, mock_get_config, mock_download_task, mock_logger
+        self, mock_container, mock_get_config, mock_download_task, mock_logger
     ):
         """测试构建和派发任务的异常处理"""
         from neo.tasks.download_tasks import build_and_enqueue_downloads_task
 
-        # 设置container mock - 直接将 mock_container_func 替换为 MockContainer 实例
-        mock_container = MockContainer()
-        # 将 mock_container_func 的所有属性和方法设置为 MockContainer 的属性和方法
-        for attr_name in dir(mock_container):
-            if not attr_name.startswith("_"):
-                setattr(
-                    mock_container_func, attr_name, getattr(mock_container, attr_name)
-                )
+        # 设置container mock
+        mock_container_instance = MockContainer()
+        mock_container.group_handler = mock_container_instance.group_handler
+        mock_container._group_handler_instance = mock_container_instance._group_handler_instance
 
         # 设置group_handler抛出异常
-        mock_container._group_handler_instance.get_task_types_for_group.side_effect = (
+        mock_container_instance._group_handler_instance.get_task_types_for_group.side_effect = (
             Exception("构建下载任务失败")
         )
 

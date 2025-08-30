@@ -126,14 +126,15 @@ class TestDataProcessorFactory:
         """测试获取更新策略时的异常处理"""
         config = Mock()
         
-        # 模拟 download_tasks 属性访问时抛出异常
-        type(config).download_tasks = PropertyMock(side_effect=AttributeError("Config access error"))
+        # 模拟 download_tasks 属性不存在，访问时抛出 AttributeError
+        del config.download_tasks
         
         with patch('src.neo.data_processor.data_processor_factory.get_config', return_value=config):
             factory = DataProcessorFactory(mock_container)
             
             # 异常情况下应该返回默认策略
-            assert factory._get_update_strategy('stock_basic') == "incremental"
+            result = factory._get_update_strategy('stock_basic')
+            assert result == "incremental"
 
     def test_multiple_processor_creation(self, factory, mock_container):
         """测试多次创建处理器"""

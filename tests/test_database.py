@@ -340,6 +340,18 @@ class TestParquetDBQueryer:
         parquet_file = table_path / "test.parquet"
         parquet_file.touch()
 
+        # Mock 必要的方法
+        mock_db_operator._table_exists_in_schema = Mock(return_value=True)
+        mock_db_operator._parquet_files_exist = Mock(return_value=True)
+        
+        # Mock table config
+        mock_table_config = Mock()
+        mock_table_config.table_name = "stock_daily"
+        mock_table_config.date_col = "trade_date"
+        mock_table_config.primary_key = ["ts_code", "trade_date"]
+        mock_db_operator._get_table_config = Mock(return_value=mock_table_config)
+        mock_db_operator._get_parquet_path_pattern = Mock(return_value="/path/to/*.parquet")
+
         # 模拟 DuckDB 连接和查询结果
         mock_conn = Mock()
         mock_connect.return_value = mock_conn
@@ -365,6 +377,18 @@ class TestParquetDBQueryer:
         parquet_file = table_path / "test.parquet"
         parquet_file.touch()
 
+        # Mock 必要的方法
+        mock_db_operator._table_exists_in_schema = Mock(return_value=True)
+        mock_db_operator._parquet_files_exist = Mock(return_value=True)
+        
+        # Mock table config
+        mock_table_config = Mock()
+        mock_table_config.table_name = "stock_daily"
+        mock_table_config.date_col = "trade_date"
+        mock_table_config.primary_key = ["ts_code", "trade_date"]
+        mock_db_operator._get_table_config = Mock(return_value=mock_table_config)
+        mock_db_operator._get_parquet_path_pattern = Mock(return_value="/path/to/*.parquet")
+
         # 模拟 DuckDB 连接和查询结果（包含 null 值）
         mock_conn = Mock()
         mock_connect.return_value = mock_conn
@@ -379,6 +403,7 @@ class TestParquetDBQueryer:
 
         expected = {"000001.SZ": "20240101"}  # 只包含非 null 值
         assert result == expected
+        mock_conn.close.assert_called_once()
 
     @patch("neo.database.operator.duckdb.connect")
     def test_get_max_date_exception_handling(self, mock_connect, mock_db_operator):
@@ -389,11 +414,14 @@ class TestParquetDBQueryer:
         parquet_file = table_path / "test.parquet"
         parquet_file.touch()
 
-        # 模拟 DuckDB 连接异常
-        mock_connect.side_effect = Exception("Database connection failed")
+        # 模拟 DuckDB 连接成功但查询异常
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+        mock_conn.execute.side_effect = Exception("Query failed")
 
         result = mock_db_operator.get_max_date("stock_daily", ["000001.SZ"])
         assert result == {}  # 异常时返回空字典
+        mock_conn.close.assert_called_once()  # 确保连接被关闭
 
     def test_get_all_symbols_table_not_in_schema(self, mock_db_operator):
         """测试 stock_basic 表不在 schema 中的情况"""

@@ -44,7 +44,7 @@ class TestTaskBuilder:
         """测试无股票代码的情况（如 stock_basic 组）"""
         builder = TaskBuilder()
         symbols = []
-        task_types = [TaskType.stock_basic, TaskType.income_statement]
+        task_types = [TaskType.stock_basic, TaskType.income]
 
         tasks = builder.build_tasks(symbols, task_types)
 
@@ -55,7 +55,7 @@ class TestTaskBuilder:
         assert tasks[0].symbol == ""
         assert tasks[0].task_type == TaskType.stock_basic
         assert tasks[1].symbol == ""
-        assert tasks[1].task_type == TaskType.income_statement
+        assert tasks[1].task_type == TaskType.income
 
         for task in tasks:
             assert isinstance(task, DownloadTaskConfig)
@@ -143,7 +143,7 @@ class TestTaskBuilder:
         task_types = [
             TaskType.stock_daily,
             TaskType.daily_basic,
-            TaskType.stock_adj_qfq,
+            TaskType.stock_adj_hfq,
         ]
 
         tasks = builder.build_tasks(symbols, task_types)
@@ -152,7 +152,7 @@ class TestTaskBuilder:
         expected_task_types = [
             TaskType.stock_daily,
             TaskType.daily_basic,
-            TaskType.stock_adj_qfq,
+            TaskType.stock_adj_hfq,
         ]
 
         for i, expected_task_type in enumerate(expected_task_types):
