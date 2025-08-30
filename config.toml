@@ -45,7 +45,7 @@ rate_limit_per_minute = 195  # 每日基本面数据访问频率较高
 [download_tasks.balancesheet]  # api_method: balancesheet (对应 balance_sheet 任务)
 rate_limit_per_minute = 195  # 财务数据访问频率中等
 
-[download_tasks.income]  # api_method: income (对应 income_statement 任务)
+[download_tasks.income]  # api_method: income (对应 income 任务)
 rate_limit_per_minute = 195  # 财务数据访问频率中等
 
 [download_tasks.cashflow]  # api_method: cashflow (对应 cash_flow 任务)
@@ -65,7 +65,7 @@ daily = [
 ]
 financial=[
     "balance_sheet",
-    "income_statement",
+    "income",
     "cash_flow",
 ]
 test=[
