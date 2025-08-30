@@ -1,51 +1,43 @@
 #!/usr/bin/env python3
 
-import pandas as pd
-from unittest.mock import Mock
-from src.neo.data_processor.full_replace_data_processor import FullReplaceDataProcessor
-from src.neo.writers.interfaces import IParquetWriter
-from src.neo.database.interfaces import IDBQueryer
-from src.neo.database.schema_loader import SchemaLoader
+import duckdb
+import logging
 
-# 创建 mock 对象
-mock_parquet_writer = Mock(spec=IParquetWriter)
-mock_parquet_writer.write_full_replace = Mock(return_value=None)
-mock_parquet_writer.base_path = "/tmp/test"
+# 设置日志
+from src.neo.helpers.utils import setup_logging
+setup_logging("direct_read_test", "info")
 
-mock_db_queryer = Mock(spec=IDBQueryer)
-mock_schema_loader = Mock(spec=SchemaLoader)
+logger = logging.getLogger(__name__)
 
-# 创建处理器
-processor = FullReplaceDataProcessor(
-    parquet_writer=mock_parquet_writer,
-    db_queryer=mock_db_queryer,
-    schema_loader=mock_schema_loader
-)
+def verify_parquet_files_directly(task_type: str, symbol: str):
+    """直接读取 Parquet 文件进行验证，完全绕过 metadata.db"""
+    logger.info(f"--- 开始直接验证 Parquet 文件: {task_type} for {symbol} ---")
+    
+    # DuckDB 支持 glob 语法来读取分区目录下的所有文件
+    parquet_path_pattern = f"data/parquet/{task_type}/**/*.parquet"
+    
+    try:
+        # 使用内存模式的 DuckDB 连接
+        with duckdb.connect(":memory:") as con:
+            logger.info(f"使用查询: SELECT count(*) FROM read_parquet('{parquet_path_pattern}') WHERE ts_code = '{symbol}'")
+            
+            # 执行查询
+            result = con.execute(
+                f"SELECT count(*) FROM read_parquet(? , hive_partitioning=1, union_by_name=True) WHERE ts_code = ?", 
+                [parquet_path_pattern, symbol]
+            ).fetchone()
+            
+            count = result[0] if result else 0
+            
+            if count > 0:
+                logger.info(f"✅ 验证成功: 在 {task_type} 的 Parquet 文件中找到了 {count} 条关于 {symbol} 的记录。")
+            else:
+                logger.error(f"❌ 验证失败: 在 {task_type} 的 Parquet 文件中没有找到关于 {symbol} 的记录。")
+                
+    except Exception as e:
+        logger.error(f"执行直接验证时发生异常: {e}", exc_info=True)
 
-# 创建测试数据
-df = pd.DataFrame({
-    'ts_code': ['000001.SZ', '000002.SZ'],
-    'symbol': ['000001', '000002'],
-    'name': ['平安银行', '万科A']
-})
-
-print("Testing _write_to_temp_table...")
-try:
-    result = processor._write_to_temp_table('test_temp', df)
-    print(f"_write_to_temp_table result: {result}")
-    print(f"write_full_replace called: {mock_parquet_writer.write_full_replace.called}")
-    if mock_parquet_writer.write_full_replace.called:
-        print(f"call_args: {mock_parquet_writer.write_full_replace.call_args}")
-except Exception as e:
-    print(f"Exception in _write_to_temp_table: {e}")
-    import traceback
-    traceback.print_exc()
-
-print("\nTesting process method...")
-try:
-    result = processor.process('stock_basic', df)
-    print(f"process result: {result}")
-except Exception as e:
-    print(f"Exception in process: {e}")
-    import traceback
-    traceback.print_exc()
+if __name__ == "__main__":
+    target_symbol = "000001.SZ"
+    verify_parquet_files_directly("cash_flow", target_symbol)
+    verify_parquet_files_directly("income_statement", target_symbol)

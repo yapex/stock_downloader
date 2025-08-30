@@ -41,8 +41,8 @@ columns = [
     { name = "amount", type = "TEXT" },
 ]
 
-[stock_adj_hfq]
-table_name = "stock_adj_hfq"
+[stock_adj_qfq]
+table_name = "stock_adj_qfq"
 primary_key = [
     "ts_code",
     "trade_date",
@@ -50,7 +50,7 @@ primary_key = [
 date_col = "trade_date"
 description = "复权行情数据字段"
 api_method = "pro_bar"
-required_params = { adj = "hfq" }
+required_params = { adj = "qfq" }
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "trade_date", type = "TEXT" },
@@ -95,13 +95,13 @@ columns = [
     { name = "circ_mv", type = "TEXT" },
 ]
 
-[income_statement]
-table_name = "income_statement"
+[income]
+table_name = "income"
 primary_key = [
     "ts_code",
     "ann_date",
 ]
-date_col = "ann_date"
+date_col = "f_ann_date"
 description = "利润表字段"
 api_method = "income"
 columns = [

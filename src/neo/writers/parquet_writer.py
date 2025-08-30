@@ -32,6 +32,10 @@ class ParquetWriter(IParquetWriter):
             logger.debug("数据为空，跳过写入 Parquet 文件")
             return
 
+        # 清洗数据，避免 PyArrow 类型推断错误
+        for col in data.select_dtypes(include=["object"]).columns:
+            data[col] = data[col].astype(str)
+
         table = pa.Table.from_pandas(data)
         target_path = self.base_path / task_type
 

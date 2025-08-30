@@ -47,7 +47,7 @@ class TaskType:
     daily_basic = "daily_basic"
 
     # 利润表
-    income_statement = "income_statement"
+    income = "income"
 
     # 资产负债表
     balance_sheet = "balance_sheet"
@@ -83,7 +83,7 @@ class TaskTemplateRegistry:
             api_method="pro_bar", base_object="ts", required_params={"adj": "qfq"}
         ),
         TaskType.daily_basic: TaskTemplate(api_method="daily_basic", base_object="pro"),
-        TaskType.income_statement: TaskTemplate(api_method="income", base_object="pro"),
+        TaskType.income: TaskTemplate(api_method="income", base_object="pro"),
         TaskType.balance_sheet: TaskTemplate(
             api_method="balancesheet", base_object="pro"
         ),

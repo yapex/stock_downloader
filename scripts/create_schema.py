@@ -217,8 +217,8 @@ TABLE_CONFIGS = Box(
             "fields": [],
             "output_file": "src/stock_schema.toml",
         },
-        "income_statement": {
-            "table_name": "income_statement",
+        "income": {
+            "table_name": "income",
             "primary_key": ["ts_code", "ann_date"],
             "date_col": "f_ann_date",
             "description": "利润表字段",
