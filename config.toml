@@ -36,7 +36,7 @@ rate_limit_per_minute = 195  # 基础数据访问频率较低
 [download_tasks.daily]  # api_method: daily (对应 stock_daily 任务)
 rate_limit_per_minute = 400  # 保守设置，为8个worker留出安全边界
 
-[download_tasks.pro_bar]  # api_method: pro_bar (对应 stock_adj_qfq 任务)
+[download_tasks.stock_adj_hfq]  # api_method: pro_bar (对应 stock_adj_hfq 任务)
 rate_limit_per_minute = 195  # 复权数据访问频率较高
 
 [download_tasks.daily_basic]  # api_method: daily_basic
@@ -55,6 +55,9 @@ rate_limit_per_minute = 195  # 财务数据访问频率中等
 sys=[
     "stock_basic",
     "trade_cal"
+]
+hfq=[
+    "stock_adj_hfq"
 ]
 daily = [
     "stock_daily",

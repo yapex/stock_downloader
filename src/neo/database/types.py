@@ -21,15 +21,3 @@ class TableSchema:
     def __post_init__(self):
         if self.required_params is None:
             self.required_params = {}
-
-
-class TableName(Enum):
-    """数据库表名枚举"""
-
-    STOCK_BASIC = "stock_basic"
-    STOCK_DAILY = "stock_daily"
-    STOCK_ADJ_QFQ = "stock_adj_qfq"
-    STOCK_DAILY_BASIC = "daily_basic"
-    INCOME_STATEMENT = "income_statement"
-    BALANCE_SHEET = "balance_sheet"
-    CASH_FLOW = "cash_flow"

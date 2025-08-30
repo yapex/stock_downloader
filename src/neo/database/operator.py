@@ -137,6 +137,7 @@ class ParquetDBQueryer(IDBQueryer):
         parquet_pattern = self._get_parquet_path_pattern(table_name)
         primary_key = table_config.primary_key
 
+        conn = None
         try:
             # 使用 DuckDB 查询 Parquet 文件
             conn = duckdb.connect(":memory:")
@@ -158,7 +159,6 @@ class ParquetDBQueryer(IDBQueryer):
                 """
 
                 results = conn.execute(sql).fetchall()
-                conn.close()
 
                 # 创建标准化代码到原始代码的映射
                 code_mapping = {normalize_stock_code(code): code for code in ts_codes}
@@ -182,7 +182,6 @@ class ParquetDBQueryer(IDBQueryer):
                 """
 
                 result = conn.execute(sql).fetchone()
-                conn.close()
 
                 if result and result[0] is not None:
                     max_date = str(result[0])
@@ -198,8 +197,10 @@ class ParquetDBQueryer(IDBQueryer):
 
         except Exception as e:
             logger.error(f"❌ 查询表 '{table_name}' Parquet 文件最大日期失败: {e}")
-            # 在出错时返回空字典，而不是抛出异常，保持与原有逻辑一致
             return {}
+        finally:
+            if conn:
+                conn.close()
 
     @lru_cache(maxsize=1)
     def get_all_symbols(self) -> List[str]:

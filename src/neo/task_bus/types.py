@@ -41,7 +41,7 @@ class TaskType:
     stock_daily = "stock_daily"
 
     # 复权行情数据
-    stock_adj_qfq = "stock_adj_qfq"
+    stock_adj_hfq = "stock_adj_hfq"
 
     # 每日基本面指标
     daily_basic = "daily_basic"
@@ -79,7 +79,7 @@ class TaskTemplateRegistry:
     _templates = {
         TaskType.stock_basic: TaskTemplate(api_method="stock_basic", base_object="pro"),
         TaskType.stock_daily: TaskTemplate(api_method="daily", base_object="pro"),
-        TaskType.stock_adj_qfq: TaskTemplate(
+        TaskType.stock_adj_hfq: TaskTemplate(
             api_method="pro_bar", base_object="ts", required_params={"adj": "qfq"}
         ),
         TaskType.daily_basic: TaskTemplate(api_method="daily_basic", base_object="pro"),
