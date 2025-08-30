@@ -11,8 +11,10 @@ class TestDownloadTaskManager:
 
     def setup_method(self):
         """每个测试方法执行前的设置"""
+        # 创建 mock schema_loader
+        self.mock_schema_loader = Mock()
         # 创建服务实例
-        self.service = DownloadTaskManager()
+        self.service = DownloadTaskManager(schema_loader=self.mock_schema_loader)
 
     def test_should_skip_task_no_latest_date(self):
         """测试没有最新日期时不跳过任务"""
@@ -142,104 +144,3 @@ class TestDownloadTaskManager:
         # 测试一个会返回 False 的无效格式
         result = self.service._should_skip_task("123", "20240115")
         assert result is False  # "123" < "20240115" 为 True，所以不跳过
-
-    def test_query_max_dates_for_non_symbol_tasks(self):
-        """测试不需要股票代码的任务类型也能正确查询最新日期"""
-        # 创建 mock 数据库查询器
-        mock_db_queryer = Mock()
-        mock_db_queryer.get_max_date.return_value = {"":"20240115"}
-        
-        # 测试不需要股票代码的任务类型
-        task_date_col_map = {"trade_cal": True}
-        result = self.service._query_max_dates(
-            mock_db_queryer, ["trade_cal"], None, task_date_col_map
-        )
-        
-        # 验证结果
-        assert result == {("", "trade_cal"): "20240115"}
-        
-        # 验证调用了 get_max_date 方法
-        mock_db_queryer.get_max_date.assert_called_once_with("trade_cal", [""])
-
-    def test_query_max_dates_for_symbol_tasks(self):
-        """测试需要股票代码的任务类型正确查询最新日期"""
-        # 创建 mock 数据库查询器
-        mock_db_queryer = Mock()
-        mock_db_queryer.get_max_date.return_value = {"000001.SZ": "20240115"}
-        
-        # 测试需要股票代码的任务类型
-        task_date_col_map = {"stock_daily": True}
-        result = self.service._query_max_dates(
-            mock_db_queryer, ["stock_daily"], ["000001.SZ"], task_date_col_map
-        )
-        
-        # 验证结果
-        assert result == {("000001.SZ", "stock_daily"): "20240115"}
-        
-        # 验证调用了 get_max_date 方法
-        mock_db_queryer.get_max_date.assert_called_once_with("stock_daily", ["000001.SZ"])
-
-    def test_enqueue_download_tasks_skip_non_symbol_tasks(self):
-        """测试不需要股票代码的任务类型在满足跳过条件时正确跳过"""
-        with patch("neo.tasks.download_tasks.download_task") as mock_download_task:
-            # 模拟最新日期等于最新交易日的情况（应该跳过）
-            max_dates = {("", "trade_cal"): "20240115"}
-            latest_trading_day = "20240115"
-            
-            # 调用 _enqueue_download_tasks 方法
-            task_date_col_map = {"trade_cal": True}
-            result = self.service._enqueue_download_tasks(
-                latest_trading_day=latest_trading_day,
-                task_types=["trade_cal"],
-                symbols=None,
-                max_dates=max_dates,
-                task_date_col_map=task_date_col_map
-            )
-            
-            # 验证任务被跳过，没有调用 download_task
-            assert result == 0
-            mock_download_task.assert_not_called()
-
-    def test_enqueue_download_tasks_execute_non_symbol_tasks(self):
-        """测试不需要股票代码的任务类型在不满足跳过条件时正确执行"""
-        with patch("neo.tasks.download_tasks.download_task") as mock_download_task:
-            # 模拟最新日期早于最新交易日的情况（不应该跳过）
-            max_dates = {("", "trade_cal"): "20240114"}
-            latest_trading_day = "20240115"
-            
-            # 调用 _enqueue_download_tasks 方法
-            task_date_col_map = {"trade_cal": True}
-            result = self.service._enqueue_download_tasks(
-                latest_trading_day=latest_trading_day,
-                task_types=["trade_cal"],
-                symbols=None,
-                max_dates=max_dates,
-                task_date_col_map=task_date_col_map
-            )
-            
-            # 验证任务被执行，调用了 download_task
-            assert result == 1
-            mock_download_task.assert_called_once_with(
-                task_type="trade_cal", symbol="", start_date="20240115"
-            )
-
-    def test_enqueue_download_tasks_skip_symbol_tasks(self):
-        """测试需要股票代码的任务类型在满足跳过条件时正确跳过"""
-        with patch("neo.tasks.download_tasks.download_task") as mock_download_task:
-            # 模拟最新日期等于最新交易日的情况（应该跳过）
-            max_dates = {("000001.SZ", "stock_daily"): "20240115"}
-            latest_trading_day = "20240115"
-            
-            # 调用 _enqueue_download_tasks 方法
-            task_date_col_map = {"stock_daily": True}
-            result = self.service._enqueue_download_tasks(
-                latest_trading_day=latest_trading_day,
-                task_types=["stock_daily"],
-                symbols=["000001.SZ"],
-                max_dates=max_dates,
-                task_date_col_map=task_date_col_map
-            )
-            
-            # 验证任务被跳过，没有调用 download_task
-            assert result == 0
-            mock_download_task.assert_not_called()

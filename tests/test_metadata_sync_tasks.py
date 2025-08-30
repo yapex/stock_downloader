@@ -187,8 +187,8 @@ class TestMetadataSyncManager:
         from unittest.mock import call
 
         expected_calls = [
-            call(f"DROP TABLE IF EXISTS {table_name}"),
             call(f"DROP VIEW IF EXISTS {table_name}"),
+            call(f"DROP TABLE IF EXISTS {table_name}"),
         ]
         mock_connection.execute.assert_has_calls(expected_calls)
 

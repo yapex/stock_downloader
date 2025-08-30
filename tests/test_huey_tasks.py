@@ -527,17 +527,18 @@ class TestBuildAndEnqueueTask:
         assert mock_download_task.call_count == 2
         calls = mock_download_task.call_args_list
 
-        # 验证第一个任务（已有数据）
-        call_1_args = calls[0][1]  # kwargs
-        assert call_1_args["task_type"] == "stock_daily"
-        assert call_1_args["symbol"] == "000001.SZ"
-        assert call_1_args["start_date"] == get_next_day_str("20240110")
+        # 根据symbol排序调用，确保测试的稳定性
+        calls_by_symbol = {call[1]["symbol"]: call[1] for call in calls}
+        
+        # 验证000001.SZ任务（已有数据）
+        call_000001 = calls_by_symbol["000001.SZ"]
+        assert call_000001["task_type"] == "stock_daily"
+        assert call_000001["start_date"] == get_next_day_str("20240110")
 
-        # 验证第二个任务（无历史数据）
-        call_2_args = calls[1][1]  # kwargs
-        assert call_2_args["task_type"] == "stock_daily"
-        assert call_2_args["symbol"] == "000002.SZ"
-        assert call_2_args["start_date"] == "19900101"
+        # 验证000002.SZ任务（无历史数据）
+        call_000002 = calls_by_symbol["000002.SZ"]
+        assert call_000002["task_type"] == "stock_daily"
+        assert call_000002["start_date"] == "19900101"
 
     @patch("neo.tasks.download_tasks.download_task")
     @patch("neo.database.operator.ParquetDBQueryer.create_default")
