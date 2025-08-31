@@ -7,24 +7,28 @@ from typing import List, Optional
 
 from neo.configs import get_config
 from neo.database.interfaces import IDBOperator
+from neo.helpers.task_filter import TaskFilter
 
 
 class GroupHandler:
     """组处理器实现"""
 
-    def __init__(self, db_operator: Optional[IDBOperator] = None):
+    def __init__(self, db_operator: Optional[IDBOperator] = None, task_filter: Optional[TaskFilter] = None):
         """初始化任务组处理器"""
         self.config = get_config()
         self.db_operator = db_operator
+        self.task_filter = task_filter
         self._all_symbols: Optional[List[str]] = None
 
     @classmethod
     def create_default(cls) -> "GroupHandler":
         """创建默认的 GroupHandler 实例"""
         from neo.database.operator import ParquetDBQueryer
+        from pathlib import Path
 
         db_operator = ParquetDBQueryer.create_default()
-        return cls(db_operator=db_operator)
+        task_filter = TaskFilter(Path("config.toml"))
+        return cls(db_operator=db_operator, task_filter=task_filter)
 
     def get_symbols_for_group(self, group_name: str) -> List[str]:
         """获取指定组的股票代码列表"""
@@ -39,7 +43,12 @@ class GroupHandler:
 
         # 其他组需要从数据库获取所有股票代码
         if self._all_symbols is None:
-            self._all_symbols = self._get_all_symbols_from_db()
+            all_symbols = self._get_all_symbols_from_db()
+            # 使用任务过滤器过滤股票代码
+            if self.task_filter:
+                self._all_symbols = self.task_filter.filter_symbols(all_symbols)
+            else:
+                self._all_symbols = all_symbols
 
         return self._all_symbols
 

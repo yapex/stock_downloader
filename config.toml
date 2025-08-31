@@ -25,6 +25,12 @@ sync_metadata_schedule = "*/10 * * * *" # 每10分钟执行一次
 [download_tasks]
 default_start_date = "19900101"
 
+# 任务过滤器配置
+[task_filter]
+# 股票交易所白名单，只下载指定交易所的股票数据
+# SH: 上海证券交易所, SZ: 深圳证券交易所
+exchange_whitelist = ["SH", "SZ"]
+
 # 注意：这里的键名必须与表名一致
 [download_tasks.stock_basic]
 rate_limit_per_minute = 195  
