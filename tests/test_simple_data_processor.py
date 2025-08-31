@@ -39,8 +39,12 @@ def test_create_default():
     assert processor.parquet_writer is not None
 
 
-def test_process_success(mock_parquet_writer: MagicMock, sample_data: pd.DataFrame):
+@patch('src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy')
+def test_process_success(mock_get_strategy, mock_parquet_writer: MagicMock, sample_data: pd.DataFrame):
     """测试成功处理数据"""
+    # 设置默认策略为增量更新
+    mock_get_strategy.return_value = "incremental"
+    
     processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
     result = processor.process("stock_daily", sample_data)
 
@@ -94,10 +98,14 @@ def sample_data_with_end_date() -> pd.DataFrame:
     )
 
 
+@patch('src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy')
 def test_process_with_end_date(
-    mock_parquet_writer: MagicMock, sample_data_with_end_date: pd.DataFrame
+    mock_get_strategy, mock_parquet_writer: MagicMock, sample_data_with_end_date: pd.DataFrame
 ):
     """测试处理包含 end_date 列的数据"""
+    # 设置默认策略为增量更新
+    mock_get_strategy.return_value = "incremental"
+    
     processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
     result = processor.process("finance_report", sample_data_with_end_date)
 
@@ -116,10 +124,14 @@ def sample_data_no_date_cols() -> pd.DataFrame:
     )
 
 
+@patch('src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy')
 def test_process_no_date_columns(
-    mock_parquet_writer: MagicMock, sample_data_no_date_cols: pd.DataFrame
+    mock_get_strategy, mock_parquet_writer: MagicMock, sample_data_no_date_cols: pd.DataFrame
 ):
     """测试处理不包含日期列的数据"""
+    # 设置默认策略为增量更新
+    mock_get_strategy.return_value = "incremental"
+    
     processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
     result = processor.process("some_other_data", sample_data_no_date_cols)
 
@@ -129,10 +141,13 @@ def test_process_no_date_columns(
     )
 
 
+@patch('src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy')
 def test_process_exception_handling(
-    mock_parquet_writer: MagicMock, sample_data: pd.DataFrame
+    mock_get_strategy, mock_parquet_writer: MagicMock, sample_data: pd.DataFrame
 ):
     """测试 process 方法中的异常处理"""
+    # 设置默认策略为增量更新
+    mock_get_strategy.return_value = "incremental"
     mock_parquet_writer.write.side_effect = Exception("Test write error")
     processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
 
@@ -142,3 +157,25 @@ def test_process_exception_handling(
         assert result is False
         mock_logger.error.assert_called_once()
         assert "Test write error" in mock_logger.error.call_args[0][0]
+
+
+@patch('src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy')
+def test_process_full_replace_strategy(
+    mock_get_strategy, mock_parquet_writer: MagicMock, sample_data: pd.DataFrame
+):
+    """测试全量替换策略"""
+    # 设置策略为全量替换
+    mock_get_strategy.return_value = "full_replace"
+    
+    processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
+    result = processor.process("stock_basic", sample_data)
+
+    assert result is True
+    # 验证 write_full_replace 方法被调用
+    mock_parquet_writer.write_full_replace.assert_called_once_with(
+        ANY,  # 使用 ANY 来匹配包含了新 'year' 列的 DataFrame
+        "stock_basic",
+        ["year"],
+    )
+    # 确保 write 方法没有被调用
+    mock_parquet_writer.write.assert_not_called()

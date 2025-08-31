@@ -57,12 +57,10 @@ class DataProcessor:
             bool: 处理是否成功
         """
         from ..app import container
-        from ..data_processor.data_processor_factory import DataProcessorFactory
 
-        # 使用工厂根据任务类型选择合适的数据处理器
-        factory = DataProcessorFactory(container)
-        data_processor = factory.create_processor(task_type)
-        
+        # 直接使用SimpleDataProcessor，它内部会根据配置选择更新策略
+        data_processor = container.data_processor()
+
         try:
             process_success = data_processor.process(task_type, df_data)
             logger.debug(f"[HUEY] {task_type} 数据处理器返回结果: {process_success}")

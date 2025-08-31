@@ -65,12 +65,22 @@ class MockConfig:
         self.storage = Mock()
         self.database = Mock()
         self.cron_tasks = Mock()
+        
+        # 创建一个更真实的 download_tasks mock
         self.download_tasks = Mock()
+        self.download_tasks.default_start_date = "19900101"
+
+        # 为 'stock_daily' 任务创建 mock 配置
+        stock_daily_config = Mock()
+        stock_daily_config.update_strategy = "incremental"
+        
+        # 将任务配置附加到 download_tasks 上
+        # 允许形如 config.download_tasks.stock_daily.update_strategy 的访问
+        self.download_tasks.stock_daily = stock_daily_config
 
         self.storage.parquet_base_path = "data/parquet"
         self.database.metadata_path = "data/metadata.db"
         self.cron_tasks.sync_metadata_schedule = "0 0 * * *"
-        self.download_tasks.default_start_date = "19900101"
 
 
 class MockPath:

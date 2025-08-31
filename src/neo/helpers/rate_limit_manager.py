@@ -8,8 +8,6 @@ from typing import Dict, Optional
 from pyrate_limiter import Limiter, InMemoryBucket, Rate, Duration
 
 from neo.configs.app_config import get_config
-from neo.database.interfaces import ISchemaLoader
-from neo.database.schema_loader import SchemaLoader
 from .interfaces import IRateLimitManager
 
 logger = logging.getLogger(__name__)
@@ -26,11 +24,8 @@ class RateLimitManager(IRateLimitManager):
     _singleton_lock = threading.Lock()
 
     @classmethod
-    def singleton(cls, schema_loader: Optional[ISchemaLoader] = None) -> "RateLimitManager":
+    def singleton(cls) -> "RateLimitManager":
         """获取单例实例
-
-        Args:
-            schema_loader: Schema加载器实例
 
         Returns:
             RateLimitManager: 单例实例
@@ -38,14 +33,13 @@ class RateLimitManager(IRateLimitManager):
         if cls._singleton_instance is None:
             with cls._singleton_lock:
                 if cls._singleton_instance is None:
-                    cls._singleton_instance = cls(schema_loader)
+                    cls._singleton_instance = cls()
         return cls._singleton_instance
 
-    def __init__(self, schema_loader: Optional[ISchemaLoader] = None):
+    def __init__(self):
         """初始化速率限制管理器"""
         self.config = get_config()
         self.rate_limiters: Dict[str, Limiter] = {}  # 按需创建的速率限制器缓存
-        self.schema_loader = schema_loader or SchemaLoader()
 
     def get_limiter(self, task_type: str) -> Limiter:
         """获取指定任务类型的速率限制器
@@ -93,12 +87,10 @@ class RateLimitManager(IRateLimitManager):
             int: 每分钟允许的请求数
         """
         try:
-            # 从配置中获取任务类型的速率限制，使用 api_method 作为键
-            schema = self.schema_loader.load_schema(task_type)
-            api_method = schema.api_method
-            task_config = self.config.download_tasks.get(api_method, {})
+            # 从配置中获取任务类型的速率限制，使用 task_type 作为键
+            task_config = self.config.download_tasks.get(task_type, {})
             rate_limit = task_config.get("rate_limit_per_minute", 190)  # 默认值190
-            logger.debug(f"Task {api_method} rate limit: {rate_limit} requests/minute")
+            logger.debug(f"Task {task_type} rate limit: {rate_limit} requests/minute")
             return rate_limit
         except Exception as e:
             logger.warning(

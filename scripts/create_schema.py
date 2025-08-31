@@ -192,15 +192,15 @@ TABLE_CONFIGS = Box(
             "fields": [],
             "output_file": "src/stock_schema.toml",
         },
-        "stock_adj_qfq": {
-            "table_name": "stock_adj_qfq",
+        "stock_adj_hfq": {
+            "table_name": "stock_adj_hfq",
             "primary_key": ["ts_code", "trade_date"],
             "date_col": "trade_date",
             "description": "复权行情数据字段",
             "api_method": "pro_bar",
             "base_object": "ts",
             "required_params": {
-                "adj": "qfq",
+                "adj": "hfq",
             },
             "default_params": {
                 "ts_code": "600519.SH",

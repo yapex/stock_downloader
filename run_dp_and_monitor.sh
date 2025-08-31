@@ -22,12 +22,12 @@ cleanup() {
     # 使用 kill 终止进程，2>/dev/null 会抑制错误（例如进程已不存在）
     if [ -n "$FAST_DP_PID" ]; then kill $FAST_DP_PID 2>/dev/null; fi
     if [ -n "$SLOW_DP_PID" ]; then kill $SLOW_DP_PID 2>/dev/null; fi
-    if [ -n "$MAINT_DP_PID" ]; then kill $MAINT_DP_PID 2>/dev/null; fi
+    # if [ -n "$MAINT_DP_PID" ]; then kill $MAINT_DP_PID 2>/dev/null; fi
     
     # 等待所有后台进程结束
     wait $FAST_DP_PID 2>/dev/null
     wait $SLOW_DP_PID 2>/dev/null
-    wait $MAINT_DP_PID 2>/dev/null
+    # wait $MAINT_DP_PID 2>/dev/null
     
     echo "所有后台进程已清理完毕。"
 }
@@ -58,9 +58,9 @@ SLOW_DP_PID=$!
 echo "慢速消费者已启动 (PID: $SLOW_DP_PID)"
 
 # 启动维护队列消费者 (用于自动同步元数据)
-{ uv run python -m neo.main dp maint $DEBUG_FLAG > logs/consumer_maint.log 2>&1; } &
-MAINT_DP_PID=$!
-echo "维护消费者已启动 (PID: $MAINT_DP_PID)"
+# { uv run python -m neo.main dp maint $DEBUG_FLAG > logs/consumer_maint.log 2>&1; } &
+# MAINT_DP_PID=$!
+# echo "维护消费者已启动 (PID: $MAINT_DP_PID)"
 
 # 等待一段时间确保消费者已经启动
 sleep 3

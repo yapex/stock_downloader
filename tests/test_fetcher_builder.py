@@ -190,13 +190,13 @@ class TestFetcherBuilder:
         mock_get_api.return_value = mock_api_func
 
         # 使用有默认参数的任务类型
-        fetcher = self.builder.build_by_task("stock_adj_qfq")
+        fetcher = self.builder.build_by_task("stock_adj_hfq")
         result = fetcher()
 
         mock_get_api.assert_called_once_with("ts", "pro_bar")
         # 验证默认参数被使用
         call_args = mock_api_func.call_args[1]
-        assert call_args["adj"] == "qfq"
+        assert call_args["adj"] == "hfq"
         assert isinstance(result, pd.DataFrame)
 
     @patch.object(TushareApiManager, "get_api_function")

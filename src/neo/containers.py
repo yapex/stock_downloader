@@ -9,7 +9,7 @@ from neo.helpers.group_handler import GroupHandler
 from neo.services.consumer_runner import ConsumerRunner
 from neo.services.downloader_service import DownloaderService
 from neo.writers.parquet_writer import ParquetWriter
-from neo.data_processor.full_replace_data_processor import FullReplaceDataProcessor
+
 from neo.configs import get_config
 
 
@@ -23,32 +23,30 @@ class AppContainer(containers.DeclarativeContainer):
     consumer_runner = providers.Factory(ConsumerRunner)
     downloader_service = providers.Factory(DownloaderService)
 
-    # Core Components
-    fetcher_builder = providers.Factory(FetcherBuilder)
-    rate_limit_manager = providers.Singleton(RateLimitManager.singleton)
-
     # Schema and Database Components
     schema_loader = providers.Singleton(SchemaLoader)
+
+    # Core Components
+    fetcher_builder = providers.Factory(FetcherBuilder, schema_loader=schema_loader)
+    rate_limit_manager = providers.Singleton(RateLimitManager.singleton)
 
     # Database Components - 职责分离
     db_queryer = providers.Factory(
         ParquetDBQueryer, schema_loader=schema_loader
     )  # 专门负责查询
+    
+    # 为了向后兼容，db_operator 指向 db_queryer
+    db_operator = db_queryer
+    
     task_builder = providers.Singleton(TaskBuilder)
-    group_handler = providers.Singleton(GroupHandler)
+    group_handler = providers.Singleton(GroupHandler, db_operator=db_queryer)
 
     # Writers
     parquet_writer = providers.Factory(
         ParquetWriter, base_path=config.storage.parquet_base_path
     )
 
-    # 全量替换数据处理器，用于需要全量替换的表
-    full_replace_data_processor = providers.Factory(
-        FullReplaceDataProcessor,
-        parquet_writer=parquet_writer,
-        db_queryer=db_queryer,
-        schema_loader=schema_loader,
-    )
+
 
     # Core Components
     downloader = providers.Singleton(
@@ -76,6 +74,14 @@ if __name__ == "__main__":
     # df = downloader.download(TaskType.stock_basic.name, "600519.SH")
     # print(df.head(1))
 
-    db_operator = container.db_operator()
-    db_operator.drop_all_tables()
-    db_operator.create_all_tables()
+    # 注意：ParquetDBQueryer 只支持查询操作，不支持表的创建和删除
+    # 如果需要表管理功能，需要实现 ISchemaTableCreator 接口
+    db_queryer = container.db_queryer()
+    print(f"数据库查询器已初始化: {type(db_queryer).__name__}")
+    
+    # 示例：获取所有股票代码（如果有数据的话）
+    try:
+        symbols = db_queryer.get_all_symbols()
+        print(f"找到 {len(symbols)} 个股票代码")
+    except Exception as e:
+        print(f"获取股票代码时出错: {e}")

@@ -63,17 +63,13 @@ class TestDataProcessor:
                     invalid_data, "stock_basic", "000001.SZ"
                 )
 
-    @patch("neo.data_processor.data_processor_factory.DataProcessorFactory")
     @patch("neo.app.container")
-    def test_process_with_container_success(self, mock_container, mock_factory_class):
+    def test_process_with_container_success(self, mock_container):
         """测试使用容器处理数据成功"""
         # 设置mock
         mock_data_processor = Mock()
         mock_data_processor.process.return_value = True
-        
-        mock_factory = Mock()
-        mock_factory.create_processor.return_value = mock_data_processor
-        mock_factory_class.return_value = mock_factory
+        mock_container.data_processor.return_value = mock_data_processor
 
         # 创建测试数据
         df_data = pd.DataFrame([{"ts_code": "000001.SZ"}])
@@ -83,22 +79,17 @@ class TestDataProcessor:
 
         # 验证结果
         assert result is True
-        mock_factory_class.assert_called_once_with(mock_container)
-        mock_factory.create_processor.assert_called_once_with("stock_basic")
+        mock_container.data_processor.assert_called_once()
         mock_data_processor.process.assert_called_once_with("stock_basic", df_data)
         mock_data_processor.shutdown.assert_called_once()
 
-    @patch("neo.data_processor.data_processor_factory.DataProcessorFactory")
     @patch("neo.app.container")
-    def test_process_with_container_failure(self, mock_container, mock_factory_class):
+    def test_process_with_container_failure(self, mock_container):
         """测试使用容器处理数据失败"""
         # 设置mock返回False
         mock_data_processor = Mock()
         mock_data_processor.process.return_value = False
-        
-        mock_factory = Mock()
-        mock_factory.create_processor.return_value = mock_data_processor
-        mock_factory_class.return_value = mock_factory
+        mock_container.data_processor.return_value = mock_data_processor
 
         # 创建测试数据
         df_data = pd.DataFrame([{"ts_code": "000001.SZ"}])
@@ -110,17 +101,13 @@ class TestDataProcessor:
         assert result is False
         mock_data_processor.shutdown.assert_called_once()
 
-    @patch("neo.data_processor.data_processor_factory.DataProcessorFactory")
     @patch("neo.app.container")
-    def test_process_with_container_exception_with_shutdown(self, mock_container, mock_factory_class):
+    def test_process_with_container_exception_with_shutdown(self, mock_container):
         """测试容器处理数据时异常，确保shutdown被调用"""
         # 设置mock抛出异常
         mock_data_processor = Mock()
         mock_data_processor.process.side_effect = Exception("Processing error")
-        
-        mock_factory = Mock()
-        mock_factory.create_processor.return_value = mock_data_processor
-        mock_factory_class.return_value = mock_factory
+        mock_container.data_processor.return_value = mock_data_processor
 
         # 创建测试数据
         df_data = pd.DataFrame([{"ts_code": "000001.SZ"}])
@@ -132,17 +119,13 @@ class TestDataProcessor:
         # 验证shutdown仍然被调用
         mock_data_processor.shutdown.assert_called_once()
 
-    @patch("neo.data_processor.data_processor_factory.DataProcessorFactory")
     @patch("neo.app.container")
-    def test_process_data_success(self, mock_container, mock_factory_class):
+    def test_process_data_success(self, mock_container):
         """测试处理数据成功的完整流程"""
         # 设置mock
         mock_data_processor = Mock()
         mock_data_processor.process.return_value = True
-        
-        mock_factory = Mock()
-        mock_factory.create_processor.return_value = mock_data_processor
-        mock_factory_class.return_value = mock_factory
+        mock_container.data_processor.return_value = mock_data_processor
 
         # 测试数据
         data = [{"ts_code": "000001.SZ", "name": "平安银行"}]
@@ -152,8 +135,7 @@ class TestDataProcessor:
 
         # 验证结果
         assert result is True
-        mock_factory_class.assert_called_once_with(mock_container)
-        mock_factory.create_processor.assert_called_once_with("stock_basic")
+        mock_container.data_processor.assert_called_once()
         mock_data_processor.process.assert_called_once_with("stock_basic", mock_data_processor.process.call_args[0][1])
         mock_data_processor.shutdown.assert_called_once()
 
@@ -165,17 +147,13 @@ class TestDataProcessor:
         # 验证返回False而不是抛出异常
         assert result is False
 
-    @patch("neo.data_processor.data_processor_factory.DataProcessorFactory")
     @patch("neo.app.container")
-    def test_process_data_general_exception_handling(self, mock_container, mock_factory_class):
+    def test_process_data_general_exception_handling(self, mock_container):
         """测试处理数据时一般异常处理"""
         # 设置mock抛出非ValueError异常
         mock_data_processor = Mock()
         mock_data_processor.process.side_effect = RuntimeError("Runtime error")
-        
-        mock_factory = Mock()
-        mock_factory.create_processor.return_value = mock_data_processor
-        mock_factory_class.return_value = mock_factory
+        mock_container.data_processor.return_value = mock_data_processor
 
         # 测试数据
         data = [{"ts_code": "000001.SZ"}]

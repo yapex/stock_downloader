@@ -19,6 +19,7 @@ class SimpleDataProcessor(IDataProcessor):
     """同步数据处理器实现
 
     将数据清洗、转换后，使用 ParquetWriter 写入磁盘。
+    支持根据配置选择增量更新或全量替换策略。
     """
 
     @classmethod
@@ -48,6 +49,35 @@ class SimpleDataProcessor(IDataProcessor):
         # 对于财务报表，按报告期（通常也是年）分区
         return ["year"]
 
+    def _get_update_strategy(self, task_type: str) -> str:
+        """获取任务类型的更新策略
+        
+        Args:
+            task_type: 任务类型
+            
+        Returns:
+            str: 更新策略
+        """
+        try:
+            # 从配置中获取更新策略
+            download_tasks_config = self.config.download_tasks
+            
+            # 检查任务类型的配置
+            if hasattr(download_tasks_config, task_type):
+                task_config = getattr(download_tasks_config, task_type)
+                if hasattr(task_config, 'update_strategy'):
+                    strategy = task_config.update_strategy
+                    logger.debug(f"任务 {task_type} 使用配置的更新策略: {strategy}")
+                    return strategy
+            
+            # 默认策略：增量更新
+            logger.debug(f"任务 {task_type} 使用默认更新策略: incremental")
+            return "incremental"
+            
+        except Exception as e:
+            logger.warning(f"获取 {task_type} 更新策略失败，使用默认策略: {e}")
+            return "incremental"
+
     def process(self, task_type: str, data: pd.DataFrame) -> bool:
         """同步处理任务结果"""
         try:
@@ -68,11 +98,26 @@ class SimpleDataProcessor(IDataProcessor):
                 data["year"] = data["end_date"].str[:4]
             else:
                 # 如果没有日期列，则不进行分区
-                self.parquet_writer.write(data, task_type, [])
+                update_strategy = self._get_update_strategy(task_type)
+                if update_strategy == "full_replace":
+                    self.parquet_writer.write_full_replace(data, task_type, [])
+                    logger.debug(f"使用全量替换策略写入 {task_type} 数据（无分区）")
+                else:
+                    self.parquet_writer.write(data, task_type, [])
+                    logger.debug(f"使用增量更新策略写入 {task_type} 数据（无分区）")
                 return True
 
             partition_cols = self._get_partition_cols(task_type)
-            self.parquet_writer.write(data, task_type, partition_cols)
+            
+            # 根据更新策略选择写入方式
+            update_strategy = self._get_update_strategy(task_type)
+            if update_strategy == "full_replace":
+                self.parquet_writer.write_full_replace(data, task_type, partition_cols)
+                logger.debug(f"使用全量替换策略写入 {task_type} 数据")
+            else:
+                self.parquet_writer.write(data, task_type, partition_cols)
+                logger.debug(f"使用增量更新策略写入 {task_type} 数据")
+            
             return True
 
         except Exception as e:

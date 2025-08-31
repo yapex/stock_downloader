@@ -43,8 +43,8 @@ columns = [
     { name = "amount", type = "TEXT" },
 ]
 
-[stock_adj_qfq]
-table_name = "stock_adj_qfq"
+[stock_adj_hfq]
+table_name = "stock_adj_hfq"
 primary_key = [
     "ts_code",
     "trade_date",
@@ -53,7 +53,7 @@ date_col = "trade_date"
 description = "复权行情数据字段"
 api_method = "pro_bar"
 base_object = "ts"
-required_params = { adj = "qfq" }
+required_params = { adj = "hfq" }
 columns = [
     { name = "ts_code", type = "TEXT" },
     { name = "trade_date", type = "TEXT" },
