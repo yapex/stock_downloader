@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 
 from neo.helpers.rate_limit_manager import RateLimitManager, get_rate_limit_manager
 from neo.helpers.interfaces import IRateLimitManager
+
 # TaskType 现在使用字符串，TaskTemplateRegistry 已移除
 from pyrate_limiter import Limiter
 from neo.containers import AppContainer
@@ -53,9 +54,7 @@ class TestRateLimitManager:
         # 模拟配置返回自定义的rate_limit_per_minute
         mock_config = Mock()
         # 使用 api_method 作为配置键
-        mock_config.download_tasks = {
-            "stock_basic": {"rate_limit_per_minute": 100}
-        }
+        mock_config.download_tasks = {"stock_basic": {"rate_limit_per_minute": 100}}
         mock_get_config.return_value = mock_config
 
         manager = RateLimitManager()
@@ -66,9 +65,7 @@ class TestRateLimitManager:
     def test_get_limiter_creates_new(self, mock_get_config):
         """测试获取限制器时创建新实例"""
         mock_config = Mock()
-        mock_config.download_tasks = {
-            "stock_basic": {"rate_limit_per_minute": 150}
-        }
+        mock_config.download_tasks = {"stock_basic": {"rate_limit_per_minute": 150}}
         mock_get_config.return_value = mock_config
 
         manager = RateLimitManager()
@@ -298,9 +295,7 @@ class TestRateLimitManagerContainer:
     def test_container_rate_limit_manager_functionality(self, mock_get_config):
         """测试从容器获取的 RateLimitManager 功能正常"""
         mock_config = Mock()
-        mock_config.download_tasks = {
-            "stock_basic": {"rate_limit_per_minute": 120}
-        }
+        mock_config.download_tasks = {"stock_basic": {"rate_limit_per_minute": 120}}
         mock_get_config.return_value = mock_config
 
         container = AppContainer()

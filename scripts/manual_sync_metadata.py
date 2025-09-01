@@ -11,7 +11,7 @@ from pathlib import Path
 
 # 将项目根目录添加到 sys.path，以便能够导入 neo 包
 project_root = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(project_root / 'src'))
+sys.path.insert(0, str(project_root / "src"))
 
 from neo.tasks.metadata_sync_tasks import MetadataSyncManager
 from neo.helpers.utils import setup_logging
@@ -19,6 +19,7 @@ from neo.helpers.utils import setup_logging
 # 设置日志
 setup_logging("manual_sync", "info")
 logger = logging.getLogger(__name__)
+
 
 def main():
     """执行元数据同步"""
@@ -29,6 +30,7 @@ def main():
         logger.info("手动元数据同步成功完成。")
     except Exception as e:
         logger.error(f"手动元数据同步失败: {e}", exc_info=True)
+
 
 if __name__ == "__main__":
     main()

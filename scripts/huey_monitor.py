@@ -100,12 +100,8 @@ def generate_table(
     eta_slow = slow_monitor.get_eta(pending_slow)
 
     # 添加表格行
-    table.add_row(
-        "等待中的任务数", str(pending_fast), str(pending_slow)
-    )
-    table.add_row(
-        "计划中的任务数", str(scheduled_fast), str(scheduled_slow)
-    )
+    table.add_row("等待中的任务数", str(pending_fast), str(pending_slow))
+    table.add_row("计划中的任务数", str(scheduled_fast), str(scheduled_slow))
     table.add_row(
         "处理速率 (任务/秒)",
         f"{rate_fast:.2f}",
@@ -144,11 +140,7 @@ if __name__ == "__main__":
         ) as live:
             while True:
                 time.sleep(1)  # 每秒刷新一次
-                live.update(
-                    generate_table(
-                        fast_monitor, slow_monitor, start_time
-                    )
-                )
+                live.update(generate_table(fast_monitor, slow_monitor, start_time))
     except KeyboardInterrupt:
         print("\n监控已停止。")
     except Exception:

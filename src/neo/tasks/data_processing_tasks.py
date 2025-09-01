@@ -46,11 +46,14 @@ class DataProcessor:
         except Exception as e:
             raise ValueError(f"数据转换失败: {symbol}_{task_type}, 错误: {e}")
 
-    def _process_with_container(self, task_type: str, df_data: pd.DataFrame) -> bool:
+    def _process_with_container(
+        self, task_type: str, symbol: str, df_data: pd.DataFrame
+    ) -> bool:
         """使用容器中的数据处理器处理数据
 
         Args:
             task_type: 任务类型
+            symbol: 股票代码
             df_data: 要处理的数据框
 
         Returns:
@@ -62,7 +65,7 @@ class DataProcessor:
         data_processor = container.data_processor()
 
         try:
-            process_success = data_processor.process(task_type, df_data)
+            process_success = data_processor.process(task_type, symbol, df_data)
             logger.debug(f"[HUEY] {task_type} 数据处理器返回结果: {process_success}")
             return process_success
         finally:
@@ -90,7 +93,7 @@ class DataProcessor:
             logger.debug(
                 f"🐌 [HUEY_SLOW] 开始异步保存数据: {symbol}_{task_type}, 数据行数: {len(df_data)}"
             )
-            return self._process_with_container(task_type, df_data)
+            return self._process_with_container(task_type, symbol, df_data)
 
         except ValueError as e:
             logger.warning(f"⚠️ [HUEY_SLOW] 数据处理失败: {e}")

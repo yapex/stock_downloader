@@ -81,9 +81,7 @@ def query(
             if symbol:
                 try:
                     normalized_symbol = normalize_stock_code(symbol)
-                    logging.info(
-                        f"标准化股票代码: '{symbol}' -> '{normalized_symbol}'"
-                    )
+                    logging.info(f"标准化股票代码: '{symbol}' -> '{normalized_symbol}'")
 
                     schema = table_expr.schema()
                     possible_cols = ["ts_code", "symbol"]

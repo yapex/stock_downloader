@@ -82,7 +82,7 @@ class TestDownloadTaskManager:
             # 本地数据已经是最新交易日的，今天是交易日，但还没到收盘时间
             result = self.service._should_skip_task("20240115", "20240115")
             assert result is True  # 应该跳过，等待收盘
-    
+
     def test_should_skip_task_data_current_after_market_close(self):
         """测试本地数据已是最新交易日，收盘后应下载今日数据"""
         with patch("neo.tasks.download_tasks.datetime") as mock_datetime:
@@ -95,7 +95,7 @@ class TestDownloadTaskManager:
             # 本地数据已经是最新交易日的，今天是交易日，已经过了收盘时间
             result = self.service._should_skip_task("20240115", "20240115")
             assert result is False  # 应该下载今日数据
-    
+
     def test_should_skip_task_data_current_at_market_close_time(self):
         """测试边界条件：本地数据是最新的，正好在收盘时间点"""
         with patch("neo.tasks.download_tasks.datetime") as mock_datetime:

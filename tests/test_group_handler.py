@@ -72,7 +72,9 @@ class TestGroupHandler:
 
     @patch("neo.database.operator.ParquetDBQueryer")
     @patch("neo.helpers.group_handler.get_config")
-    def test_get_symbols_for_group_without_db_operator(self, mock_get_config, mock_parquet_queryer_class):
+    def test_get_symbols_for_group_without_db_operator(
+        self, mock_get_config, mock_parquet_queryer_class
+    ):
         """测试没有 db_operator 时获取组的股票代码"""
         mock_config = Mock()
         mock_config.task_groups = {"test_group": ["stock_daily"]}

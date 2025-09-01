@@ -55,7 +55,7 @@ class ParquetWriter(IParquetWriter):
     def write_full_replace(
         self, data: pd.DataFrame, task_type: str, partition_cols: List[str]
     ) -> None:
-        """全量替换写入：先删除现有数据，然后写入新数据"""
+        """全量替换写入 (用于字典表等非 `symbol` 分区的数据)"""
         if data is None or data.empty:
             logger.debug("数据为空，跳过全量替换写入")
             return
@@ -79,4 +79,47 @@ class ParquetWriter(IParquetWriter):
             logger.debug(f"✅ 全量替换成功写入 {len(data)} 条数据到 {target_path}")
         except Exception as e:
             logger.error(f"💥 全量替换写入到 {target_path} 失败: {e}")
+            raise
+
+    def write_full_replace_by_symbol(
+        self, data: pd.DataFrame, task_type: str, partition_cols: List[str], symbol: str
+    ) -> None:
+        """按 symbol 全量替换写入 (用于按 `symbol` 分区的数据)"""
+        if data is None or data.empty:
+            logger.debug(f"数据为空，跳过对 {symbol} 的全量替换写入")
+            return
+
+        target_path = self.base_path / task_type
+        # 使用 ts_code=symbol 的分区格式，这是 Hive 分区标准
+        symbol_partition_path = target_path / f"ts_code={symbol}"
+
+        try:
+            # 关键修复：只删除指定 symbol 的数据目录
+            if symbol_partition_path.exists():
+                shutil.rmtree(symbol_partition_path)
+                logger.info(
+                    f"🗑️ 已删除 {symbol} 的现有数据目录: {symbol_partition_path}"
+                )
+
+            # 确保 ts_code 是分区的一部分，以便写入到正确的子目录
+            if "ts_code" not in data.columns:
+                data["ts_code"] = symbol
+            if "ts_code" not in partition_cols:
+                partition_cols.insert(0, "ts_code")
+
+            # 写入新数据
+            table = pa.Table.from_pandas(data)
+            pq.write_to_dataset(
+                table,
+                root_path=str(target_path),
+                partition_cols=partition_cols,
+                basename_template=f"part-{{i}}-{pd.Timestamp.now().strftime('%Y%m%d%H%M%S')}.parquet",
+            )
+            logger.debug(
+                f"✅ 全量替换成功写入 {len(data)} 条数据到 {target_path} for symbol {symbol}"
+            )
+        except Exception as e:
+            logger.error(
+                f"💥 全量替换写入到 {target_path} for symbol {symbol} 失败: {e}"
+            )
             raise

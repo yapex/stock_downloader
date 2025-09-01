@@ -13,7 +13,11 @@ from neo.helpers.task_filter import TaskFilter
 class GroupHandler:
     """组处理器实现"""
 
-    def __init__(self, db_operator: Optional[IDBOperator] = None, task_filter: Optional[TaskFilter] = None):
+    def __init__(
+        self,
+        db_operator: Optional[IDBOperator] = None,
+        task_filter: Optional[TaskFilter] = None,
+    ):
         """初始化任务组处理器"""
         self.config = get_config()
         self.db_operator = db_operator
@@ -73,4 +77,3 @@ class GroupHandler:
             return symbols
         except Exception as e:
             raise ValueError(f"从数据库获取股票代码失败: {e}")
-

@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 from threading import Lock
 from neo.downloader.fetcher_builder import TushareApiManager, FetcherBuilder
 from neo.downloader.fetcher_builder import TaskTemplate
+
 # TaskType 和 TaskTemplateRegistry 已移除，现在使用字符串和 schema 配置
 from neo.containers import AppContainer
 

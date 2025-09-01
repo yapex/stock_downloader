@@ -36,11 +36,7 @@ class SimpleDownloader(IDownloader):
         self.fetcher_builder = fetcher_builder
         self.db_operator = None  # No longer used
 
-
-
-    def download(
-        self, task_type: str, symbol: str, **kwargs
-    ) -> Optional[pd.DataFrame]:
+    def download(self, task_type: str, symbol: str, **kwargs) -> Optional[pd.DataFrame]:
         """下载指定任务类型和股票代码的数据
 
         Args:

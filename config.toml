@@ -35,40 +35,43 @@ exchange_whitelist = ["SH", "SZ"]
 [download_tasks.stock_basic]
 rate_limit_per_minute = 195  
 update_strategy = "full_replace"  # 全量替换策略，避免重复数据
+update_by_symbol = false # 指定不按 symbol 更新
+
 # 交易日历
 [download_tasks.trade_cal]
 rate_limit_per_minute = 195  
 update_strategy = "full_replace"  # 全量替换策略，避免重复数据
+update_by_symbol = false # 指定不按 symbol 更新
 
 [download_tasks.stock_daily]
 rate_limit_per_minute = 195
-# update_strategy = "incremental"
 update_strategy = "full_replace"  # 全量替换策略，避免重复数据
+update_by_symbol = true # 指定按 symbol 更新
 
 [download_tasks.stock_adj_hfq]
 rate_limit_per_minute = 195
-# update_strategy = "incremental"
 update_strategy = "full_replace"  # 全量替换策略，避免重复数据  
+update_by_symbol = true # 指定按 symbol 更新
 
 [download_tasks.daily_basic] 
 rate_limit_per_minute = 195
-# update_strategy = "incremental"
 update_strategy = "full_replace"  # 全量替换策略，避免重复数据
+update_by_symbol = true # 指定按 symbol 更新
 
 [download_tasks.balance_sheet]  
 rate_limit_per_minute = 195  
-# update_strategy = "incremental"
 update_strategy = "full_replace"  # 全量替换策略，避免重复数据
+update_by_symbol = true # 指定按 symbol 更新
 
 [download_tasks.income]  
 rate_limit_per_minute = 195  
-# update_strategy = "incremental"
 update_strategy = "full_replace"  # 全量替换策略，避免重复数据
+update_by_symbol = true # 指定按 symbol 更新
 
 [download_tasks.cash_flow]  
 rate_limit_per_minute = 195  
-# update_strategy = "incremental"
 update_strategy = "full_replace"  # 全量替换策略，避免重复数据
+update_by_symbol = true # 指定按 symbol 更新
 
 [task_groups]
 sys=[

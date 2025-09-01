@@ -34,10 +34,10 @@ class AppContainer(containers.DeclarativeContainer):
     db_queryer = providers.Factory(
         ParquetDBQueryer, schema_loader=schema_loader
     )  # 专门负责查询
-    
+
     # 为了向后兼容，db_operator 指向 db_queryer
     db_operator = db_queryer
-    
+
     task_builder = providers.Singleton(TaskBuilder)
     group_handler = providers.Singleton(GroupHandler, db_operator=db_queryer)
 
@@ -45,8 +45,6 @@ class AppContainer(containers.DeclarativeContainer):
     parquet_writer = providers.Factory(
         ParquetWriter, base_path=config.storage.parquet_base_path
     )
-
-
 
     # Core Components
     downloader = providers.Singleton(
@@ -78,7 +76,7 @@ if __name__ == "__main__":
     # 如果需要表管理功能，需要实现 ISchemaTableCreator 接口
     db_queryer = container.db_queryer()
     print(f"数据库查询器已初始化: {type(db_queryer).__name__}")
-    
+
     # 示例：获取所有股票代码（如果有数据的话）
     try:
         symbols = db_queryer.get_all_symbols()

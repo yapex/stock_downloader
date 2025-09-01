@@ -343,14 +343,16 @@ class TestParquetDBQueryer:
         # Mock 必要的方法
         mock_db_operator._table_exists_in_schema = Mock(return_value=True)
         mock_db_operator._parquet_files_exist = Mock(return_value=True)
-        
+
         # Mock table config
         mock_table_config = Mock()
         mock_table_config.table_name = "stock_daily"
         mock_table_config.date_col = "trade_date"
         mock_table_config.primary_key = ["ts_code", "trade_date"]
         mock_db_operator._get_table_config = Mock(return_value=mock_table_config)
-        mock_db_operator._get_parquet_path_pattern = Mock(return_value="/path/to/*.parquet")
+        mock_db_operator._get_parquet_path_pattern = Mock(
+            return_value="/path/to/*.parquet"
+        )
 
         # 模拟 DuckDB 连接和查询结果
         mock_conn = Mock()
@@ -380,14 +382,16 @@ class TestParquetDBQueryer:
         # Mock 必要的方法
         mock_db_operator._table_exists_in_schema = Mock(return_value=True)
         mock_db_operator._parquet_files_exist = Mock(return_value=True)
-        
+
         # Mock table config
         mock_table_config = Mock()
         mock_table_config.table_name = "stock_daily"
         mock_table_config.date_col = "trade_date"
         mock_table_config.primary_key = ["ts_code", "trade_date"]
         mock_db_operator._get_table_config = Mock(return_value=mock_table_config)
-        mock_db_operator._get_parquet_path_pattern = Mock(return_value="/path/to/*.parquet")
+        mock_db_operator._get_parquet_path_pattern = Mock(
+            return_value="/path/to/*.parquet"
+        )
 
         # 模拟 DuckDB 连接和查询结果（包含 null 值）
         mock_conn = Mock()

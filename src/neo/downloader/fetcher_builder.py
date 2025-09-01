@@ -16,21 +16,23 @@ from neo.helpers import normalize_stock_code
 from neo.database.interfaces import ISchemaLoader
 from neo.database.schema_loader import SchemaLoader
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from typing import Dict
 
 
 @dataclass
 class TaskTemplate:
     """任务模板配置"""
+
     api_method: str
     base_object: str
     required_params: Optional[Dict[str, Any]] = None
     default_params: Optional[Dict[str, Any]] = None
-    
+
     def __post_init__(self):
         """初始化后处理，确保 default_params 不为 None"""
         if self.default_params is None:
             self.default_params = {}
+
 
 logger = logging.getLogger(__name__)
 

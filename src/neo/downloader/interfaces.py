@@ -12,9 +12,7 @@ class IDownloader(Protocol):
     专注于网络I/O和数据获取，不处理业务逻辑。
     """
 
-    def download(
-        self, task_type: str, symbol: str, **kwargs
-    ) -> Optional[pd.DataFrame]:
+    def download(self, task_type: str, symbol: str, **kwargs) -> Optional[pd.DataFrame]:
         """执行下载任务
 
         Args:

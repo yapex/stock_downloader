@@ -65,7 +65,7 @@ class MockConfig:
         self.storage = Mock()
         self.database = Mock()
         self.cron_tasks = Mock()
-        
+
         # 创建一个更真实的 download_tasks mock
         self.download_tasks = Mock()
         self.download_tasks.default_start_date = "19900101"
@@ -73,7 +73,7 @@ class MockConfig:
         # 为 'stock_daily' 任务创建 mock 配置
         stock_daily_config = Mock()
         stock_daily_config.update_strategy = "incremental"
-        
+
         # 将任务配置附加到 download_tasks 上
         # 允许形如 config.download_tasks.stock_daily.update_strategy 的访问
         self.download_tasks.stock_daily = stock_daily_config
@@ -485,14 +485,16 @@ class TestBuildAndEnqueueTask:
         # 设置container mock
         mock_container_instance = MockContainer()
         mock_container.group_handler = mock_container_instance.group_handler
-        mock_container._group_handler_instance = mock_container_instance._group_handler_instance
-        
+        mock_container._group_handler_instance = (
+            mock_container_instance._group_handler_instance
+        )
+
         # 设置db_queryer mock
         mock_db_queryer = Mock()
         mock_db_queryer.get_latest_trading_day.return_value = "20240115"
         mock_db_queryer.get_max_date.return_value = {"000001.SZ": "20240110"}
         mock_container.db_queryer.return_value = mock_db_queryer
-        
+
         # 设置schema_loader mock
         mock_schema_loader = Mock()
         mock_table_config = Mock()
@@ -539,7 +541,7 @@ class TestBuildAndEnqueueTask:
 
         # 根据symbol排序调用，确保测试的稳定性
         calls_by_symbol = {call[1]["symbol"]: call[1] for call in calls}
-        
+
         # 验证000001.SZ任务（已有数据）
         call_000001 = calls_by_symbol["000001.SZ"]
         assert call_000001["task_type"] == "stock_daily"
@@ -568,14 +570,16 @@ class TestBuildAndEnqueueTask:
         # 设置container mock
         mock_container_instance = MockContainer()
         mock_container.group_handler = mock_container_instance.group_handler
-        mock_container._group_handler_instance = mock_container_instance._group_handler_instance
-        
+        mock_container._group_handler_instance = (
+            mock_container_instance._group_handler_instance
+        )
+
         # 设置db_queryer mock
         mock_db_queryer = Mock()
         mock_db_queryer.get_latest_trading_day.return_value = "20240115"
         mock_db_queryer.get_max_date.return_value = {"600519.SH": "20240110"}
         mock_container.db_queryer.return_value = mock_db_queryer
-        
+
         # 设置schema_loader mock
         mock_schema_loader = Mock()
         mock_table_config = Mock()
@@ -621,11 +625,13 @@ class TestBuildAndEnqueueTask:
         # 设置container mock
         mock_container_instance = MockContainer()
         mock_container.group_handler = mock_container_instance.group_handler
-        mock_container._group_handler_instance = mock_container_instance._group_handler_instance
+        mock_container._group_handler_instance = (
+            mock_container_instance._group_handler_instance
+        )
 
         # 设置group_handler抛出异常
-        mock_container_instance._group_handler_instance.get_task_types_for_group.side_effect = (
-            Exception("构建下载任务失败")
+        mock_container_instance._group_handler_instance.get_task_types_for_group.side_effect = Exception(
+            "构建下载任务失败"
         )
 
         # 设置config mock

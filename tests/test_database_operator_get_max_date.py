@@ -21,14 +21,15 @@ class TestParquetDBQueryerGetMaxDate:
     def operator(self, mock_schema_loader):
         """创建 ParquetDBQueryer 实例"""
         return ParquetDBQueryer(
-            schema_loader=mock_schema_loader,
-            parquet_base_path="/tmp/test_parquet"
+            schema_loader=mock_schema_loader, parquet_base_path="/tmp/test_parquet"
         )
 
-    @patch('src.neo.database.operator.duckdb.connect')
-    @patch('pathlib.Path.rglob')
-    @patch('pathlib.Path.exists')
-    def test_get_max_date_with_ts_code_primary_key(self, mock_exists, mock_rglob, mock_connect, operator, mock_schema_loader):
+    @patch("src.neo.database.operator.duckdb.connect")
+    @patch("pathlib.Path.rglob")
+    @patch("pathlib.Path.exists")
+    def test_get_max_date_with_ts_code_primary_key(
+        self, mock_exists, mock_rglob, mock_connect, operator, mock_schema_loader
+    ):
         """测试有 ts_code 主键的表查询最大日期"""
         # 设置 mock schema
         mock_table_config = Mock()
@@ -46,23 +47,22 @@ class TestParquetDBQueryerGetMaxDate:
         mock_connect.return_value = mock_conn
         mock_conn.execute.return_value.fetchall.return_value = [
             ("000001.SZ", "20231201"),
-            ("000002.SZ", "20231130")
+            ("000002.SZ", "20231130"),
         ]
 
         result = operator.get_max_date("stock_daily", ["000001", "000002"])
 
-        assert result == {
-            "000001": "20231201",
-            "000002": "20231130"
-        }
+        assert result == {"000001": "20231201", "000002": "20231130"}
         # 验证调用了 duckdb
         mock_connect.assert_called_once_with(":memory:")
         mock_conn.execute.assert_called_once()
 
-    @patch('src.neo.database.operator.duckdb.connect')
-    @patch('pathlib.Path.rglob')
-    @patch('pathlib.Path.exists')
-    def test_get_max_date_without_ts_code_primary_key(self, mock_exists, mock_rglob, mock_connect, operator, mock_schema_loader):
+    @patch("src.neo.database.operator.duckdb.connect")
+    @patch("pathlib.Path.rglob")
+    @patch("pathlib.Path.exists")
+    def test_get_max_date_without_ts_code_primary_key(
+        self, mock_exists, mock_rglob, mock_connect, operator, mock_schema_loader
+    ):
         """测试不包含 ts_code 主键的表查询最大日期"""
         # 设置 mock schema
         mock_table_config = Mock()
@@ -83,9 +83,7 @@ class TestParquetDBQueryerGetMaxDate:
         result = operator.get_max_date("trade_cal", ["000001"])
 
         # 对于非股票表，所有股票代码返回相同的最大日期
-        assert result == {
-            "000001": "20231201"
-        }
+        assert result == {"000001": "20231201"}
         # 验证调用了 duckdb
         mock_connect.assert_called_once_with(":memory:")
         mock_conn.execute.assert_called_once()
@@ -98,9 +96,9 @@ class TestParquetDBQueryerGetMaxDate:
         mock_table_config.date_col = "trade_date"
         mock_table_config.primary_key = ["ts_code", "trade_date"]
         mock_schema_loader.load_schema.return_value = mock_table_config
-        
-        result = operator.get_max_date('stock_daily', [])
-        
+
+        result = operator.get_max_date("stock_daily", [])
+
         # 验证返回空字典
         assert result == {}
 
@@ -108,9 +106,9 @@ class TestParquetDBQueryerGetMaxDate:
         """测试表不在 schema 中的情况"""
         # 模拟 schema 加载器抛出 KeyError
         mock_schema_loader.load_schema.side_effect = KeyError("表配置不存在")
-        
-        result = operator.get_max_date('non_existent_table', ['000001'])
-        
+
+        result = operator.get_max_date("non_existent_table", ["000001"])
+
         # 验证返回空字典
         assert result == {}
 
@@ -123,14 +121,16 @@ class TestParquetDBQueryerGetMaxDate:
         # 没有 date_col 属性
         del mock_table_config.date_col
         mock_schema_loader.load_schema.return_value = mock_table_config
-        
-        result = operator.get_max_date('table_without_date_col', ['000001'])
-        
+
+        result = operator.get_max_date("table_without_date_col", ["000001"])
+
         # 验证返回空字典
         assert result == {}
 
-    @patch('pathlib.Path.exists')
-    def test_get_max_date_no_parquet_files(self, mock_exists, operator, mock_schema_loader):
+    @patch("pathlib.Path.exists")
+    def test_get_max_date_no_parquet_files(
+        self, mock_exists, operator, mock_schema_loader
+    ):
         """测试没有parquet文件的情况"""
         # 设置 mock schema
         mock_table_config = Mock()

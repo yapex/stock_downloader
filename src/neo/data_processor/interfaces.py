@@ -13,7 +13,7 @@ class IDataProcessor(Protocol):
     专注于数据清洗、转换和验证，不处理业务逻辑。
     """
 
-    def process(self, task_type: str, data: pd.DataFrame) -> bool:
+    def process(self, task_type: str, symbol: str, data: pd.DataFrame) -> bool:
         """处理任务结果
 
         Args:

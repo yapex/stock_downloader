@@ -12,7 +12,7 @@ from pathlib import Path
 
 # 将项目根目录添加到 sys.path
 project_root = Path(__file__).resolve().parent
-sys.path.insert(0, str(project_root / 'src'))
+sys.path.insert(0, str(project_root / "src"))
 
 from neo.helpers.utils import setup_logging
 from neo.containers import AppContainer
@@ -33,8 +33,8 @@ def run_diagnostic_test():
         logger.error(f"初始化容器或下载器失败: {e}", exc_info=True)
         return
 
-    task_type = 'stock_adj_hfq'
-    symbol = '000001.SZ'  # 使用一个固定的股票代码进行测试
+    task_type = "stock_adj_hfq"
+    symbol = "000001.SZ"  # 使用一个固定的股票代码进行测试
     total_requests = 195
 
     logger.info("--- 开始诊断测试 ---")

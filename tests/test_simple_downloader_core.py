@@ -2,7 +2,6 @@
 
 import pandas as pd
 from unittest.mock import Mock, patch
-import pytest
 
 from neo.downloader.simple_downloader import SimpleDownloader
 from neo.helpers.interfaces import IRateLimitManager
@@ -37,9 +36,6 @@ class TestSimpleDownloader:
 
         # 执行清理方法，不应抛出异常
         downloader.cleanup()
-
-
-
 
 
 class TestSimpleDownloaderDownload:
@@ -140,9 +136,6 @@ class TestSimpleDownloaderDownload:
             # No debug log in download success path, so no assertion here.
             # For now, just ensure no error logs are made.
             mock_logger.error.assert_not_called()
-
-
-
 
 
 # 新增测试类：测试 SimpleDownloader 中未覆盖的方法和边界条件
