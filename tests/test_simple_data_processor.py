@@ -212,3 +212,82 @@ def test_full_replace_calls_symbol_method_when_by_symbol(
         ANY, "stock_daily", ["year"], symbol_to_test
     )
     mock_parquet_writer.write_full_replace.assert_not_called()
+
+
+def test_create_default_with_writer(mock_parquet_writer):
+    """测试 create_default 方法在提供了 writer 的情况下"""
+    processor = SimpleDataProcessor.create_default(parquet_writer=mock_parquet_writer)
+    assert processor.parquet_writer is mock_parquet_writer
+
+
+def test_get_update_strategy_exception(mock_parquet_writer):
+    """测试 _get_update_strategy 方法的异常处理"""
+    processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
+    processor.config = MagicMock()
+    processor.config.get.side_effect = Exception("Config error")
+    strategy = processor._get_update_strategy("any_task")
+    assert strategy == "incremental"
+
+
+def test_should_update_by_symbol_exception(mock_parquet_writer):
+    """测试 _should_update_by_symbol 方法的异常处理"""
+    processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
+    processor.config = MagicMock()
+    processor.config.get.side_effect = Exception("Config error")
+    result = processor._should_update_by_symbol("any_task")
+    assert result is True
+
+
+@patch(
+    "src.neo.data_processor.simple_data_processor.SimpleDataProcessor._should_update_by_symbol"
+)
+@patch(
+    "src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy"
+)
+def test_process_no_date_full_replace_by_symbol(
+    mock_get_strategy,
+    mock_should_update,
+    mock_parquet_writer: MagicMock,
+    sample_data_no_date_cols: pd.DataFrame,
+):
+    """测试无日期列时，全量替换且按 symbol 更新"""
+    mock_get_strategy.return_value = "full_replace"
+    mock_should_update.return_value = True
+    symbol_to_test = "any_symbol"
+
+    processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
+    result = processor.process(
+        "some_other_data", symbol_to_test, sample_data_no_date_cols
+    )
+
+    assert result is True
+    mock_parquet_writer.write_full_replace_by_symbol.assert_called_once_with(
+        sample_data_no_date_cols, "some_other_data", [], symbol_to_test
+    )
+
+
+@patch(
+    "src.neo.data_processor.simple_data_processor.SimpleDataProcessor._should_update_by_symbol"
+)
+@patch(
+    "src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy"
+)
+def test_process_no_date_full_replace_not_by_symbol(
+    mock_get_strategy,
+    mock_should_update,
+    mock_parquet_writer: MagicMock,
+    sample_data_no_date_cols: pd.DataFrame,
+):
+    """测试无日期列时，全量替换且不按 symbol 更新"""
+    mock_get_strategy.return_value = "full_replace"
+    mock_should_update.return_value = False
+
+    processor = SimpleDataProcessor(parquet_writer=mock_parquet_writer)
+    result = processor.process(
+        "some_other_data", "any_symbol", sample_data_no_date_cols
+    )
+
+    assert result is True
+    mock_parquet_writer.write_full_replace.assert_called_once_with(
+        sample_data_no_date_cols, "some_other_data", []
+    )

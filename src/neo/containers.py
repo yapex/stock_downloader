@@ -6,6 +6,7 @@ from neo.database.operator import ParquetDBQueryer
 from neo.database.schema_loader import SchemaLoader
 from neo.helpers.task_builder import TaskBuilder
 from neo.helpers.group_handler import GroupHandler
+from neo.helpers.task_filter import TaskFilter
 from neo.services.consumer_runner import ConsumerRunner
 from neo.services.downloader_service import DownloaderService
 from neo.writers.parquet_writer import ParquetWriter
@@ -39,7 +40,10 @@ class AppContainer(containers.DeclarativeContainer):
     db_operator = db_queryer
 
     task_builder = providers.Singleton(TaskBuilder)
-    group_handler = providers.Singleton(GroupHandler, db_operator=db_queryer)
+    task_filter = providers.Singleton(TaskFilter)
+    group_handler = providers.Singleton(
+        GroupHandler, db_operator=db_queryer, task_filter=task_filter
+    )
 
     # Writers
     parquet_writer = providers.Factory(

@@ -219,3 +219,162 @@ def test_write_full_replace_multiple_calls_same_task(
     pd.testing.assert_series_equal(
         actual_close_values, expected_close_values, check_names=False
     )
+
+
+def test_write_full_replace_by_symbol_deletes_only_symbol_partition(
+    tmp_path: Path,
+):
+    """测试 write_full_replace_by_symbol 是否只删除指定 symbol 的分区"""
+    # 准备
+    base_path = tmp_path / "parquet_data"
+    writer = ParquetWriter(base_path=str(base_path))
+    task_type = "stock_daily"
+    partition_cols = ["ts_code"]
+
+    # 准备两个不同 symbol 的数据
+    df1 = pd.DataFrame(
+        {
+            "trade_date": ["20250826"],
+            "ts_code": ["000001.SZ"],
+            "close": [13.5],
+        }
+    )
+    df2 = pd.DataFrame(
+        {
+            "trade_date": ["20250826"],
+            "ts_code": ["600519.SH"],
+            "close": [1700.0],
+        }
+    )
+
+    # 先写入两个 symbol 的数据
+    writer.write(df1, task_type, partition_cols)
+    writer.write(df2, task_type, partition_cols)
+
+    # 验证两个 symbol 的分区都存在
+    partition1_path = base_path / task_type / "ts_code=000001.SZ"
+    partition2_path = base_path / task_type / "ts_code=600519.SH"
+    assert partition1_path.exists()
+    assert partition2_path.exists()
+
+    # 准备新数据，只替换 '000001.SZ'
+    new_df1 = pd.DataFrame(
+        {
+            "trade_date": ["20250827"],
+            "ts_code": ["000001.SZ"],
+            "close": [14.0],
+        }
+    )
+
+    # 执行按 symbol 替换
+    writer.write_full_replace_by_symbol(
+        new_df1, task_type, partition_cols, symbol="000001.SZ"
+    )
+
+    # 验证：'000001.SZ' 的数据被更新
+    read_df1 = pd.read_parquet(partition1_path)
+    assert len(read_df1) == 1
+    assert read_df1["trade_date"].iloc[0] == "20250827"
+    assert read_df1["close"].iloc[0] == 14.0
+
+    # 验证：'600519.SH' 的分区依然存在且未被改变
+    assert partition2_path.exists()
+    read_df2 = pd.read_parquet(partition2_path)
+    assert len(read_df2) == 1
+    assert read_df2["close"].iloc[0] == 1700.0
+
+
+def test_write_full_replace_by_symbol_empty_dataframe(tmp_path: Path):
+    """测试 write_full_replace_by_symbol 方法处理空数据框"""
+    # 准备
+    base_path = tmp_path / "parquet_data"
+    writer = ParquetWriter(base_path=str(base_path))
+    task_type = "stock_daily"
+    symbol = "000001.SZ"
+    symbol_partition_path = base_path / task_type / f"ts_code={symbol}"
+
+    # 先创建一些数据
+    sample_df = pd.DataFrame(
+        {"trade_date": ["20250826"], "ts_code": [symbol], "close": [13.5]}
+    )
+    writer.write(sample_df, task_type, partition_cols=["ts_code"])
+    assert symbol_partition_path.exists()
+
+    # 执行
+    empty_df = pd.DataFrame()
+    writer.write_full_replace_by_symbol(
+        empty_df, task_type, partition_cols=["ts_code"], symbol=symbol
+    )
+
+    # 验证：目录应该仍然存在，因为函数会提前返回
+    assert symbol_partition_path.exists()
+
+
+def raise_io_error(*args, **kwargs):
+    raise IOError("Mocked error")
+
+
+def test_write_full_replace_by_symbol_exception_handling(tmp_path: Path, monkeypatch):
+    """测试 write_full_replace_by_symbol 方法的异常处理"""
+    # 准备
+    base_path = tmp_path / "parquet_data"
+    writer = ParquetWriter(base_path=str(base_path))
+    task_type = "stock_daily"
+    symbol = "000001.SZ"
+    sample_df = pd.DataFrame(
+        {"trade_date": ["20250826"], "ts_code": [symbol], "close": [13.5]}
+    )
+    (base_path / task_type / f"ts_code={symbol}").mkdir(parents=True, exist_ok=True)
+
+    # Mock shutil.rmtree 来触发异常
+    monkeypatch.setattr("shutil.rmtree", raise_io_error)
+
+    # 执行并验证异常
+    with pytest.raises(IOError, match="Mocked error"):
+        writer.write_full_replace_by_symbol(
+            sample_df, task_type, partition_cols=["ts_code"], symbol=symbol
+        )
+
+
+def test_write_empty_dataframe(tmp_path: Path):
+    """测试 write 方法处理空数据框"""
+    base_path = tmp_path / "parquet_data"
+    writer = ParquetWriter(base_path=str(base_path))
+    task_type = "stock_daily"
+    target_dir = base_path / task_type
+
+    writer.write(pd.DataFrame(), task_type, partition_cols=["trade_date"])
+
+    assert not target_dir.exists()
+
+
+def test_write_exception_handling(tmp_path: Path, sample_dataframe: pd.DataFrame, monkeypatch):
+    """测试 write 方法的异常处理"""
+    base_path = tmp_path / "parquet_data"
+    writer = ParquetWriter(base_path=str(base_path))
+    task_type = "stock_daily"
+
+    def mock_write_to_dataset(*args, **kwargs):
+        raise Exception("Test error")
+
+    monkeypatch.setattr("pyarrow.parquet.write_to_dataset", mock_write_to_dataset)
+
+    with pytest.raises(Exception, match="Test error"):
+        writer.write(sample_dataframe, task_type, partition_cols=["trade_date"])
+
+
+def test_write_full_replace_exception_handling(
+    tmp_path: Path, sample_dataframe: pd.DataFrame, monkeypatch
+):
+    """测试 write_full_replace 方法的异常处理"""
+    base_path = tmp_path / "parquet_data"
+    writer = ParquetWriter(base_path=str(base_path))
+    task_type = "stock_basic"
+    (base_path / task_type).mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr("shutil.rmtree", raise_io_error)
+
+    with pytest.raises(IOError, match="Mocked error"):
+        writer.write_full_replace(
+            sample_dataframe, task_type, partition_cols=[]
+        )
