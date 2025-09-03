@@ -50,8 +50,8 @@ class SimpleDataProcessor(IDataProcessor):
     def _get_update_strategy(self, task_type: str) -> str:
         """获取任务类型的更新策略"""
         try:
-            return self.config.get(
-                f"download_tasks.{task_type}.update_strategy", "incremental"
+            return self.config.download_tasks[task_type].get(
+                "update_strategy", "incremental"
             )
         except Exception as e:
             logger.warning(f"获取 {task_type} 更新策略失败，使用默认策略: {e}")
@@ -60,7 +60,7 @@ class SimpleDataProcessor(IDataProcessor):
     def _should_update_by_symbol(self, task_type: str) -> bool:
         """检查是否应按 symbol 进行更新"""
         try:
-            return self.config.get(f"download_tasks.{task_type}.update_by_symbol", True)
+            return self.config.download_tasks[task_type].get("update_by_symbol", True)
         except Exception as e:
             logger.warning(f"获取 {task_type} 更新方式失败，默认按 symbol 更新: {e}")
             return True
