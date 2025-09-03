@@ -20,6 +20,7 @@ sys.path.insert(0, str(project_root / "src"))
 
 from neo.configs import get_config
 from neo.app import container
+from neo.helpers.task_filter import TaskFilter
 
 logger = logging.getLogger(__name__)
 
@@ -50,17 +51,28 @@ def get_task_group_tables(group_name: str) -> List[str]:
 
 
 def get_all_active_stocks(conn: duckdb.DuckDBPyConnection) -> List[str]:
-    """从 stock_basic 表获取所有活跃股票的 ts_code 列表"""
+    """从 stock_basic 表获取所有活跃股票的 ts_code 列表（应用白名单过滤）"""
     try:
-        sql = """
+        # 初始化任务过滤器
+        task_filter = TaskFilter()
+        exchange_whitelist = task_filter.get_exchange_whitelist()
+        
+        # 构建 SQL WHERE 条件，只选择白名单中的交易所
+        exchange_conditions = [f"ts_code LIKE '%.{exchange}'" for exchange in exchange_whitelist]
+        where_clause = f"({' OR '.join(exchange_conditions)})"
+        
+        sql = f"""
             SELECT DISTINCT ts_code 
             FROM stock_basic 
             WHERE ts_code IS NOT NULL AND ts_code != ''
+            AND {where_clause}
             ORDER BY ts_code
         """
+        
         result = conn.execute(sql).fetchall()
         stocks = [row[0] for row in result]
-        logger.info(f"从 stock_basic 表获取到 {len(stocks)} 个活跃股票")
+        
+        logger.info(f"从 stock_basic 表获取到 {len(stocks)} 个活跃股票（应用交易所白名单: {exchange_whitelist}）")
         return stocks
     except Exception as e:
         logger.error(f"查询 stock_basic 表失败: {e}")
@@ -70,7 +82,7 @@ def get_all_active_stocks(conn: duckdb.DuckDBPyConnection) -> List[str]:
 def find_missing_data_by_table(
     conn: duckdb.DuckDBPyConnection, tables: List[str]
 ) -> Dict[str, Set[str]]:
-    """为每个表单独查找缺失数据的股票
+    """为每个表单独查找缺失数据的股票（只检查白名单内的股票）
 
     Returns:
         Dict[str, Set[str]]: 表名到缺失股票集合的映射
@@ -80,6 +92,14 @@ def find_missing_data_by_table(
         return {}
 
     missing_by_table = {}
+    
+    # 初始化任务过滤器
+    task_filter = TaskFilter()
+    exchange_whitelist = task_filter.get_exchange_whitelist()
+    
+    # 构建白名单过滤条件
+    exchange_conditions = [f"sb.ts_code LIKE '%.{exchange}'" for exchange in exchange_whitelist]
+    whitelist_filter = f"({' OR '.join(exchange_conditions)})"
 
     for table in tables:
         try:
@@ -92,11 +112,13 @@ def find_missing_data_by_table(
                 missing_by_table[table] = set()
                 continue
 
-            # 使用 NOT EXISTS 找出在当前表中没有数据的股票（更高效）
+            # 使用 NOT EXISTS 找出在当前表中没有数据的股票（只检查白名单内的股票）
             sql = f"""
                 SELECT sb.ts_code
                 FROM stock_basic sb
-                WHERE NOT EXISTS (
+                WHERE {whitelist_filter}
+                AND sb.ts_code IS NOT NULL AND sb.ts_code != ''
+                AND NOT EXISTS (
                     SELECT 1 FROM {table} t 
                     WHERE t.ts_code = sb.ts_code
                 )
