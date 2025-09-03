@@ -3,10 +3,11 @@
 import logging
 from pathlib import Path
 import shutil
-from typing import List
+from typing import List, Optional
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import os
 
 from .interfaces import IParquetWriter
 
@@ -48,6 +49,9 @@ class ParquetWriter(IParquetWriter):
                 basename_template=f"part-{{i}}-{pd.Timestamp.now().strftime('%Y%m%d%H%M%S')}.parquet",
             )
             logger.info(f"✅ 成功将 {len(data)} 条数据写入到 {target_path}")
+            
+            # 记录实际创建的文件路径（debug级别）
+            self._log_created_files(target_path, partition_cols, data)
         except Exception as e:
             logger.error(f"💥 写入 Parquet 数据到 {target_path} 失败: {e}")
             raise
@@ -77,6 +81,9 @@ class ParquetWriter(IParquetWriter):
                 basename_template=f"part-{{i}}-{pd.Timestamp.now().strftime('%Y%m%d%H%M%S')}.parquet",
             )
             logger.debug(f"✅ 全量替换成功写入 {len(data)} 条数据到 {target_path}")
+            
+            # 记录实际创建的文件路径（debug级别）
+            self._log_created_files(target_path, partition_cols, data)
         except Exception as e:
             logger.error(f"💥 全量替换写入到 {target_path} 失败: {e}")
             raise
@@ -118,8 +125,45 @@ class ParquetWriter(IParquetWriter):
             logger.debug(
                 f"✅ 全量替换成功写入 {len(data)} 条数据到 {target_path} for symbol {symbol}"
             )
+            
+            # 记录实际创建的文件路径（debug级别）
+            self._log_created_files(target_path, partition_cols, data, symbol)
         except Exception as e:
             logger.error(
                 f"💥 全量替换写入到 {target_path} for symbol {symbol} 失败: {e}"
             )
             raise
+    
+    def _log_created_files(self, target_path: Path, partition_cols: List[str], 
+                          data: pd.DataFrame, symbol: Optional[str] = None) -> None:
+        """记录实际创建的parquet文件路径
+        
+        Args:
+            target_path: 目标路径
+            partition_cols: 分区列
+            data: 数据 DataFrame
+            symbol: 股票代码（如果是按symbol分区）
+        """
+        try:
+            # 根据分区列和数据内容推断文件路径
+            if partition_cols and len(partition_cols) > 0:
+                # 有分区的情况，根据第一个分区列的唯一值构造路径
+                first_partition_col = partition_cols[0]
+                if first_partition_col in data.columns:
+                    unique_values = data[first_partition_col].unique()
+                    for value in unique_values:
+                        partition_path = target_path / f"{first_partition_col}={value}"
+                        if symbol:
+                            logger.debug(f"📁 [{symbol}] 数据写入到: {partition_path}/")
+                        else:
+                            logger.debug(f"📁 数据写入到: {partition_path}/")
+            else:
+                # 无分区的情况
+                if symbol:
+                    logger.debug(f"📁 [{symbol}] 数据写入到: {target_path}/")
+                else:
+                    logger.debug(f"📁 数据写入到: {target_path}/")
+                                
+        except Exception as e:
+            # 记录文件路径失败不应影响主流程
+            logger.debug(f"记录文件路径失败: {e}")
