@@ -348,7 +348,9 @@ def test_write_empty_dataframe(tmp_path: Path):
     assert not target_dir.exists()
 
 
-def test_write_exception_handling(tmp_path: Path, sample_dataframe: pd.DataFrame, monkeypatch):
+def test_write_exception_handling(
+    tmp_path: Path, sample_dataframe: pd.DataFrame, monkeypatch
+):
     """测试 write 方法的异常处理"""
     base_path = tmp_path / "parquet_data"
     writer = ParquetWriter(base_path=str(base_path))
@@ -375,6 +377,4 @@ def test_write_full_replace_exception_handling(
     monkeypatch.setattr("shutil.rmtree", raise_io_error)
 
     with pytest.raises(IOError, match="Mocked error"):
-        writer.write_full_replace(
-            sample_dataframe, task_type, partition_cols=[]
-        )
+        writer.write_full_replace(sample_dataframe, task_type, partition_cols=[])

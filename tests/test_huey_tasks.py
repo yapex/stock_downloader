@@ -409,9 +409,9 @@ class TestMetadataSyncTask:
         # 调用原始函数（不是Huey包装的任务）
         sync_metadata.func()
 
-        # 验证MetadataSyncManager被创建并调用sync_metadata方法
+        # 验证MetadataSyncManager被创建并调用sync方法
         mock_sync_manager_class.assert_called_once()
-        mock_sync_manager.sync_metadata.assert_called_once()
+        mock_sync_manager.sync.assert_called_once()
 
     @patch("neo.tasks.metadata_sync_tasks.MetadataSyncManager")
     def test_sync_metadata_no_items_found(self, mock_sync_manager_class):
@@ -425,9 +425,9 @@ class TestMetadataSyncTask:
         # 调用原始函数（不是Huey包装的任务）
         sync_metadata.func()
 
-        # 验证MetadataSyncManager被创建并调用sync_metadata方法
+        # 验证MetadataSyncManager被创建并调用sync方法
         mock_sync_manager_class.assert_called_once()
-        mock_sync_manager.sync_metadata.assert_called_once()
+        mock_sync_manager.sync.assert_called_once()
 
     @patch("neo.tasks.metadata_sync_tasks.MetadataSyncManager")
     def test_sync_metadata_success(self, mock_sync_manager_class):
@@ -441,9 +441,9 @@ class TestMetadataSyncTask:
         # 调用原始函数（不是Huey包装的任务）
         sync_metadata.func()
 
-        # 验证MetadataSyncManager被创建并调用sync_metadata方法
+        # 验证MetadataSyncManager被创建并调用sync方法
         mock_sync_manager_class.assert_called_once()
-        mock_sync_manager.sync_metadata.assert_called_once()
+        mock_sync_manager.sync.assert_called_once()
 
     @patch("neo.tasks.metadata_sync_tasks.MetadataSyncManager")
     def test_sync_metadata_exception_handling(self, mock_sync_manager_class):
@@ -452,16 +452,16 @@ class TestMetadataSyncTask:
 
         # 创建mock sync manager，设置抛出异常
         mock_sync_manager = Mock()
-        mock_sync_manager.sync_metadata.side_effect = Exception("Test sync error")
+        mock_sync_manager.sync.side_effect = Exception("Test sync error")
         mock_sync_manager_class.return_value = mock_sync_manager
 
         with pytest.raises(Exception, match="Test sync error"):
             # 调用原始函数（不是Huey包装的任务）
             sync_metadata.func()
 
-        # 验证MetadataSyncManager被创建并调用sync_metadata方法
+        # 验证MetadataSyncManager被创建并调用sync方法
         mock_sync_manager_class.assert_called_once()
-        mock_sync_manager.sync_metadata.assert_called_once()
+        mock_sync_manager.sync.assert_called_once()
 
 
 class TestBuildAndEnqueueTask:
@@ -482,13 +482,6 @@ class TestBuildAndEnqueueTask:
         from neo.tasks.download_tasks import build_and_enqueue_downloads_task
         from neo.helpers.utils import get_next_day_str
 
-        # 设置container mock
-        mock_container_instance = MockContainer()
-        mock_container.group_handler = mock_container_instance.group_handler
-        mock_container._group_handler_instance = (
-            mock_container_instance._group_handler_instance
-        )
-
         # 设置db_queryer mock
         mock_db_queryer = Mock()
         mock_db_queryer.get_latest_trading_day.return_value = "20240115"
@@ -506,31 +499,11 @@ class TestBuildAndEnqueueTask:
         mock_config = MockConfig()
         mock_get_config.return_value = mock_config
 
+        # 准备任务映射
+        task_stock_mapping = {"stock_daily": ["000001.SZ", "000002.SZ"]}
+
         # 执行任务
-        print("开始执行build_and_enqueue_downloads_task")
-        print(f"mock_get_config 配置: {mock_get_config.return_value}")
-        print(f"mock_container 配置: {mock_container}")
-
-        try:
-            result = build_and_enqueue_downloads_task.func(
-                "all_stocks", stock_codes=None
-            )
-            print(f"执行结果: {result}")
-        except Exception as e:
-            print(f"build_and_enqueue_downloads_task 执行异常: {e}")
-            import traceback
-
-            traceback.print_exc()
-            raise
-
-        # 验证调用
-        mock_container.group_handler.assert_called_once()
-        mock_container_instance._group_handler_instance.get_task_types_for_group.assert_called_once_with(
-            "all_stocks"
-        )
-        mock_container_instance._group_handler_instance.get_symbols_for_group.assert_called_once_with(
-            "all_stocks"
-        )
+        build_and_enqueue_downloads_task.func(task_stock_mapping)
 
         # 验证container.db_queryer被正确调用
         mock_container.db_queryer.assert_called_once()
@@ -567,13 +540,6 @@ class TestBuildAndEnqueueTask:
         from neo.tasks.download_tasks import build_and_enqueue_downloads_task
         from neo.helpers.utils import get_next_day_str
 
-        # 设置container mock
-        mock_container_instance = MockContainer()
-        mock_container.group_handler = mock_container_instance.group_handler
-        mock_container._group_handler_instance = (
-            mock_container_instance._group_handler_instance
-        )
-
         # 设置db_queryer mock
         mock_db_queryer = Mock()
         mock_db_queryer.get_latest_trading_day.return_value = "20240115"
@@ -591,16 +557,11 @@ class TestBuildAndEnqueueTask:
         mock_config = MockConfig()
         mock_get_config.return_value = mock_config
 
-        # 执行任务，指定特定股票代码
-        build_and_enqueue_downloads_task.func("all_stocks", stock_codes=["600519.SH"])
+        # 准备任务映射，指定特定股票代码
+        task_stock_mapping = {"stock_daily": ["600519.SH"]}
 
-        # 验证调用
-        mock_container.group_handler.assert_called_once()
-        mock_container_instance._group_handler_instance.get_task_types_for_group.assert_called_once_with(
-            "all_stocks"
-        )
-        # get_symbols_for_group 不应该被调用，因为使用了指定的股票代码
-        mock_container_instance._group_handler_instance.get_symbols_for_group.assert_not_called()
+        # 执行任务
+        build_and_enqueue_downloads_task.func(task_stock_mapping)
 
         # 验证container.db_queryer被正确调用
         mock_container.db_queryer.assert_called_once()
@@ -622,26 +583,20 @@ class TestBuildAndEnqueueTask:
         """测试构建和派发任务的异常处理"""
         from neo.tasks.download_tasks import build_and_enqueue_downloads_task
 
-        # 设置container mock
-        mock_container_instance = MockContainer()
-        mock_container.group_handler = mock_container_instance.group_handler
-        mock_container._group_handler_instance = (
-            mock_container_instance._group_handler_instance
-        )
-
-        # 设置group_handler抛出异常
-        mock_container_instance._group_handler_instance.get_task_types_for_group.side_effect = Exception(
-            "构建下载任务失败"
-        )
+        # 设置db_queryer抛出异常
+        mock_container.db_queryer.side_effect = Exception("构建下载任务失败")
 
         # 设置config mock
         mock_config = MockConfig()
         mock_get_config.return_value = mock_config
 
-        with pytest.raises(Exception, match="构建下载任务失败"):
-            build_and_enqueue_downloads_task.func("empty_group")
+        # 准备任务映射
+        task_stock_mapping = {"stock_daily": ["000001.SZ"]}
 
-        mock_container.group_handler.assert_called_once()
+        with pytest.raises(Exception, match="构建下载任务失败"):
+            build_and_enqueue_downloads_task.func(task_stock_mapping)
+
+        mock_container.db_queryer.assert_called_once()
         mock_logger.error.assert_called_once()
         assert "构建下载任务失败" in mock_logger.error.call_args[0][0]
         mock_download_task.assert_not_called()

@@ -21,6 +21,17 @@ class TestDlCommand:
         # 设置 mock
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
+        
+        # 设置 app_service mock 返回任务映射
+        mock_app_service = Mock()
+        mock_task_mapping = {"stock_daily": ["000001.SZ", "000002.SZ"]}
+        mock_app_service.build_task_stock_mapping_from_group.return_value = mock_task_mapping
+        mock_container.app_service.return_value = mock_app_service
+        
+        # 设置 task 返回值
+        mock_task_result = Mock()
+        mock_task_result.id = "test-task-id"
+        mock_task.return_value = mock_task_result
 
         # 执行命令
         result = self.runner.invoke(app, ["dl", "--group", "test_group"])
@@ -28,7 +39,10 @@ class TestDlCommand:
         # 验证结果
         assert result.exit_code == 0
         mock_logging.assert_called_once_with("download", "info")
-        mock_task.assert_called_once_with(group_name="test_group", stock_codes=None)
+        mock_app_service.build_task_stock_mapping_from_group.assert_called_once_with(
+            "test_group", None
+        )
+        mock_task.assert_called_once_with(mock_task_mapping)
         assert "正在提交任务组" in result.stdout
         assert "✅ 任务已成功提交到后台处理" in result.stdout
 
@@ -40,6 +54,17 @@ class TestDlCommand:
         # 设置 mock
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
+        
+        # 设置 app_service mock 返回任务映射
+        mock_app_service = Mock()
+        mock_task_mapping = {"stock_daily": ["000001.SZ", "000002.SZ"]}
+        mock_app_service.build_task_stock_mapping_from_group.return_value = mock_task_mapping
+        mock_container.app_service.return_value = mock_app_service
+        
+        # 设置 task 返回值
+        mock_task_result = Mock()
+        mock_task_result.id = "test-task-id"
+        mock_task.return_value = mock_task_result
 
         # 执行命令
         result = self.runner.invoke(app, ["dl", "--debug", "--group", "test_group"])
@@ -47,7 +72,10 @@ class TestDlCommand:
         # 验证结果
         assert result.exit_code == 0
         mock_logging.assert_called_once_with("download", "debug")
-        mock_task.assert_called_once_with(group_name="test_group", stock_codes=None)
+        mock_app_service.build_task_stock_mapping_from_group.assert_called_once_with(
+            "test_group", None
+        )
+        mock_task.assert_called_once_with(mock_task_mapping)
 
     @patch("neo.helpers.utils.setup_logging")
     @patch("neo.main.container")
@@ -57,6 +85,17 @@ class TestDlCommand:
         # 设置 mock
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
+        
+        # 设置 app_service mock 返回任务映射
+        mock_app_service = Mock()
+        mock_task_mapping = {"stock_daily": ["000001.SZ", "000002.SZ"]}
+        mock_app_service.build_task_stock_mapping_from_group.return_value = mock_task_mapping
+        mock_container.app_service.return_value = mock_app_service
+        
+        # 设置 task 返回值
+        mock_task_result = Mock()
+        mock_task_result.id = "test-task-id"
+        mock_task.return_value = mock_task_result
 
         # 执行命令
         result = self.runner.invoke(
@@ -74,9 +113,10 @@ class TestDlCommand:
 
         # 验证结果
         assert result.exit_code == 0
-        mock_task.assert_called_once_with(
-            group_name="test_group", stock_codes=["000001.SZ", "000002.SZ"]
+        mock_app_service.build_task_stock_mapping_from_group.assert_called_once_with(
+            "test_group", ["000001.SZ", "000002.SZ"]
         )
+        mock_task.assert_called_once_with(mock_task_mapping)
 
     @patch("neo.helpers.utils.setup_logging")
     @patch("neo.main.container")
@@ -86,13 +126,27 @@ class TestDlCommand:
         # 设置 mock
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
+        
+        # 设置 app_service mock 返回任务映射
+        mock_app_service = Mock()
+        mock_task_mapping = {"stock_daily": ["000001.SZ", "000002.SZ"]}
+        mock_app_service.build_task_stock_mapping_from_group.return_value = mock_task_mapping
+        mock_container.app_service.return_value = mock_app_service
+        
+        # 设置 task 返回值
+        mock_task_result = Mock()
+        mock_task_result.id = "test-task-id"
+        mock_task.return_value = mock_task_result
 
         # 执行命令
         result = self.runner.invoke(app, ["dl", "--dry-run", "--group", "test_group"])
 
         # 验证结果
         assert result.exit_code == 0
-        mock_task.assert_called_once_with(group_name="test_group", stock_codes=None)
+        mock_app_service.build_task_stock_mapping_from_group.assert_called_once_with(
+            "test_group", None
+        )
+        mock_task.assert_called_once_with(mock_task_mapping)
 
     @patch("neo.helpers.utils.setup_logging")
     @patch("neo.main.container")
@@ -102,13 +156,27 @@ class TestDlCommand:
         # 设置 mock
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
+        
+        # 设置 app_service mock 返回任务映射
+        mock_app_service = Mock()
+        mock_task_mapping = {"stock_daily": ["000001.SZ", "000002.SZ"]}
+        mock_app_service.build_task_stock_mapping_from_group.return_value = mock_task_mapping
+        mock_container.app_service.return_value = mock_app_service
+        
+        # 设置 task 返回值
+        mock_task_result = Mock()
+        mock_task_result.id = "test-task-id"
+        mock_task.return_value = mock_task_result
 
         # 执行命令
         result = self.runner.invoke(app, ["dl"])
 
         # 验证结果
         assert result.exit_code == 0
-        mock_task.assert_called_once_with(group_name=None, stock_codes=None)
+        mock_app_service.build_task_stock_mapping_from_group.assert_called_once_with(
+            None, None
+        )
+        mock_task.assert_called_once_with(mock_task_mapping)
 
     @patch("neo.helpers.utils.setup_logging")
     @patch("neo.main.container")
@@ -318,13 +386,27 @@ class TestEdgeCases:
         # 设置 mock
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
+        
+        # 设置 app_service mock 返回任务映射
+        mock_app_service = Mock()
+        mock_task_mapping = {"stock_daily": ["000001.SZ", "000002.SZ"]}
+        mock_app_service.build_task_stock_mapping_from_group.return_value = mock_task_mapping
+        mock_container.app_service.return_value = mock_app_service
+        
+        # 设置 task 返回值
+        mock_task_result = Mock()
+        mock_task_result.id = "test-task-id"
+        mock_task.return_value = mock_task_result
 
         # 执行命令
         result = self.runner.invoke(app, ["dl", "--group", ""])
 
         # 验证结果
         assert result.exit_code == 0
-        mock_task.assert_called_once_with(group_name="", stock_codes=None)
+        mock_app_service.build_task_stock_mapping_from_group.assert_called_once_with(
+            "", None
+        )
+        mock_task.assert_called_once_with(mock_task_mapping)
 
     @patch("neo.helpers.utils.setup_logging")
     @patch("neo.main.container")
@@ -334,6 +416,17 @@ class TestEdgeCases:
         # 设置 mock
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
+        
+        # 设置 app_service mock 返回任务映射
+        mock_app_service = Mock()
+        mock_task_mapping = {"stock_daily": ["000001.SZ", "000002.SZ"]}
+        mock_app_service.build_task_stock_mapping_from_group.return_value = mock_task_mapping
+        mock_container.app_service.return_value = mock_app_service
+        
+        # 设置 task 返回值
+        mock_task_result = Mock()
+        mock_task_result.id = "test-task-id"
+        mock_task.return_value = mock_task_result
 
         # 执行命令
         result = self.runner.invoke(
@@ -354,9 +447,10 @@ class TestEdgeCases:
         # 验证结果
         assert result.exit_code == 0
         mock_logging.assert_called_once_with("download", "debug")
-        mock_task.assert_called_once_with(
-            group_name="test_group", stock_codes=["000001.SZ", "000002.SZ"]
+        mock_app_service.build_task_stock_mapping_from_group.assert_called_once_with(
+            "test_group", ["000001.SZ", "000002.SZ"]
         )
+        mock_task.assert_called_once_with(mock_task_mapping)
 
     def test_dp_with_invalid_queue_name(self):
         """测试无效的队列名称"""

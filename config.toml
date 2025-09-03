@@ -83,6 +83,9 @@ daily = [
     "daily_basic",
     "stock_adj_hfq"
 ]
+hfq = [
+	"stock_adj_hfq"
+]
 financial=[
     "balance_sheet",
     "income",
@@ -97,5 +100,5 @@ all=[
     "cash_flow",
 ]
 test=[
-    "daily_basic"
+    "cash_flow"
 ]

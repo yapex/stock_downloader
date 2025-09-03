@@ -44,14 +44,22 @@ def dl(
     通过向 Huey 慢速队列提交一个构建任务来启动整个增量下载流程。
     """
     from neo.tasks.huey_tasks import build_and_enqueue_downloads_task
+    from neo.helpers.app_service import AppService
 
     typer.echo(f"正在提交任务组 '{group}' 的增量下载构建任务...")
-    # 将任务提交到 Huey 慢速队列，而不是直接执行函数
-    # 注意：这里调用的是 Huey 任务对象，会异步执行
-    # 问题修复：之前直接调用导致函数执行两次（同步+异步），现在确保只异步执行
-    task_result = build_and_enqueue_downloads_task(
-        group_name=group, stock_codes=stock_codes
+    
+    # 使用 AppService 构建任务映射
+    app_service = container.app_service()
+    task_stock_mapping = app_service.build_task_stock_mapping_from_group(
+        group, stock_codes
     )
+    
+    if not task_stock_mapping:
+        typer.echo(f"⚠️ 任务组 '{group}' 没有找到任何任务或股票代码")
+        return
+    
+    # 将任务提交到 Huey 慢速队列
+    task_result = build_and_enqueue_downloads_task(task_stock_mapping)
     typer.echo(
         f"✅ 任务已成功提交到后台处理，任务ID: {task_result.id}。请启动消费者来执行任务。"
     )

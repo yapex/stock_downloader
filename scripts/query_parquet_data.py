@@ -55,6 +55,7 @@ def query(
 
     logging.info(f"准备查询元数据数据库: {db_path}")
 
+    con = None
     try:
         # 使用 ibis 连接 DuckDB
         con = ibis.duckdb.connect(str(db_path), read_only=True)
@@ -131,7 +132,8 @@ def query(
             table_expr = table_expr.limit(limit)
 
             # 执行 Ibis 表达式
-            logging.info(f"执行 Ibis 表达式: \n{table_expr}")
+            logging.info(f"""执行 Ibis 表达式: 
+{table_expr}""")
             result_df = table_expr.execute()
 
         else:
@@ -150,6 +152,10 @@ def query(
     except Exception as e:
         logging.error(f"查询数据湖时发生错误: {e}")
         raise typer.Exit(1)
+    finally:
+        if con:
+            con.disconnect()
+            logging.info("数据库连接已关闭。")
 
 
 if __name__ == "__main__":

@@ -32,6 +32,7 @@ dependencies = [
     "huey>=2.5.3",
     "dependency-injector>=4.48.1",
     "pyarrow>=21.0.0",
+    "poethepoet>=0.37.0",
 ]
 
 [project.scripts]
@@ -155,3 +156,44 @@ dev = [
     "pipdeptree>=2.28.0",
     "ibis-framework[duckdb,examples]>=10.8.0",
 ]
+
+# ==========================================================
+# Poethepoet 任务管理配置
+# ==========================================================
+[tool.poe.tasks]
+
+# 测试相关任务
+test = "uv run python -m pytest"
+test-cov = "uv run python -m pytest --cov=src --cov-report=term-missing"
+test-fast = "uv run python -m pytest -x --tb=short"
+test-verbose = "uv run python -m pytest -v"
+
+# 代码质量检查
+lint = "uv run ruff check src tests"
+lint-fix = "uv run ruff check --fix src tests"
+format = "uv run ruff format src tests"
+format-check = "uv run ruff format --check src tests"
+type-check = "uv run mypy src"
+
+# 组合任务
+check = ["lint", "format-check", "type-check"]
+fix = ["lint-fix", "format"]
+ci = ["check", "test-cov"]
+
+# 项目运行任务
+run = "uv run neo"
+run-help = "uv run neo --help"
+
+# 开发工具
+clean = "rm -rf .pytest_cache .mypy_cache .ruff_cache __pycache__ .coverage"
+deps = "uv run pipdeptree"
+
+# 脚本任务
+redown = "uv run python scripts/check_and_redown.py"
+monitor = "uv run python scripts/huey_monitor.py"
+qdata = "uv run python scripts/query_parquet_data.py"
+msync = "uv run python scripts/manual_sync_metadata.py"
+
+# Huey 相关任务
+huey-fast = "uv run neo dp fast"
+huey-slow = "uv run neo dp slow"

@@ -185,21 +185,20 @@ class DownloadTaskManager:
 
 
 @huey_slow.task()
-def build_and_enqueue_downloads_task(
-    group_name: str, stock_codes: Optional[List[str]] = None
-):
+def build_and_enqueue_downloads_task(task_stock_mapping: Dict[str, List[str]]):
     """
     构建并派发增量下载任务 (慢速队列, V3 - 随机优先级)
 
     这是智能增量下载的第一步。它会为每个业务类型创建独立的任务生成器，
     然后通过轮询、交叉生成的方式，为每个任务附加一个随机优先级后再派发。
-    这能确保队列任务的高度多样性，解决“车队效应”导致的 worker 阻塞。
+    这能确保队列任务的高度多样性，解决"车队效应"导致的 worker 阻塞。
 
     Args:
-        group_name: 在 config.toml 中定义的任务组名
-        stock_codes: 可选的股票代码列表，如果提供则只处理这些股票
+        task_stock_mapping: 任务类型到股票代码列表的映射，如 {'stock_basic': ['000001.SZ', '000002.SZ'], 'daily': ['000001.SZ']}
     """
-    logger.debug(f"[HUEY_SLOW] V3 开始构建增量下载任务, 任务组: {group_name}")
+    logger.debug(
+        f"[HUEY_SLOW] V3 开始构建增量下载任务, 任务映射: {list(task_stock_mapping.keys())}"
+    )
     try:
         from ..app import container
 
@@ -213,17 +212,15 @@ def build_and_enqueue_downloads_task(
         else:
             logger.warning("⏬ ⚠️ 未能获取到最新交易日，部分任务可能不会执行增量检查。")
 
-        task_types, symbols = task_manager._get_task_types_and_symbols(
-            group_name, stock_codes
-        )
+        task_types = list(task_stock_mapping.keys())
         if not task_types:
             return
 
-        # 1. 为每个业务类型创建独立的“任务生成器”
+        # 1. 为每个业务类型创建独立的"任务生成器"
         logger.debug(f"为 {len(task_types)} 个任务类型创建生成器: {task_types}")
         generators = [
             task_manager._generate_task_configs_for_type(
-                tt, symbols, db_queryer, latest_trading_day
+                tt, task_stock_mapping[tt], db_queryer, latest_trading_day
             )
             for tt in task_types
         ]
