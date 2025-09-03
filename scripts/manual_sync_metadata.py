@@ -58,7 +58,7 @@ def sync(
     if force_full_scan:
         print("模式: 强制全量扫描（忽略文件修改时间）")
     elif mtime_check_minutes > 0:
-        print(f"模式: 快速扫描（只检查最近 {mtime_check_minutes} 分钟内的变动）")
+        print(f"模式: 快速扫描（跳过 {mtime_check_minutes} 分钟前无变动的表）")
     else:
         print("模式: 检查所有文件（不限制时间）")
 

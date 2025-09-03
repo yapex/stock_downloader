@@ -2,6 +2,8 @@ import duckdb
 from pathlib import Path
 import re
 import time
+import json
+import hashlib
 from typing import Set, Dict, Optional
 
 
@@ -23,6 +25,104 @@ class MetadataSyncManager:
         self.parquet_path = Path(parquet_base_path)
         self.db_path.parent.mkdir(exist_ok=True, parents=True)
         self.parquet_path.mkdir(exist_ok=True, parents=True)
+        # 缓存文件路径
+        self.cache_path = self.db_path.parent / ".metadata_sync_cache.json"
+        self.cache = {}
+        self._load_cache()
+        
+    def _load_cache(self):
+        """加载缓存数据。"""
+        try:
+            if self.cache_path.exists():
+                with open(self.cache_path, 'r', encoding='utf-8') as f:
+                    self.cache = json.load(f)
+            else:
+                self.cache = {}
+        except (json.JSONDecodeError, IOError):
+            self.cache = {}
+    
+    def _save_cache(self):
+        """保存缓存数据。"""
+        try:
+            with open(self.cache_path, 'w', encoding='utf-8') as f:
+                json.dump(self.cache, f, indent=2, ensure_ascii=False)
+        except IOError:
+            pass  # 忽略缓存保存失败
+    
+    def _quick_table_check(self, table_name: str, minutes: int) -> Dict[str, any]:
+        """快速检查表目录是否有变化，使用目录级别的优化。"""
+        table_dir = self.parquet_path / table_name
+        if not table_dir.exists():
+            return {"has_changes": False, "last_modified": None, "file_count": 0, "method": "dir_not_exists"}
+            
+        # 获取目录的修改时间
+        try:
+            current_dir_mtime = table_dir.stat().st_mtime
+        except OSError:
+            # 如果无法获取目录信息，返回安全值
+            return {"has_changes": True, "last_modified": None, "file_count": 0, "method": "dir_stat_failed"}
+        
+        # 检查缓存
+        cached_info = self.cache.get(table_name, {})
+        cached_dir_mtime = cached_info.get("dir_mtime", 0)
+        
+        # 如果目录没变，检查时间窗口
+        if current_dir_mtime == cached_dir_mtime and cached_info:
+            cached_last_modified = cached_info.get("last_modified")
+            if cached_last_modified and minutes > 0:
+                cutoff_time = time.time() - (minutes * 60)
+                has_recent_changes = cached_last_modified > cutoff_time
+                return {
+                    "has_changes": has_recent_changes,
+                    "last_modified": cached_last_modified,
+                    "file_count": cached_info.get("file_count", 0),
+                    "method": "cached"
+                }
+        
+        # 目录变了或缓存不存在，需要做快速文件扫描
+        return self._fast_file_scan(table_name, minutes, current_dir_mtime)
+    
+    def _fast_file_scan(self, table_name: str, minutes: int, dir_mtime: float) -> Dict[str, any]:
+        """快速文件扫描，优化后的版本。"""
+        table_dir = self.parquet_path / table_name
+        cutoff_time = time.time() - (minutes * 60) if minutes > 0 else 0
+        
+        latest_mtime = 0
+        file_count = 0
+        has_recent_changes = False
+        
+        # 直接使用 glob 而不是 rglob，减少递归扫描
+        try:
+            for parquet_file in table_dir.glob("**/*.parquet"):
+                try:
+                    mtime = parquet_file.stat().st_mtime
+                    file_count += 1
+                    if mtime > latest_mtime:
+                        latest_mtime = mtime
+                    if minutes > 0 and mtime > cutoff_time:
+                        has_recent_changes = True
+                        # 找到最近变化后可以提前退出
+                        break
+                except OSError:
+                    continue
+        except OSError:
+            # 目录无法访问
+            return {"has_changes": True, "last_modified": None, "file_count": 0, "method": "scan_failed"}
+        
+        # 更新缓存
+        self.cache[table_name] = {
+            "dir_mtime": dir_mtime,
+            "last_modified": latest_mtime if latest_mtime > 0 else None,
+            "file_count": file_count,
+            "last_check": time.time()
+        }
+        
+        return {
+            "has_changes": has_recent_changes if minutes > 0 else True,
+            "last_modified": latest_mtime if latest_mtime > 0 else None,
+            "file_count": file_count,
+            "method": "fast_scan"
+        }
         
     def _format_time_diff(self, timestamp: float) -> str:
         """格式化时间差，返回友好的时间描述。"""
@@ -162,11 +262,8 @@ class MetadataSyncManager:
         try:
             with duckdb.connect(database=str(self.db_path)) as con:
                 for table_name in table_names:
-                    # 获取文件信息
-                    file_info = self._get_file_info(table_name, mtime_check_minutes)
-                    
-                    # 获取同步前的表统计信息
-                    before_stats = self._get_table_stats(con, table_name)
+                    # 获取文件信息（优化版本）
+                    file_info = self._quick_table_check(table_name, mtime_check_minutes)
                     
                     # --- 快速扫描模式 ---
                     if not force_full_scan and mtime_check_minutes > 0:
@@ -175,9 +272,13 @@ class MetadataSyncManager:
                             if file_info["last_modified"]:
                                 time_info = f", 最后修改时间: {self._format_time_diff(file_info['last_modified'])}"
                             
-                            print(f"  -> 表 '{table_name}' 无最近变动跳过 (文件数: {file_info['file_count']}个{time_info})")
+                            method_info = f" [{file_info.get('method', 'unknown')}]"
+                            print(f"  -> 表 '{table_name}' 无最近变动跳过 (文件数: {file_info['file_count']}个{time_info}){method_info}")
                             skipped_count += 1
                             continue
+                    
+                    # 只有在需要更新时才获取表统计信息
+                    before_stats = self._get_table_stats(con, table_name)
                     
                     # --- 完整扫描模式 ---
                     physical_partitions = self._get_physical_partitions(table_name)
@@ -245,6 +346,8 @@ class MetadataSyncManager:
                         skipped_count += 1
 
             print(f"\n元数据同步完成！更新: {updated_count}, 跳过: {skipped_count}。")
+            # 保存缓存
+            self._save_cache()
 
         except duckdb.Error as e:
             print(f"\n元数据同步过程中发生错误: {e}")
