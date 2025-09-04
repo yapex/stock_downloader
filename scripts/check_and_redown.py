@@ -10,6 +10,8 @@
 
 import logging
 import sys
+import json
+from datetime import datetime
 from pathlib import Path
 from typing import List, Set, Dict
 import duckdb
@@ -50,29 +52,69 @@ def get_task_group_tables(group_name: str) -> List[str]:
     return task_groups.get(group_name, [])
 
 
+def save_missing_stocks_log(missing_by_table: Dict[str, Set[str]]) -> Path:
+    """保存缺失股票的详细日志到logs目录
+    
+    Args:
+        missing_by_table: 表名到缺失股票集合的映射
+        
+    Returns:
+        Path: 日志文件路径
+    """
+    # 创建 logs 目录
+    logs_dir = project_root / "logs"
+    logs_dir.mkdir(exist_ok=True)
+    
+    # 生成日志文件名
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = logs_dir / f"check_and_redown_{timestamp}.json"
+    
+    # 准备日志数据
+    log_data = {
+        "timestamp": timestamp,
+        "summary": {
+            "total_tables": len(missing_by_table),
+            "total_missing_stocks": sum(len(stocks) for stocks in missing_by_table.values()),
+            "tables_with_missing": [table for table, stocks in missing_by_table.items() if stocks]
+        },
+        "missing_by_table": {}
+    }
+    
+    # 为每个表生成详细信息
+    for table_name, missing_stocks in missing_by_table.items():
+        missing_list = sorted(list(missing_stocks))
+        log_data["missing_by_table"][table_name] = {
+            "count": len(missing_list),
+            "stocks": missing_list
+        }
+    
+    # 保存到文件
+    with open(log_file, 'w', encoding='utf-8') as f:
+        json.dump(log_data, f, indent=2, ensure_ascii=False)
+    
+    logger.info(f"📄 缺失股票详细日志已保存到: {log_file}")
+    return log_file
+
+
 def get_all_active_stocks(conn: duckdb.DuckDBPyConnection) -> List[str]:
     """从 stock_basic 表获取所有活跃股票的 ts_code 列表（应用白名单过滤）"""
     try:
         # 初始化任务过滤器
         task_filter = TaskFilter()
-        exchange_whitelist = task_filter.get_exchange_whitelist()
-        
-        # 构建 SQL WHERE 条件，只选择白名单中的交易所
-        exchange_conditions = [f"ts_code LIKE '%.{exchange}'" for exchange in exchange_whitelist]
-        where_clause = f"({' OR '.join(exchange_conditions)})"
+        filter_conditions = task_filter.get_stock_filter_sql_conditions()
         
         sql = f"""
             SELECT DISTINCT ts_code 
             FROM stock_basic 
             WHERE ts_code IS NOT NULL AND ts_code != ''
-            AND {where_clause}
+            AND {filter_conditions}
             ORDER BY ts_code
         """
         
         result = conn.execute(sql).fetchall()
         stocks = [row[0] for row in result]
         
-        logger.info(f"从 stock_basic 表获取到 {len(stocks)} 个活跃股票（应用交易所白名单: {exchange_whitelist}）")
+        logger.info(f"从 stock_basic 表获取到 {len(stocks)} 个活跃股票（应用交易所白名单: {task_filter.get_exchange_whitelist()}）")
         return stocks
     except Exception as e:
         logger.error(f"查询 stock_basic 表失败: {e}")
@@ -95,11 +137,7 @@ def find_missing_data_by_table(
     
     # 初始化任务过滤器
     task_filter = TaskFilter()
-    exchange_whitelist = task_filter.get_exchange_whitelist()
-    
-    # 构建白名单过滤条件
-    exchange_conditions = [f"sb.ts_code LIKE '%.{exchange}'" for exchange in exchange_whitelist]
-    whitelist_filter = f"({' OR '.join(exchange_conditions)})"
+    filter_conditions = task_filter.get_stock_filter_sql_conditions().replace("ts_code", "sb.ts_code")
 
     for table in tables:
         try:
@@ -116,8 +154,8 @@ def find_missing_data_by_table(
             sql = f"""
                 SELECT sb.ts_code
                 FROM stock_basic sb
-                WHERE {whitelist_filter}
-                AND sb.ts_code IS NOT NULL AND sb.ts_code != ''
+                WHERE sb.ts_code IS NOT NULL AND sb.ts_code != ''
+                AND {filter_conditions}
                 AND NOT EXISTS (
                     SELECT 1 FROM {table} t 
                     WHERE t.ts_code = sb.ts_code
@@ -219,7 +257,10 @@ def main():
             # 5. 找出每个表的缺失数据股票
             missing_by_table = find_missing_data_by_table(conn, all_tables)
 
-        # 6. 输出结果
+        # 6. 保存缺失股票日志
+        log_file = save_missing_stocks_log(missing_by_table)
+        
+        # 7. 输出结果
         total_missing = sum(len(stocks) for stocks in missing_by_table.values())
         if total_missing > 0:
             all_missing_stocks = set()
@@ -242,7 +283,7 @@ def main():
                 for i, stock in enumerate(missing_list[-10:], len(missing_list) - 9):
                     logger.info(f"  {i:3d}. {stock}")
 
-            # 7. 提交精确的重新下载任务
+            # 8. 提交精确的重新下载任务
             submit_precise_redownload_tasks(missing_by_table)
 
         else:

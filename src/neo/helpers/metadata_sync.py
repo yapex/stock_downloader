@@ -50,39 +50,66 @@ class MetadataSyncManager:
             pass  # 忽略缓存保存失败
     
     def _quick_table_check(self, table_name: str, minutes: int) -> Dict[str, any]:
-        """快速检查表目录是否有变化，使用目录级别的优化。"""
+        """快速检查表目录是否有变化，使用改进的缓存机制。"""
         table_dir = self.parquet_path / table_name
         if not table_dir.exists():
             return {"has_changes": False, "last_modified": None, "file_count": 0, "method": "dir_not_exists"}
-            
-        # 获取目录的修改时间
-        try:
-            current_dir_mtime = table_dir.stat().st_mtime
-        except OSError:
-            # 如果无法获取目录信息，返回安全值
-            return {"has_changes": True, "last_modified": None, "file_count": 0, "method": "dir_stat_failed"}
         
-        # 检查缓存
+        # 获取缓存信息
         cached_info = self.cache.get(table_name, {})
-        cached_dir_mtime = cached_info.get("dir_mtime", 0)
+        cached_file_count = cached_info.get("file_count", 0)
+        cached_last_modified = cached_info.get("last_modified")
         
-        # 如果目录没变，检查时间窗口
-        if current_dir_mtime == cached_dir_mtime and cached_info:
-            cached_last_modified = cached_info.get("last_modified")
-            if cached_last_modified and minutes > 0:
-                cutoff_time = time.time() - (minutes * 60)
-                has_recent_changes = cached_last_modified > cutoff_time
+        # 快速检查文件数量
+        try:
+            current_file_count = len(list(table_dir.glob("**/*.parquet")))
+        except OSError:
+            return {"has_changes": True, "last_modified": None, "file_count": 0, "method": "file_count_failed"}
+        
+        # 如果文件数量发生变化，说明有新数据
+        if current_file_count != cached_file_count:
+            return self._fast_file_scan(table_name, minutes, None)  # 目录mtime不再重要
+        
+        # 文件数量没变，但仍需检查最新文件的时间戳
+        # 进行轻量级文件扫描来获取真实的最新时间戳
+        scan_info = self._fast_file_scan(table_name, minutes, None)
+        
+        # 对比扫描得到的最新时间戳与缓存的时间戳
+        if cached_last_modified and scan_info["last_modified"]:
+            # 如果最新文件时间戳与缓存不同，说明有变化
+            if abs(scan_info["last_modified"] - cached_last_modified) > 1.0:  # 允许1秒误差
                 return {
-                    "has_changes": has_recent_changes,
-                    "last_modified": cached_last_modified,
-                    "file_count": cached_info.get("file_count", 0),
-                    "method": "cached"
+                    "has_changes": True,
+                    "last_modified": scan_info["last_modified"],
+                    "file_count": current_file_count,
+                    "method": "timestamp_changed"
                 }
         
-        # 目录变了或缓存不存在，需要做快速文件扫描
-        return self._fast_file_scan(table_name, minutes, current_dir_mtime)
+        # 文件数量没变且时间戳也没变，检查时间窗口
+        if scan_info["last_modified"] and minutes > 0:
+            cutoff_time = time.time() - (minutes * 60)
+            has_recent_changes = scan_info["last_modified"] > cutoff_time
+            return {
+                "has_changes": has_recent_changes,
+                "last_modified": scan_info["last_modified"],
+                "file_count": current_file_count,
+                "method": "enhanced_cached_check"
+            }
+        elif cached_last_modified and minutes > 0:
+            # 扫描失败时使用缓存数据作为回退
+            cutoff_time = time.time() - (minutes * 60)
+            has_recent_changes = cached_last_modified > cutoff_time
+            return {
+                "has_changes": has_recent_changes,
+                "last_modified": cached_last_modified,
+                "file_count": current_file_count,
+                "method": "cached_by_filecount"
+            }
+        
+        # 缓存不存在或无效，做一次完整扫描
+        return self._fast_file_scan(table_name, minutes, None)
     
-    def _fast_file_scan(self, table_name: str, minutes: int, dir_mtime: float) -> Dict[str, any]:
+    def _fast_file_scan(self, table_name: str, minutes: int, dir_mtime: float = None) -> Dict[str, any]:
         """快速文件扫描，优化后的版本。"""
         table_dir = self.parquet_path / table_name
         cutoff_time = time.time() - (minutes * 60) if minutes > 0 else 0
@@ -108,6 +135,13 @@ class MetadataSyncManager:
         except OSError:
             # 目录无法访问
             return {"has_changes": True, "last_modified": None, "file_count": 0, "method": "scan_failed"}
+        
+        # 获取目录mtime（如果没有提供）
+        if dir_mtime is None:
+            try:
+                dir_mtime = table_dir.stat().st_mtime
+            except OSError:
+                dir_mtime = time.time()  # 使用当前时间作为默认值
         
         # 更新缓存
         self.cache[table_name] = {
@@ -181,10 +215,14 @@ class MetadataSyncManager:
             return set()
 
         valid_partitions = set()
-        for partition_dir in table_dir.iterdir():
-            if partition_dir.is_dir() and re.match(r"year=\d{4}", partition_dir.name):
-                if any(partition_dir.glob("*.parquet*")):
-                    valid_partitions.add(partition_dir.name)
+        # 递归查找所有包含 parquet 文件的 year= 分区
+        for parquet_file in table_dir.rglob("*.parquet"):
+            # 从文件路径中提取 year= 分区
+            path_parts = parquet_file.parts
+            for part in path_parts:
+                if re.match(r"year=\d{4}", part):
+                    valid_partitions.add(part)
+                    break
 
         return valid_partitions
 
@@ -316,12 +354,19 @@ class MetadataSyncManager:
                             f"  -> 检测到表 '{table_name}' 的分区状态不一致，正在更新视图..."
                         )
 
-                        partition_paths_str = ", ".join(
-                            [
-                                f"'{self.parquet_path / table_name / p}/*.parquet'"
-                                for p in sorted(list(physical_partitions))
-                            ]
-                        )
+                        # 检测分区结构并生成正确的路径模式
+                        partition_paths = []
+                        for p in sorted(list(physical_partitions)):
+                            # 检查是否存在嵌套结构 (ts_code=XXX/year=YYYY)
+                            nested_path = self.parquet_path / table_name / "*" / p
+                            direct_path = self.parquet_path / table_name / p
+                            
+                            if any(nested_path.parent.parent.glob(f"*/{p}/*.parquet")):
+                                partition_paths.append(f"'{nested_path}/*.parquet'")
+                            elif any(direct_path.glob("*.parquet")):
+                                partition_paths.append(f"'{direct_path}/*.parquet'")
+                        
+                        partition_paths_str = ", ".join(partition_paths)
 
                         sql = f"""
                         CREATE OR REPLACE VIEW {table_name} AS
