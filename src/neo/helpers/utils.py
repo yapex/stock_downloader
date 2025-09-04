@@ -3,6 +3,7 @@ import logging
 import warnings
 from datetime import datetime, timedelta
 from typing import Optional
+from logging.handlers import TimedRotatingFileHandler
 
 
 def normalize_stock_code(code: str) -> str:
@@ -92,19 +93,12 @@ def _setup_file_handler(log_type: str, log_level: str) -> None:
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
-    # 创建文件处理器
-    # file_handler = TimedRotatingFileHandler(
-    #     filename=os.path.join(log_dir, log_filename),
-    #     when="midnight",
-    #     interval=1,
-    #     backupCount=1,
-    #     encoding="utf-8",
-    # )
-
-    # 创建文件处理器，使用 FileHandler 并设置模式为 'w' 以实现覆盖
-    file_handler = logging.FileHandler(
+    # 创建按天轮转的文件处理器，保留2天的日志文件
+    file_handler = TimedRotatingFileHandler(
         filename=os.path.join(log_dir, log_filename),
-        mode="w",  # 设置模式为覆盖写入
+        when="midnight",     # 每天午夜轮转
+        interval=1,          # 每1天轮转一次
+        backupCount=2,       # 保留2个备份文件（即保留2天的历史日志）
         encoding="utf-8",
     )
 
@@ -115,13 +109,7 @@ def _setup_file_handler(log_type: str, log_level: str) -> None:
     file_handler.setFormatter(formatter)
     root_logger.addHandler(file_handler)
 
-    # 添加会话分隔符
-    log_file_path = os.path.join(log_dir, log_filename)
-    try:
-        with open(log_file_path, "a", encoding="utf-8") as f:
-            f.write("\n==== new start here ====\n")
-    except Exception:
-        raise ValueError(f"无法写入日志文件: {log_file_path}")
+    # TimedRotatingFileHandler 会自动处理日志文件的轮转，不需要手动添加分隔符
 
 
 def _configure_third_party_loggers(log_level: str) -> None:
