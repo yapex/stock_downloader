@@ -37,6 +37,11 @@ class TestTaskTemplate:
 
 class TestTushareApiManager:
     """测试 TushareApiManager 单例类"""
+    
+    def setup_method(self):
+        """每个测试方法前的设置"""
+        from tests.fixtures.mock_factory import MockFactory
+        self.mock_factory = MockFactory()
 
     def teardown_method(self):
         """测试后清理单例状态"""
@@ -50,52 +55,64 @@ class TestTushareApiManager:
         assert manager1 is manager2
 
     @patch("neo.downloader.fetcher_builder.ts")
-    @patch("os.environ.get")
-    def test_get_api_function_pro(self, mock_environ_get, mock_ts):
+    def test_get_api_function_pro(self, mock_ts):
         """测试获取 pro API 函数"""
-        # Mock 环境变量
-        mock_environ_get.return_value = "test_token"
+        # 使用环境变量上下文管理器替代 patch
+        env_context = self.mock_factory.create_environment_context({"TUSHARE_TOKEN": "test_token"})
+        
+        # 使用 MockFactory 创建 Tushare API mocks
+        mocks = self.mock_factory.create_tushare_api_mock(
+            token="test_token",
+            api_functions={"stock_basic": None}  # 不需要返回值，只测试函数获取
+        )
+        
+        # 设置 mock 对象
+        mock_ts.return_value = mocks["ts"]
+        mock_ts.pro_api = mocks["ts"].pro_api
+        mock_ts.set_token = Mock()
 
-        # Mock pro API
-        mock_pro = Mock()
-        mock_ts.pro_api.return_value = mock_pro
-        mock_api_func = Mock()
-        setattr(mock_pro, "stock_basic", mock_api_func)
+        with env_context:
+            # 重置单例实例
+            TushareApiManager._instance = None
+            TushareApiManager._lock = Lock()
 
-        # 重置单例实例
-        TushareApiManager._instance = None
-        TushareApiManager._lock = Lock()
+            manager = TushareApiManager.get_instance()
+            result = manager.get_api_function("pro", "stock_basic")
 
-        manager = TushareApiManager.get_instance()
-        result = manager.get_api_function("pro", "stock_basic")
-
-        assert result is mock_api_func
-        mock_environ_get.assert_called_once_with("TUSHARE_TOKEN")
-        mock_ts.set_token.assert_called_once_with("test_token")
-        mock_ts.pro_api.assert_called_once()
+            # 验证结果
+            assert result is mocks["api_functions"]["stock_basic"]
+            mock_ts.set_token.assert_called_once_with("test_token")
+            mock_ts.pro_api.assert_called_once()
 
     @patch("neo.downloader.fetcher_builder.ts")
-    @patch("os.environ.get")
-    def test_get_api_function_direct(self, mock_environ_get, mock_ts):
+    def test_get_api_function_direct(self, mock_ts):
         """测试获取直接 API 函数"""
-        # Mock 环境变量
-        mock_environ_get.return_value = "test_token"
+        # 使用环境变量上下文管理器替代 patch
+        env_context = self.mock_factory.create_environment_context({"TUSHARE_TOKEN": "test_token"})
+        
+        # 使用 MockFactory 创建 Tushare API mocks
+        mocks = self.mock_factory.create_tushare_api_mock(
+            token="test_token",
+            api_functions={"get_hist_data": None}  # 不需要返回值，只测试函数获取
+        )
+        
+        # 设置 mock 对象
+        mock_ts.return_value = mocks["ts"]
+        mock_ts.pro_api = mocks["ts"].pro_api
+        mock_ts.set_token = Mock()
+        # 为直接 API 设置属性
+        setattr(mock_ts, "get_hist_data", mocks["ts"].get_hist_data)
 
-        # Mock ts API
-        mock_api_func = Mock()
-        setattr(mock_ts, "get_hist_data", mock_api_func)
-        mock_ts.pro_api.return_value = Mock()
+        with env_context:
+            # 重置单例实例
+            TushareApiManager._instance = None
+            TushareApiManager._lock = Lock()
 
-        # 重置单例实例
-        TushareApiManager._instance = None
-        TushareApiManager._lock = Lock()
+            manager = TushareApiManager.get_instance()
+            result = manager.get_api_function("ts", "get_hist_data")
 
-        manager = TushareApiManager.get_instance()
-        result = manager.get_api_function("ts", "get_hist_data")
-
-        assert result is mock_api_func
-        mock_environ_get.assert_called_once_with("TUSHARE_TOKEN")
-        mock_ts.set_token.assert_called_once_with("test_token")
+            assert result is mocks["ts"].get_hist_data
+            mock_ts.set_token.assert_called_once_with("test_token")
 
 
 class TestFetcherBuilder:
@@ -103,110 +120,131 @@ class TestFetcherBuilder:
 
     def setup_method(self):
         """测试前设置"""
-        self.builder = FetcherBuilder()
+        from tests.fixtures.mock_factory import MockFactory
+        self.mock_factory = MockFactory()
+        # 不初始化 builder，在各个测试中传入 mock 的 api_manager
 
     def test_init(self):
         """测试初始化"""
-        assert self.builder.api_manager is not None
-        assert isinstance(self.builder.api_manager, TushareApiManager)
+        builder = FetcherBuilder()
+        assert builder.api_manager is not None
+        assert isinstance(builder.api_manager, TushareApiManager)
 
     def test_build_by_task_invalid_type(self):
         """测试无效任务类型"""
+        # 使用 mock API manager
+        mock_api_manager = self.mock_factory.create_mock_api_manager()
+        builder = FetcherBuilder(api_manager=mock_api_manager)
+        
         with pytest.raises(ValueError, match="不支持的任务类型"):
-            self.builder.build_by_task("invalid_type")
+            builder.build_by_task("invalid_type")
 
-    @patch.object(TushareApiManager, "get_api_function")
     @patch("neo.downloader.fetcher_builder.normalize_stock_code")
-    def test_build_by_task_with_symbol(self, mock_normalize, mock_get_api):
+    def test_build_by_task_with_symbol(self, mock_normalize):
         """测试带股票代码的任务构建"""
-        mock_normalize.return_value = "600519.SH"
-        mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
-        mock_get_api.return_value = mock_api_func
-
-        fetcher = self.builder.build_by_task("stock_basic", symbol="600519")
+        # 使用 MockFactory 创建 mocks
+        api_mock = self.mock_factory.create_api_function_mock(
+            pd.DataFrame({"data": [1, 2, 3]})
+        )
+        normalize_mock = self.mock_factory.create_normalize_stock_code_mock("600519.SH")
+        mock_api_manager = self.mock_factory.create_mock_api_manager(api_mock)
+        
+        mock_normalize.return_value = normalize_mock.return_value
+        
+        builder = FetcherBuilder(api_manager=mock_api_manager)
+        fetcher = builder.build_by_task("stock_basic", symbol="600519")
         result = fetcher()
 
         mock_normalize.assert_called_once_with("600519")
-        mock_get_api.assert_called_once_with("pro", "stock_basic")
-        mock_api_func.assert_called_once_with(ts_code="600519.SH")
+        mock_api_manager.get_api_function.assert_called_once_with("pro", "stock_basic")
+        api_mock.assert_called_once_with(ts_code="600519.SH")
         assert isinstance(result, pd.DataFrame)
 
-    @patch.object(TushareApiManager, "get_api_function")
-    def test_build_by_task_without_symbol(self, mock_get_api):
-        """测试不带股票代码的任务构建"""
-        mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
-        mock_get_api.return_value = mock_api_func
-
-        fetcher = self.builder.build_by_task("stock_basic")
+    @pytest.mark.parametrize("task_type,expected_base_object,expected_api_method,expected_params", [
+        ("stock_basic", "pro", "stock_basic", {}),
+        ("stock_adj_hfq", "ts", "pro_bar", {"adj": "hfq"}),
+    ])
+    def test_build_by_task_without_symbol_parametrized(
+        self, task_type, expected_base_object, expected_api_method, expected_params
+    ):
+        """测试不带股票代码的任务构建（参数化）"""
+        # 使用 MockFactory 创建 API mock
+        api_mock = self.mock_factory.create_api_function_mock(
+            pd.DataFrame({"data": [1, 2, 3]})
+        )
+        mock_api_manager = self.mock_factory.create_mock_api_manager(api_mock)
+        
+        builder = FetcherBuilder(api_manager=mock_api_manager)
+        fetcher = builder.build_by_task(task_type)
         result = fetcher()
 
-        mock_get_api.assert_called_once_with("pro", "stock_basic")
-        # STOCK_BASIC 没有默认参数，所以不传递任何参数
-        mock_api_func.assert_called_once_with()
+        mock_api_manager.get_api_function.assert_called_once_with(expected_base_object, expected_api_method)
+        if expected_params:
+            # 验证默认参数被传递
+            call_args = api_mock.call_args[1]
+            for key, value in expected_params.items():
+                assert call_args[key] == value
+        else:
+            # 没有默认参数，不传递任何参数
+            api_mock.assert_called_once_with()
         assert isinstance(result, pd.DataFrame)
 
-    @patch.object(TushareApiManager, "get_api_function")
     @patch("neo.downloader.fetcher_builder.normalize_stock_code")
     def test_build_by_task_stock_basic_with_empty_symbol(
-        self, mock_normalize, mock_get_api
+        self, mock_normalize
     ):
         """测试 stock_basic 任务传入空字符串时不调用 normalize_stock_code"""
-        mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
-        mock_get_api.return_value = mock_api_func
-
-        fetcher = self.builder.build_by_task("stock_basic", symbol="")
+        # 使用 MockFactory 创建 API mock
+        api_mock = self.mock_factory.create_api_function_mock(
+            pd.DataFrame({"data": [1, 2, 3]})
+        )
+        mock_api_manager = self.mock_factory.create_mock_api_manager(api_mock)
+        
+        builder = FetcherBuilder(api_manager=mock_api_manager)
+        fetcher = builder.build_by_task("stock_basic", symbol="")
         result = fetcher()
 
         # 验证 normalize_stock_code 没有被调用
         mock_normalize.assert_not_called()
-        mock_get_api.assert_called_once_with("pro", "stock_basic")
+        mock_api_manager.get_api_function.assert_called_once_with("pro", "stock_basic")
         # stock_basic 任务不需要 ts_code 参数
-        mock_api_func.assert_called_once_with()
+        api_mock.assert_called_once_with()
         assert isinstance(result, pd.DataFrame)
 
-    @patch.object(TushareApiManager, "get_api_function")
     @patch("neo.downloader.fetcher_builder.normalize_stock_code")
-    def test_build_by_task_with_overrides(self, mock_normalize, mock_get_api):
+    def test_build_by_task_with_overrides(self, mock_normalize):
         """测试带参数覆盖的任务构建"""
         mock_normalize.return_value = "600519.SH"
-        mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
-        mock_get_api.return_value = mock_api_func
-
-        fetcher = self.builder.build_by_task(
+        # 使用 MockFactory 创建 API mock
+        api_mock = self.mock_factory.create_api_function_mock(
+            pd.DataFrame({"data": [1, 2, 3]})
+        )
+        mock_api_manager = self.mock_factory.create_mock_api_manager(api_mock)
+        
+        builder = FetcherBuilder(api_manager=mock_api_manager)
+        fetcher = builder.build_by_task(
             "stock_basic", symbol="600519", exchange="SZSE", list_status="L"
         )
         result = fetcher()
 
         mock_normalize.assert_called_once_with("600519")
-        mock_get_api.assert_called_once_with("pro", "stock_basic")
-        mock_api_func.assert_called_once_with(
+        mock_api_manager.get_api_function.assert_called_once_with("pro", "stock_basic")
+        api_mock.assert_called_once_with(
             ts_code="600519.SH", exchange="SZSE", list_status="L"
         )
         assert isinstance(result, pd.DataFrame)
 
-    @patch.object(TushareApiManager, "get_api_function")
-    def test_build_by_task_with_default_params(self, mock_get_api):
-        """测试带默认参数的任务构建"""
-        mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
-        mock_get_api.return_value = mock_api_func
+    # test_build_by_task_with_default_params 已被参数化测试替代
 
-        # 使用有默认参数的任务类型
-        fetcher = self.builder.build_by_task("stock_adj_hfq")
-        result = fetcher()
-
-        mock_get_api.assert_called_once_with("ts", "pro_bar")
-        # 验证默认参数被使用
-        call_args = mock_api_func.call_args[1]
-        assert call_args["adj"] == "hfq"
-        assert isinstance(result, pd.DataFrame)
-
-    @patch.object(TushareApiManager, "get_api_function")
-    def test_build_by_task_with_kwargs(self, mock_get_api):
+    def test_build_by_task_with_kwargs(self):
         """测试使用 kwargs 传递 start_date 等参数"""
-        mock_api_func = Mock(return_value=pd.DataFrame({"data": [1]}))
-        mock_get_api.return_value = mock_api_func
-
-        builder = FetcherBuilder()
+        # 使用 MockFactory 创建 API mock
+        api_mock = self.mock_factory.create_api_function_mock(
+            pd.DataFrame({"data": [1]})
+        )
+        mock_api_manager = self.mock_factory.create_mock_api_manager(api_mock)
+        
+        builder = FetcherBuilder(api_manager=mock_api_manager)
         fetcher = builder.build_by_task(
             "stock_daily",
             symbol="600519.SH",
@@ -216,31 +254,36 @@ class TestFetcherBuilder:
         fetcher()
 
         # 验证传递给 Tushare API 的参数是否正确
-        mock_api_func.assert_called_once_with(
+        api_mock.assert_called_once_with(
             ts_code="600519.SH", start_date="20240101", end_date="20240131"
         )
 
-    @patch.object(TushareApiManager, "get_api_function")
-    def test_execute_function_exception_handling(self, mock_get_api):
+    def test_execute_function_exception_handling(self):
         """测试执行函数异常处理"""
-        mock_api_func = Mock(side_effect=Exception("API调用失败"))
-        mock_get_api.return_value = mock_api_func
-
-        fetcher = self.builder.build_by_task("stock_basic")
+        # 使用 MockFactory 创建抛出异常的 API mock
+        api_mock = self.mock_factory.create_api_function_mock()
+        api_mock.side_effect = Exception("API调用失败")
+        mock_api_manager = self.mock_factory.create_mock_api_manager(api_mock)
+        
+        builder = FetcherBuilder(api_manager=mock_api_manager)
+        fetcher = builder.build_by_task("stock_basic")
 
         with pytest.raises(Exception, match="API调用失败"):
             fetcher()
 
-    @patch.object(TushareApiManager, "get_api_function")
     @patch("neo.downloader.fetcher_builder.normalize_stock_code")
-    def test_parameter_merging(self, mock_normalize, mock_get_api):
+    def test_parameter_merging(self, mock_normalize):
         """测试参数合并逻辑"""
         mock_normalize.return_value = "600519.SH"
-        mock_api_func = Mock(return_value=pd.DataFrame({"data": [1]}))
-        mock_get_api.return_value = mock_api_func
-
+        # 使用 MockFactory 创建 API mock
+        api_mock = self.mock_factory.create_api_function_mock(
+            pd.DataFrame({"data": [1]})
+        )
+        mock_api_manager = self.mock_factory.create_mock_api_manager(api_mock)
+        
+        builder = FetcherBuilder(api_manager=mock_api_manager)
         # 测试运行时参数覆盖默认参数
-        fetcher = self.builder.build_by_task(
+        fetcher = builder.build_by_task(
             "stock_daily",
             symbol="600519",
             start_date="20240101",  # 覆盖默认参数
@@ -248,7 +291,7 @@ class TestFetcherBuilder:
         )
         fetcher()
 
-        call_args = mock_api_func.call_args[1]
+        call_args = api_mock.call_args[1]
         assert call_args["ts_code"] == "600519.SH"
         assert call_args["start_date"] == "20240101"
         assert call_args["end_date"] == "20240131"
@@ -256,6 +299,11 @@ class TestFetcherBuilder:
 
 class TestFetcherBuilderContainer:
     """测试从 Container 中获取 FetcherBuilder"""
+    
+    def setup_method(self):
+        """每个测试方法前的设置"""
+        from tests.fixtures.mock_factory import MockFactory
+        self.mock_factory = MockFactory()
 
     def test_get_fetcher_builder_from_container(self):
         """测试从容器中获取 FetcherBuilder 实例"""
@@ -277,21 +325,26 @@ class TestFetcherBuilderContainer:
         assert isinstance(fetcher_builder1, FetcherBuilder)
         assert isinstance(fetcher_builder2, FetcherBuilder)
 
-    @patch.object(TushareApiManager, "get_api_function")
-    def test_container_fetcher_builder_functionality(self, mock_get_api):
+    def test_container_fetcher_builder_functionality(self):
         """测试从容器获取的 FetcherBuilder 功能正常"""
-        mock_api_func = Mock(return_value=pd.DataFrame({"data": [1, 2, 3]}))
-        mock_get_api.return_value = mock_api_func
+        # 使用 MockFactory 创建 API mock
+        api_mock = self.mock_factory.create_api_function_mock(
+            pd.DataFrame({"data": [1, 2, 3]})
+        )
+        mock_api_manager = self.mock_factory.create_mock_api_manager(api_mock)
 
         container = AppContainer()
+        # 覆盖容器中的 FetcherBuilder 工厂方法
+        container.fetcher_builder = lambda: FetcherBuilder(api_manager=mock_api_manager)
+        
         fetcher_builder = container.fetcher_builder()
 
         # 测试构建任务功能
         fetcher = fetcher_builder.build_by_task("stock_basic")
         result = fetcher()
 
-        mock_get_api.assert_called_once_with("pro", "stock_basic")
-        mock_api_func.assert_called_once_with()
+        mock_api_manager.get_api_function.assert_called_once_with("pro", "stock_basic")
+        api_mock.assert_called_once_with()
         assert isinstance(result, pd.DataFrame)
 
     def test_multiple_containers_share_singleton_api_manager(self):

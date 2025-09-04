@@ -78,8 +78,8 @@ class TushareApiManager:
 class FetcherBuilder:
     """数据获取器构建器"""
 
-    def __init__(self, schema_loader: Optional[ISchemaLoader] = None):
-        self.api_manager = TushareApiManager.get_instance()
+    def __init__(self, schema_loader: Optional[ISchemaLoader] = None, api_manager=None):
+        self.api_manager = api_manager or TushareApiManager.get_instance()
         self.schema_loader = schema_loader or SchemaLoader()
 
     def build_by_task(
