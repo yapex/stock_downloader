@@ -8,15 +8,13 @@ from neo.helpers.interfaces import IRateLimitManager
 # TaskType 现在使用字符串，TaskTemplateRegistry 已移除
 from pyrate_limiter import Limiter
 from neo.containers import AppContainer
-
-
 class TestRateLimitManager:
     """测试 RateLimitManager 类"""
 
     def setup_method(self):
         """每个测试方法前的设置"""
-        # 在每个测试中单独创建 manager
-        pass
+        from tests.fixtures.mock_factory import MockFactory
+        self.mock_factory = MockFactory()
 
     def teardown_method(self):
         """每个测试方法后的清理"""
@@ -29,9 +27,9 @@ class TestRateLimitManager:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_implements_interface(self, mock_get_config):
         """测试实现了IRateLimitManager接口"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
 
         manager = RateLimitManager()
         assert isinstance(manager, IRateLimitManager)
@@ -39,10 +37,9 @@ class TestRateLimitManager:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_get_rate_limit_config_default(self, mock_get_config):
         """测试获取默认速率限制配置"""
-        # 模拟配置返回空的download_tasks
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
+        # 使用 MockFactory 创建空的下载任务配置
+        mocks = self.mock_factory.create_complete_rate_limit_mocks({})
+        mock_get_config.return_value = mocks["config"]
 
         manager = RateLimitManager()
         rate_limit = manager.get_rate_limit_config("stock_basic")
@@ -51,11 +48,10 @@ class TestRateLimitManager:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_get_rate_limit_config_custom(self, mock_get_config):
         """测试获取自定义速率限制配置"""
-        # 模拟配置返回自定义的rate_limit_per_minute
-        mock_config = Mock()
-        # 使用 api_method 作为配置键
-        mock_config.download_tasks = {"stock_basic": {"rate_limit_per_minute": 100}}
-        mock_get_config.return_value = mock_config
+        # 使用 MockFactory 创建包含自定义速率限制的配置
+        download_tasks = {"stock_basic": {"rate_limit_per_minute": 100}}
+        mocks = self.mock_factory.create_complete_rate_limit_mocks(download_tasks)
+        mock_get_config.return_value = mocks["config"]
 
         manager = RateLimitManager()
         rate_limit = manager.get_rate_limit_config("stock_basic")
@@ -64,9 +60,10 @@ class TestRateLimitManager:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_get_limiter_creates_new(self, mock_get_config):
         """测试获取限制器时创建新实例"""
-        mock_config = Mock()
-        mock_config.download_tasks = {"stock_basic": {"rate_limit_per_minute": 150}}
-        mock_get_config.return_value = mock_config
+        # 使用 MockFactory 创建包含速率限制配置的 mock
+        download_tasks = {"stock_basic": {"rate_limit_per_minute": 150}}
+        mocks = self.mock_factory.create_complete_rate_limit_mocks(download_tasks)
+        mock_get_config.return_value = mocks["config"]
 
         manager = RateLimitManager()
         limiter = manager.get_limiter("stock_basic")
@@ -77,9 +74,9 @@ class TestRateLimitManager:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_get_limiter_reuses_existing(self, mock_get_config):
         """测试获取限制器时复用已存在的实例"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
 
         manager = RateLimitManager()
         # 第一次获取
@@ -94,9 +91,9 @@ class TestRateLimitManager:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_apply_rate_limiting_success(self, mock_get_config):
         """测试成功应用速率限制"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
 
         manager = RateLimitManager()
         # 应该不抛出异常
@@ -105,9 +102,9 @@ class TestRateLimitManager:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_cleanup_removes_all_limiters(self, mock_get_config):
         """测试清理移除所有限制器"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
 
         manager = RateLimitManager()
         # 创建一些限制器
@@ -121,9 +118,9 @@ class TestRateLimitManager:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_different_task_types_get_different_limiters(self, mock_get_config):
         """测试不同任务类型获取不同的限制器"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
 
         manager = RateLimitManager()
         limiter1 = manager.get_limiter("stock_basic")
@@ -132,10 +129,13 @@ class TestRateLimitManager:
         # 应该是不同的实例
         assert limiter1 is not limiter2
         assert len(manager.rate_limiters) == 2
-
-
 class TestRateLimitManagerSingleton:
     """测试 RateLimitManager 单例模式"""
+    
+    def setup_method(self):
+        """每个测试方法前的设置"""
+        from tests.fixtures.mock_factory import MockFactory
+        self.mock_factory = MockFactory()
 
     def teardown_method(self):
         """每个测试方法后的清理"""
@@ -145,9 +145,9 @@ class TestRateLimitManagerSingleton:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_singleton_same_instance(self, mock_get_config):
         """测试单例模式返回相同实例"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
 
         # 创建两个单例实例
         manager1 = RateLimitManager.singleton()
@@ -159,10 +159,9 @@ class TestRateLimitManagerSingleton:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_get_rate_limit_manager_singleton(self, mock_get_config):
         """测试 get_rate_limit_manager 函数返回单例"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
-
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
         # 多次调用应该返回相同实例
         manager1 = get_rate_limit_manager()
         manager2 = get_rate_limit_manager()
@@ -179,10 +178,9 @@ class TestRateLimitManagerSingleton:
         import threading
         import time
 
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
-
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
         instances = []
 
         def create_instance():
@@ -209,10 +207,9 @@ class TestRateLimitManagerSingleton:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_singleton_preserves_state(self, mock_get_config):
         """测试单例模式保持状态"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
-
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
         # 第一次创建单例
         manager1 = RateLimitManager.singleton()
         original_rate_limiters = manager1.rate_limiters
@@ -232,10 +229,9 @@ class TestRateLimitManagerSingleton:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_multiple_instances_are_different(self, mock_get_config):
         """测试直接实例化可以创建多个不同的实例"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
-
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
         # 直接实例化创建多个实例
         manager1 = RateLimitManager()
         manager2 = RateLimitManager()
@@ -252,10 +248,13 @@ class TestRateLimitManagerSingleton:
         singleton_manager = RateLimitManager.singleton()
         assert singleton_manager is not manager1
         assert singleton_manager is not manager2
-
-
 class TestRateLimitManagerContainer:
     """测试从 Container 中获取 RateLimitManager"""
+    
+    def setup_method(self):
+        """每个测试方法前的设置"""
+        from tests.fixtures.mock_factory import MockFactory
+        self.mock_factory = MockFactory()
 
     def teardown_method(self):
         """每个测试方法后的清理"""
@@ -265,10 +264,9 @@ class TestRateLimitManagerContainer:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_get_rate_limit_manager_from_container(self, mock_get_config):
         """测试从容器中获取 RateLimitManager 实例"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
-
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
         container = AppContainer()
         rate_limit_manager = container.rate_limit_manager()
 
@@ -278,10 +276,9 @@ class TestRateLimitManagerContainer:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_container_provides_singleton_instance(self, mock_get_config):
         """测试容器提供单例 RateLimitManager 实例（Singleton 模式）"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
-
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
         container = AppContainer()
         rate_limit_manager1 = container.rate_limit_manager()
         rate_limit_manager2 = container.rate_limit_manager()
@@ -294,10 +291,10 @@ class TestRateLimitManagerContainer:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_container_rate_limit_manager_functionality(self, mock_get_config):
         """测试从容器获取的 RateLimitManager 功能正常"""
-        mock_config = Mock()
-        mock_config.download_tasks = {"stock_basic": {"rate_limit_per_minute": 120}}
-        mock_get_config.return_value = mock_config
-
+        # 使用 MockFactory 创建包含特定配置的 mock
+        download_tasks = {"stock_basic": {"rate_limit_per_minute": 120}}
+        mocks = self.mock_factory.create_complete_rate_limit_mocks(download_tasks)
+        mock_get_config.return_value = mocks["config"]
         container = AppContainer()
         rate_limit_manager = container.rate_limit_manager()
 
@@ -315,10 +312,9 @@ class TestRateLimitManagerContainer:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_different_containers_share_same_global_singleton(self, mock_get_config):
         """测试不同容器共享同一个全局 RateLimitManager 单例"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
-
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
         container1 = AppContainer()
         container2 = AppContainer()
 
@@ -332,10 +328,9 @@ class TestRateLimitManagerContainer:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_container_singleton_preserves_state(self, mock_get_config):
         """测试容器单例保持状态"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
-
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
         container = AppContainer()
         rate_limit_manager1 = container.rate_limit_manager()
 
@@ -353,10 +348,9 @@ class TestRateLimitManagerContainer:
     @patch("neo.helpers.rate_limit_manager.get_config")
     def test_container_integration_with_downloader(self, mock_get_config):
         """测试容器中 RateLimitManager 与 SimpleDownloader 的集成"""
-        mock_config = Mock()
-        mock_config.download_tasks = {}
-        mock_get_config.return_value = mock_config
-
+        # 使用 MockFactory 创建配置 mock
+        mocks = self.mock_factory.create_complete_rate_limit_mocks()
+        mock_get_config.return_value = mocks["config"]
         container = AppContainer()
         downloader = container.downloader()
         rate_limit_manager = container.rate_limit_manager()
