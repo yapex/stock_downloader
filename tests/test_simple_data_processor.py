@@ -48,7 +48,7 @@ def test_with_real_schema_for_stock_daily_should_partition(
 
     # THEN: writer 应被告知按 ['year'] 分区
     assert result is True
-    mock_parquet_writer.write.assert_called_once_with(ANY, task_type, ["year"])
+    mock_parquet_writer.write.assert_called_once_with(ANY, task_type, ["year"], "any_symbol")
 
 
 @patch("src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy", return_value="incremental")
@@ -74,7 +74,7 @@ def test_with_real_schema_for_stock_basic_should_not_partition(
 
     # THEN: writer 应被告知不进行分区
     assert result is True
-    mock_parquet_writer.write.assert_called_once_with(ANY, task_type, [])
+    mock_parquet_writer.write.assert_called_once_with(ANY, task_type, [], "any_symbol")
 
 
 @patch("src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy", return_value="incremental")
@@ -101,4 +101,4 @@ def test_with_real_schema_for_trade_cal_should_partition(
 
     # THEN: writer 应被告知按 ['year'] 分区
     assert result is True
-    mock_parquet_writer.write.assert_called_once_with(ANY, task_type, ["year"])
+    mock_parquet_writer.write.assert_called_once_with(ANY, task_type, ["year"], "any_symbol")

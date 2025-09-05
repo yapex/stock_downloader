@@ -107,7 +107,7 @@ class SimpleDataProcessor(IDataProcessor):
                 self.parquet_writer.write_full_replace(data, task_type, partition_cols)
                 logger.debug(f"使用全量替换策略写入 {task_type} 数据")
             else: # incremental
-                self.parquet_writer.write(data, task_type, partition_cols)
+                self.parquet_writer.write(data, task_type, partition_cols, symbol)
                 logger.debug(f"使用增量更新策略写入 {task_type} 数据")
 
             return True

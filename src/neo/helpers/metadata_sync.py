@@ -128,8 +128,7 @@ class MetadataSyncManager:
                         latest_mtime = mtime
                     if minutes > 0 and mtime > cutoff_time:
                         has_recent_changes = True
-                        # 找到最近变化后可以提前退出
-                        break
+                        # 不要提前退出，需要计算所有文件
                 except OSError:
                     continue
         except OSError:
