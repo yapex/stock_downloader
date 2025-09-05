@@ -59,6 +59,7 @@ class AppContainer(containers.DeclarativeContainer):
     data_processor = providers.Factory(
         "neo.data_processor.simple_data_processor.SimpleDataProcessor",
         parquet_writer=parquet_writer,
+        schema_loader=schema_loader,
     )
 
     # Facade

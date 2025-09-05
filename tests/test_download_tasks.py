@@ -3,7 +3,7 @@
 from datetime import time
 from unittest.mock import Mock, patch
 
-from neo.tasks.download_tasks import DownloadTaskManager
+from neo.tasks.download_tasks import DownloadTaskManager, detect_task_group_strategy
 
 
 class TestDownloadTaskManager:
@@ -144,3 +144,132 @@ class TestDownloadTaskManager:
         # 测试一个会返回 False 的无效格式
         result = self.service._should_skip_task("123", "20240115")
         assert result is False  # "123" < "20240115" 为 True，所以不跳过
+
+
+class TestDetectTaskGroupStrategy:
+    """测试 detect_task_group_strategy 函数"""
+
+    @patch('neo.app.container')
+    @patch('neo.tasks.download_tasks.get_config')
+    def test_detect_full_replace_strategy(self, mock_get_config, mock_container):
+        """测试检测全量替换策略"""
+        # 模拟配置
+        mock_config = Mock()
+        mock_get_config.return_value = mock_config
+        
+        # 模拟任务配置
+        mock_task_basic = Mock()
+        mock_task_basic.update_strategy = "full_replace"
+        mock_task_cal = Mock()
+        mock_task_cal.update_strategy = "full_replace"
+        
+        mock_config.download_tasks = Mock()
+        mock_config.download_tasks.stock_basic = mock_task_basic
+        mock_config.download_tasks.trade_cal = mock_task_cal
+        
+        # 模拟 group_handler
+        mock_group_handler = Mock()
+        mock_group_handler.get_task_types_for_group.return_value = ["stock_basic", "trade_cal"]
+        mock_container.group_handler.return_value = mock_group_handler
+        
+        # 测试
+        result = detect_task_group_strategy("sys")
+        assert result == "full_replace"
+        
+    @patch('neo.app.container')
+    @patch('neo.tasks.download_tasks.get_config')
+    def test_detect_incremental_strategy(self, mock_get_config, mock_container):
+        """测试检测增量更新策略"""
+        # 模拟配置
+        mock_config = Mock()
+        mock_get_config.return_value = mock_config
+        
+        # 模拟任务配置
+        mock_task_daily = Mock()
+        mock_task_daily.update_strategy = "incremental"
+        mock_task_basic = Mock()
+        mock_task_basic.update_strategy = "incremental"
+        
+        mock_config.download_tasks = Mock()
+        mock_config.download_tasks.stock_daily = mock_task_daily
+        mock_config.download_tasks.daily_basic = mock_task_basic
+        
+        # 模拟 group_handler
+        mock_group_handler = Mock()
+        mock_group_handler.get_task_types_for_group.return_value = ["stock_daily", "daily_basic"]
+        mock_container.group_handler.return_value = mock_group_handler
+        
+        # 测试
+        result = detect_task_group_strategy("daily")
+        assert result == "incremental"
+        
+    @patch('neo.app.container')
+    @patch('neo.tasks.download_tasks.get_config')
+    def test_detect_mixed_strategy(self, mock_get_config, mock_container):
+        """测试检测混合策略"""
+        # 模拟配置
+        mock_config = Mock()
+        mock_get_config.return_value = mock_config
+        
+        # 模拟任务配置 - 一个全量替换，一个增量更新
+        mock_task_basic = Mock()
+        mock_task_basic.update_strategy = "full_replace"
+        mock_task_daily = Mock()
+        mock_task_daily.update_strategy = "incremental"
+        
+        mock_config.download_tasks = Mock()
+        mock_config.download_tasks.stock_basic = mock_task_basic
+        mock_config.download_tasks.stock_daily = mock_task_daily
+        
+        # 模拟 group_handler
+        mock_group_handler = Mock()
+        mock_group_handler.get_task_types_for_group.return_value = ["stock_basic", "stock_daily"]
+        mock_container.group_handler.return_value = mock_group_handler
+        
+        # 测试
+        result = detect_task_group_strategy("mixed_test")
+        assert result == "mixed"
+        
+    @patch('neo.app.container')
+    def test_detect_unknown_strategy_no_tasks(self, mock_container):
+        """测试检测未知策略（无任务）"""
+        # 模拟 group_handler 返回空列表
+        mock_group_handler = Mock()
+        mock_group_handler.get_task_types_for_group.return_value = []
+        mock_container.group_handler.return_value = mock_group_handler
+        
+        # 测试
+        result = detect_task_group_strategy("empty_group")
+        assert result == "unknown"
+        
+    @patch('neo.app.container')
+    @patch('neo.tasks.download_tasks.get_config')
+    def test_detect_unknown_strategy_no_config(self, mock_get_config, mock_container):
+        """测试检测未知策略（无配置）"""
+        # 模拟配置
+        mock_config = Mock()
+        mock_get_config.return_value = mock_config
+        
+        # 模拟 download_tasks 不包含任何任务配置（使用 spec 限制属性）
+        mock_config.download_tasks = Mock(spec=[])
+        
+        # 模拟 group_handler
+        mock_group_handler = Mock()
+        mock_group_handler.get_task_types_for_group.return_value = ["unknown_task"]
+        mock_container.group_handler.return_value = mock_group_handler
+        
+        # 测试
+        result = detect_task_group_strategy("unknown_group")
+        assert result == "unknown"
+        
+    @patch('neo.app.container')
+    def test_detect_unknown_strategy_group_not_found(self, mock_container):
+        """测试检测未知策略（任务组不存在）"""
+        # 模拟 group_handler 抛出 ValueError
+        mock_group_handler = Mock()
+        mock_group_handler.get_task_types_for_group.side_effect = ValueError("未找到组配置")
+        mock_container.group_handler.return_value = mock_group_handler
+        
+        # 测试
+        result = detect_task_group_strategy("nonexistent_group")
+        assert result == "unknown"

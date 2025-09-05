@@ -19,6 +19,49 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def detect_task_group_strategy(group_name: str) -> str:
+    """
+    检测任务组中所有表的更新策略类型
+    
+    Args:
+        group_name: 任务组名称
+    
+    Returns:
+        策略类型："full_replace"（全量替换）、"incremental"（增量更新）、"mixed"（混合策略）或"unknown"（未知）
+    """
+    from ..app import container
+    
+    config = get_config()
+    group_handler = container.group_handler()
+    
+    # 获取任务组下的所有任务类型
+    try:
+        task_types = group_handler.get_task_types_for_group(group_name)
+    except ValueError:
+        return "unknown"
+        
+    if not task_types:
+        return "unknown"
+    
+    strategies = set()
+    
+    # 检查每个任务的更新策略
+    for task_type in task_types:
+        download_tasks_config = config.download_tasks
+        if hasattr(download_tasks_config, task_type):
+            task_config = getattr(download_tasks_config, task_type)
+            if hasattr(task_config, "update_strategy"):
+                strategies.add(task_config.update_strategy)
+    
+    # 根据策略集合确定返回值
+    if len(strategies) == 1:
+        return list(strategies)[0]
+    elif len(strategies) > 1:
+        return "mixed"
+    else:
+        return "unknown"
+
+
 class DownloadTaskManager:
     """下载任务管理器，负责构建和管理下载任务 (无状态)"""
 

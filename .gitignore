@@ -7,7 +7,7 @@ wheels/
 test_data/
 cache/
 data/
-*.egg-info
+src/stock_downloader.egg-info
 logs/
 .env
 
@@ -22,3 +22,4 @@ htmlcov/
 .pytest_cache/
 *.jsonl
 *.tmp
+providers.pyx

@@ -11,6 +11,8 @@ from ..configs import get_config
 from .interfaces import IDataProcessor
 from ..writers.interfaces import IParquetWriter
 from ..writers.parquet_writer import ParquetWriter
+from ..database.interfaces import ISchemaLoader
+from ..database.schema_loader import SchemaLoader
 
 logger = logging.getLogger(__name__)
 
@@ -26,26 +28,27 @@ class SimpleDataProcessor(IDataProcessor):
     def create_default(
         cls,
         parquet_writer: Optional[IParquetWriter] = None,
+        schema_loader: Optional[ISchemaLoader] = None,
     ) -> "SimpleDataProcessor":
         """创建默认配置的同步数据处理器"""
         config = get_config()
         if parquet_writer is None:
             base_path = config.get("storage.parquet_base_path", "data/parquet")
             parquet_writer = ParquetWriter(base_path=base_path)
+        if schema_loader is None:
+            schema_loader = SchemaLoader()
 
-        return cls(parquet_writer=parquet_writer)
+        return cls(parquet_writer=parquet_writer, schema_loader=schema_loader)
 
     def __init__(
         self,
         parquet_writer: IParquetWriter,
+        schema_loader: ISchemaLoader,
     ):
         """初始化同步数据处理器"""
         self.config = get_config()
         self.parquet_writer = parquet_writer
-
-    def _get_partition_cols(self, task_type: str) -> List[str]:
-        """根据任务类型获取用于分区的列名"""
-        return ["year"]
+        self.schema_loader = schema_loader
 
     def _get_update_strategy(self, task_type: str) -> str:
         """获取任务类型的更新策略"""
@@ -76,48 +79,42 @@ class SimpleDataProcessor(IDataProcessor):
                 f"{task_type} 数据维度: {len(data)} 行 x {len(data.columns)} 列"
             )
 
+            partition_cols: List[str] = []
+            schema = self.schema_loader.load_schema(task_type)
+
+            # --- L1 优化：确定分区列 ---
+            date_col = schema.date_col
+            if date_col and date_col in data.columns:
+                data["year"] = data[date_col].str[:4]
+                partition_cols = ["year"]
+                logger.debug(f"根据 schema 配置，使用 '{date_col}' 列创建 'year' 分区")
+            else:
+                logger.debug(f"表 {task_type} 无分区配置或数据中缺少日期列，不进行分区")
+
+            # --- L2 优化：按主键排序 ---
+            primary_key = schema.primary_key
+            if primary_key:
+                # 确保排序键都在数据列中
+                sort_keys = [key for key in primary_key if key in data.columns]
+                if sort_keys:
+                    data.sort_values(by=sort_keys, inplace=True, ignore_index=True)
+                    logger.debug(f"数据已按主键 {sort_keys} 排序")
+
+            # --- 执行写入 ---
             update_strategy = self._get_update_strategy(task_type)
-
-            # --- 创建分区列 ---
-            if "trade_date" in data.columns:
-                data["year"] = data["trade_date"].str[:4]
-            elif "end_date" in data.columns:
-                data["year"] = data["end_date"].str[:4]
-            else:
-                # 如果没有日期列，则不进行分区
-                if update_strategy == "full_replace":
-                    if self._should_update_by_symbol(task_type):
-                        self.parquet_writer.write_full_replace_by_symbol(
-                            data, task_type, [], symbol
-                        )
-                    else:
-                        self.parquet_writer.write_full_replace(data, task_type, [])
-                    logger.debug(f"使用全量替换策略写入 {task_type} 数据（无分区）")
-                else:
-                    self.parquet_writer.write(data, task_type, [])
-                    logger.debug(f"使用增量更新策略写入 {task_type} 数据（无分区）")
-                return True
-
-            partition_cols = self._get_partition_cols(task_type)
-
-            # 根据更新策略和表类型选择写入方式
-            if update_strategy == "full_replace":
-                if self._should_update_by_symbol(task_type):
-                    logger.debug(f"为 {task_type} 执行 {symbol} 的定向全量替换")
-                    self.parquet_writer.write_full_replace_by_symbol(
-                        data, task_type, partition_cols, symbol
-                    )
-                else:
-                    logger.debug(f"为字典表 {task_type} 执行全局全量替换")
-                    self.parquet_writer.write_full_replace(
-                        data, task_type, partition_cols
-                    )
-            else:
+            if update_strategy == 'full_replace':
+                # 此分支现在只对 stock_basic 等非时间序列、非 by_symbol 的表有效
+                self.parquet_writer.write_full_replace(data, task_type, partition_cols)
+                logger.debug(f"使用全量替换策略写入 {task_type} 数据")
+            else: # incremental
                 self.parquet_writer.write(data, task_type, partition_cols)
                 logger.debug(f"使用增量更新策略写入 {task_type} 数据")
 
             return True
 
+        except KeyError:
+            logger.warning(f"未找到 {task_type} 的 schema 定义，跳过处理")
+            return False
         except Exception as e:
             logger.error(f"💥 同步处理异常: {task_type} - {str(e)}")
             return False

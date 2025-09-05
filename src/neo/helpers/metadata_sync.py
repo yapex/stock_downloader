@@ -229,20 +229,21 @@ class MetadataSyncManager:
     def _get_view_partitions(
         self, con: duckdb.DuckDBPyConnection, table_name: str
     ) -> Set[str]:
-        """从 DuckDB 的元数据中，查询一个视图当前指向了哪些分区。"""
+        """从 DuckDB 视图的 SQL 定义中提取分区信息。"""
         try:
-            result_df = con.execute(
-                f"SELECT DISTINCT file_name FROM duckdb_scanned_files('{table_name}')"
-            ).fetchdf()
-            if result_df.empty:
+            # 获取视图的 SQL 定义
+            result = con.execute(
+                f"SELECT sql FROM duckdb_views() WHERE view_name = '{table_name}'"
+            ).fetchone()
+            
+            if not result:
                 return set()
-
-            partitions = set()
-            for file_path in result_df["file_name"]:
-                match = re.search(r"(year=\d{4})", file_path)
-                if match:
-                    partitions.add(match.group(1))
-            return partitions
+            
+            sql_definition = result[0]
+            # 从 SQL 定义中提取 year=XXXX 模式
+            matches = re.findall(r'year=\d{4}', sql_definition)
+            return set(matches)
+            
         except duckdb.Error:
             return set()
 
@@ -346,12 +347,26 @@ class MetadataSyncManager:
                         continue
 
                     view_partitions = self._get_view_partitions(con, table_name)
-
-                    if physical_partitions != view_partitions or not self._view_exists(
-                        con, table_name
-                    ):
+                    
+                    # 检查是否需要更新：优先考虑文件变化，其次考虑分区一致性
+                    needs_update = False
+                    update_reason = ""
+                    
+                    # 1. 如果文件有变化，必须更新
+                    if file_info["has_changes"]:
+                        needs_update = True
+                        update_reason = f"文件变化 (最后修改: {self._format_time_diff(file_info['last_modified'])})"
+                    # 2. 如果没有文件变化，但分区不一致或视图不存在
+                    elif physical_partitions != view_partitions or not self._view_exists(con, table_name):
+                        needs_update = True
+                        if not self._view_exists(con, table_name):
+                            update_reason = "视图不存在"
+                        else:
+                            update_reason = "分区状态不一致"
+                    
+                    if needs_update:
                         print(
-                            f"  -> 检测到表 '{table_name}' 的分区状态不一致，正在更新视图..."
+                            f"  -> 检测到表 '{table_name}' 需要更新 ({update_reason})，正在更新视图..."
                         )
 
                         # 检测分区结构并生成正确的路径模式

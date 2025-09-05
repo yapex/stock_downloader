@@ -33,9 +33,7 @@ class ParquetWriter(IParquetWriter):
             logger.debug("数据为空，跳过写入 Parquet 文件")
             return
 
-        # 清洗数据，避免 PyArrow 类型推断错误
-        for col in data.select_dtypes(include=["object"]).columns:
-            data[col] = data[col].astype(str)
+        # 让 PyArrow 自己处理类型推断，移除强制字符串转换
 
         table = pa.Table.from_pandas(data)
         target_path = self.base_path / task_type
@@ -67,10 +65,14 @@ class ParquetWriter(IParquetWriter):
         target_path = self.base_path / task_type
 
         try:
-            # 删除现有数据目录
+            # 删除现有数据（支持文件和目录两种情况）
             if target_path.exists():
-                shutil.rmtree(target_path)
-                logger.info(f"🗑️ 已删除现有数据目录: {target_path}")
+                if target_path.is_file():
+                    target_path.unlink()
+                    logger.info(f"🗑️ 已删除现有数据文件: {target_path}")
+                else:
+                    shutil.rmtree(target_path)
+                    logger.info(f"🗑️ 已删除现有数据目录: {target_path}")
 
             # 写入新数据
             table = pa.Table.from_pandas(data)
@@ -97,22 +99,11 @@ class ParquetWriter(IParquetWriter):
             return
 
         target_path = self.base_path / task_type
-        # 使用 ts_code=symbol 的分区格式，这是 Hive 分区标准
-        symbol_partition_path = target_path / f"ts_code={symbol}"
 
         try:
-            # 关键修复：只删除指定 symbol 的数据目录
-            if symbol_partition_path.exists():
-                shutil.rmtree(symbol_partition_path)
-                logger.info(
-                    f"🗑️ 已删除 {symbol} 的现有数据目录: {symbol_partition_path}"
-                )
-
-            # 确保 ts_code 是分区的一部分，以便写入到正确的子目录
+            # 确保 ts_code 列存在，以便 pyarrow 分区
             if "ts_code" not in data.columns:
                 data["ts_code"] = symbol
-            if "ts_code" not in partition_cols:
-                partition_cols.insert(0, "ts_code")
 
             # 写入新数据
             table = pa.Table.from_pandas(data)
@@ -120,6 +111,7 @@ class ParquetWriter(IParquetWriter):
                 table,
                 root_path=str(target_path),
                 partition_cols=partition_cols,
+                existing_data_behavior='delete_matching',
                 basename_template=f"part-{{i}}-{pd.Timestamp.now().strftime('%Y%m%d%H%M%S')}.parquet",
             )
             logger.debug(

@@ -90,8 +90,12 @@ class AppService:
         else:
             symbols = group_handler.get_symbols_for_group(group_name)
 
+        # 处理空 symbols 的情况：只有在真正没有 symbols 时才返回空字典
+        # 注意：GroupHandler 对于全局任务组会返回 [""] 而不是 []
         if not symbols:
             return {}
-
+            
         # 构建映射关系：每个任务类型对应所有股票代码
+        # 对于不需要股票代码的任务（如 stock_basic, trade_cal），
+        # symbols 为 [""]，这样会创建一个空字符串作为 symbol 的任务
         return {task_type: symbols for task_type in task_types}

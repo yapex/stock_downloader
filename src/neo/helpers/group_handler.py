@@ -41,9 +41,16 @@ class GroupHandler:
 
         task_type_names = self.config.task_groups[group_name]
 
-        # 如果组包含不需要股票列表的任务，返回空列表
-        if any(task in ["stock_basic", "trade_cal"] for task in task_type_names):
-            return []
+        # 检查是否全部都是不需要股票代码的任务
+        global_tasks = ["stock_basic", "trade_cal"]
+        if all(task in global_tasks for task in task_type_names):
+            # 如果组中全部都是全局任务，返回包含空字符串的列表
+            # 这样任务构建器就知道需要为这些任务创建一个不需要股票代码的任务
+            return [""]
+        elif any(task in global_tasks for task in task_type_names):
+            # 如果组中有部分全局任务，需要特殊处理
+            # 这种情况下我们仍然需要股票代码，因为混合组中的其他任务需要
+            pass
 
         # 其他组需要从数据库获取所有股票代码
         if self._all_symbols is None:

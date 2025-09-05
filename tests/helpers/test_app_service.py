@@ -175,3 +175,43 @@ class TestAppServiceFacade:
         )
         # get_symbols_for_group 不应该被调用，因为使用了指定的股票代码
         mock_group_handler.get_symbols_for_group.assert_not_called()
+
+    @patch("neo.app.container")
+    def test_build_task_stock_mapping_from_group_sys_group_should_work(self, mock_container):
+        """测试 sys 组（包含 stock_basic 和 trade_cal）应该正常工作"""
+        from neo.helpers.app_service import AppService
+
+        # 1. 创建依赖的 Mock 对象
+        mock_consumer_runner = Mock()
+        mock_downloader_service = Mock()
+
+        # 2. 设置 container mock - 模拟 sys 组的修复后行为
+        mock_group_handler = Mock()
+        mock_group_handler.get_task_types_for_group.return_value = [
+            "stock_basic",
+            "trade_cal",  # sys 组包含这两个任务
+        ]
+        # 模拟 GroupHandler 的修复后逻辑：对于全局任务返回 [""] 作为占位符
+        mock_group_handler.get_symbols_for_group.return_value = [""]
+        mock_container.group_handler.return_value = mock_group_handler
+
+        # 3. 实例化被测对象
+        app_service = AppService(
+            consumer_runner=mock_consumer_runner,
+            downloader_service=mock_downloader_service,
+        )
+
+        # 4. 调用被测方法
+        result = app_service.build_task_stock_mapping_from_group("sys")
+
+        # 5. 断言结果 - 修复后应该返回正确的映射
+        expected_mapping = {
+            "stock_basic": [""],  # 不需要股票代码的任务使用空字符串
+            "trade_cal": [""],   # 不需要股票代码的任务使用空字符串
+        }
+        assert result == expected_mapping
+
+        # 6. 断言 Mock 对象的方法被正确调用
+        mock_container.group_handler.assert_called_once()
+        mock_group_handler.get_task_types_for_group.assert_called_once_with("sys")
+        mock_group_handler.get_symbols_for_group.assert_called_once_with("sys")
