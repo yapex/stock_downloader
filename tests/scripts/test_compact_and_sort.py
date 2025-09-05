@@ -231,8 +231,9 @@ def test_optimize_non_partitioned_table_preserves_directory_structure(
     assert "ORDER BY ts_code" in executed_sql
     
     # 1c. 验证目标路径指向的是具体文件，不是目录
-    expected_target_file = temp_root / table_name / f"{table_name}.parquet"
-    assert f"TO '{expected_target_file}'" in executed_sql
+    # 由于使用了UUID，文件名会包含uuid，所以只验证表名部分
+    assert f"/{table_name}/{table_name}-" in executed_sql
+    assert ".parquet'" in executed_sql
     
     # 1d. 验证没有 PARTITION_BY 子句
     assert "PARTITION_BY" not in executed_sql

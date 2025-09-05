@@ -14,6 +14,7 @@ import os
 import sys
 import shutil
 import tomllib
+import uuid
 from pathlib import Path
 from typing import List, Dict, Any
 import typer
@@ -212,7 +213,9 @@ def optimize_table(con: duckdb.DuckDBPyConnection, table_name: str, table_config
         """
     else:
         # 非分区表：需要先创建目录，然后指定具体文件路径以保持目录结构
-        target_file_path = target_path / f"{table_name}.parquet"
+        # 使用UUID确保文件名唯一，避免重复覆盖
+        unique_id = str(uuid.uuid4())[:8]  # 使用UUID前8位确保唯一性
+        target_file_path = target_path / f"{table_name}-{unique_id}.parquet"
         copy_statement = f"""
         COPY (
             SELECT * FROM read_parquet({source_pattern})
@@ -246,7 +249,10 @@ def optimize_table(con: duckdb.DuckDBPyConnection, table_name: str, table_config
         raise typer.Exit(1)
 
     # 5. 替换旧数据
-    backup_path = source_path.with_suffix(f".backup_{pd.Timestamp.now().strftime('%Y%m%d%H%M%S')}")
+    # 使用UUID确保备份目录名唯一
+    timestamp = pd.Timestamp.now().strftime('%Y%m%d%H%M%S')
+    unique_id = str(uuid.uuid4())[:8]
+    backup_path = source_path.with_suffix(f".backup_{timestamp}_{unique_id}")
     print(f"  正在用优化后的数据替换旧数据...备份至: {backup_path}")
     source_path.rename(backup_path)
     target_path.rename(source_path)
