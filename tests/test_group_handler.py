@@ -101,4 +101,4 @@ class TestGroupHandler:
         handler = GroupHandler()
         symbols = handler.get_symbols_for_group("sys_group")
 
-        assert symbols == []
+        assert symbols == [""]

@@ -8,6 +8,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import os
+import uuid
 
 from .interfaces import IParquetWriter
 
@@ -26,7 +27,7 @@ class ParquetWriter(IParquetWriter):
         self.base_path = Path(base_path)
 
     def write(
-        self, data: pd.DataFrame, task_type: str, partition_cols: List[str]
+        self, data: pd.DataFrame, task_type: str, partition_cols: List[str], symbol: str = None
     ) -> None:
         """将 DataFrame 写入到分区的 Parquet 文件中"""
         if data is None or data.empty:
@@ -38,18 +39,34 @@ class ParquetWriter(IParquetWriter):
         table = pa.Table.from_pandas(data)
         target_path = self.base_path / task_type
 
+        # 生成包含ts_code的文件名，如果没有symbol则尝试从数据中提取
+        if not symbol and 'ts_code' in data.columns:
+            unique_symbols = data['ts_code'].unique()
+            if len(unique_symbols) == 1:
+                symbol = unique_symbols[0]
+        
+        # 构建文件名：只使用股票代码+UUID（最简洁方案）
+        unique_id = str(uuid.uuid4())[:8]  # 取UUID的前8位，保证绝对唯一性
+        
+        if symbol:
+            # 清理symbol中的特殊字符，使其适合作为文件名
+            clean_symbol = symbol.replace('.', '_').replace('-', '_')
+            basename_template = f"part-{{i}}-{clean_symbol}-{unique_id}.parquet"
+        else:
+            basename_template = f"part-{{i}}-{unique_id}.parquet"
+
         try:
             pq.write_to_dataset(
                 table,
                 root_path=str(target_path),
                 partition_cols=partition_cols,
                 existing_data_behavior="overwrite_or_ignore",
-                basename_template=f"part-{{i}}-{pd.Timestamp.now().strftime('%Y%m%d%H%M%S')}.parquet",
+                basename_template=basename_template,
             )
             logger.info(f"✅ 成功将 {len(data)} 条数据写入到 {target_path}")
             
             # 记录实际创建的文件路径（debug级别）
-            self._log_created_files(target_path, partition_cols, data)
+            self._log_created_files(target_path, partition_cols, data, symbol)
         except Exception as e:
             logger.error(f"💥 写入 Parquet 数据到 {target_path} 失败: {e}")
             raise
@@ -76,11 +93,16 @@ class ParquetWriter(IParquetWriter):
 
             # 写入新数据
             table = pa.Table.from_pandas(data)
+            
+            # 使用简洁的UUID方案保证文件名唯一性
+            unique_id = str(uuid.uuid4())[:8]
+            basename_template = f"part-{{i}}-{unique_id}.parquet"
+            
             pq.write_to_dataset(
                 table,
                 root_path=str(target_path),
                 partition_cols=partition_cols,
-                basename_template=f"part-{{i}}-{pd.Timestamp.now().strftime('%Y%m%d%H%M%S')}.parquet",
+                basename_template=basename_template,
             )
             logger.debug(f"✅ 全量替换成功写入 {len(data)} 条数据到 {target_path}")
             
@@ -107,12 +129,18 @@ class ParquetWriter(IParquetWriter):
 
             # 写入新数据
             table = pa.Table.from_pandas(data)
+            
+            # 使用简洁的symbol+UUID方案保证文件名唯一性
+            unique_id = str(uuid.uuid4())[:8]
+            clean_symbol = symbol.replace('.', '_').replace('-', '_')
+            basename_template = f"part-{{i}}-{clean_symbol}-{unique_id}.parquet"
+            
             pq.write_to_dataset(
                 table,
                 root_path=str(target_path),
                 partition_cols=partition_cols,
                 existing_data_behavior='delete_matching',
-                basename_template=f"part-{{i}}-{pd.Timestamp.now().strftime('%Y%m%d%H%M%S')}.parquet",
+                basename_template=basename_template,
             )
             logger.debug(
                 f"✅ 全量替换成功写入 {len(data)} 条数据到 {target_path} for symbol {symbol}"
