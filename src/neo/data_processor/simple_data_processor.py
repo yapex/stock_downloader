@@ -102,11 +102,11 @@ class SimpleDataProcessor(IDataProcessor):
 
             # --- 执行写入 ---
             update_strategy = self._get_update_strategy(task_type)
-            if update_strategy == 'full_replace':
+            if update_strategy == "full_replace":
                 # 此分支现在只对 stock_basic 等非时间序列、非 by_symbol 的表有效
                 self.parquet_writer.write_full_replace(data, task_type, partition_cols)
                 logger.debug(f"使用全量替换策略写入 {task_type} 数据")
-            else: # incremental
+            else:  # incremental
                 self.parquet_writer.write(data, task_type, partition_cols, symbol)
                 logger.debug(f"使用增量更新策略写入 {task_type} 数据")
 

@@ -135,10 +135,11 @@ def mock_duckdb():
 
 class TestDownloadTask:
     """测试 download_task 函数"""
-    
+
     def setup_method(self):
         """每个测试方法前的设置"""
         from tests.fixtures.mock_factory import MockFactory
+
         self.mock_factory = MockFactory()
 
     @patch("neo.app.container")
@@ -151,7 +152,7 @@ class TestDownloadTask:
         downloader_mock = self.mock_factory.create_downloader_mock(
             pd.DataFrame({"test": [1, 2, 3]})
         )
-        
+
         # 设置 container mock
         mock_container.reset_mock()
         mock_container.downloader.return_value = downloader_mock
@@ -160,9 +161,7 @@ class TestDownloadTask:
         download_task.func("stock_basic", "000001.SZ")
 
         # 验证调用
-        downloader_mock.download.assert_called_once_with(
-            "stock_basic", "000001.SZ"
-        )
+        downloader_mock.download.assert_called_once_with("stock_basic", "000001.SZ")
         mock_process_task.assert_called_once()
 
     @patch("neo.app.container")
@@ -177,7 +176,7 @@ class TestDownloadTask:
         downloader_mock = self.mock_factory.create_downloader_mock(
             pd.DataFrame()  # 空 DataFrame
         )
-        
+
         # 设置 container mock
         mock_container.reset_mock()
         mock_container.downloader.return_value = downloader_mock
@@ -186,9 +185,7 @@ class TestDownloadTask:
         download_task.func("stock_basic", "000001.SZ")
 
         # 验证调用
-        downloader_mock.download.assert_called_once_with(
-            "stock_basic", "000001.SZ"
-        )
+        downloader_mock.download.assert_called_once_with("stock_basic", "000001.SZ")
         # 验证没有调用后续处理任务
         mock_process_task.assert_not_called()
 
@@ -202,7 +199,7 @@ class TestDownloadTask:
 
         # 使用 MockFactory 创建返回 None 的 downloader mock
         downloader_mock = self.mock_factory.create_downloader_mock(None)
-        
+
         # 设置 container mock
         mock_container.reset_mock()
         mock_container.downloader.return_value = downloader_mock
@@ -211,9 +208,7 @@ class TestDownloadTask:
         download_task.func("stock_basic", "000001.SZ")
 
         # 验证调用
-        downloader_mock.download.assert_called_once_with(
-            "stock_basic", "000001.SZ"
-        )
+        downloader_mock.download.assert_called_once_with("stock_basic", "000001.SZ")
         # 验证没有调用后续处理任务
         mock_process_task.assert_not_called()
 
@@ -229,7 +224,7 @@ class TestDownloadTask:
         # 使用 MockFactory 创建抛出异常的 downloader mock
         downloader_mock = self.mock_factory.create_downloader_mock()
         downloader_mock.download.side_effect = Exception("Download failed")
-        
+
         # 设置 container mock
         mock_container.reset_mock()
         mock_container.downloader.return_value = downloader_mock
@@ -238,9 +233,7 @@ class TestDownloadTask:
         with pytest.raises(Exception, match="Download failed"):
             download_task.func("stock_basic", "000001.SZ")
 
-        downloader_mock.download.assert_called_once_with(
-            "stock_basic", "000001.SZ"
-        )
+        downloader_mock.download.assert_called_once_with("stock_basic", "000001.SZ")
         mock_logger.error.assert_called_once()
         mock_process_task.assert_not_called()
 
@@ -251,10 +244,12 @@ class TestProcessDataTask:
     def setup_method(self):
         """每个测试方法执行前的设置"""
         from tests.fixtures.mock_factory import MockFactory
+
         self.mock_factory = MockFactory()
-        
+
         # 清理可能存在的mock
         import unittest.mock
+
         unittest.mock._patch._active_patches.clear()
 
     @patch("neo.tasks.data_processing_tasks.DataProcessor")
@@ -264,7 +259,7 @@ class TestProcessDataTask:
 
         # 使用 MockFactory 创建 data processor mock
         processor_mock = self.mock_factory.create_data_processor_mock(True)
-        
+
         mock_data_processor_class.reset_mock()
         mock_data_processor_class.return_value = processor_mock
 
@@ -288,7 +283,7 @@ class TestProcessDataTask:
 
         # 使用 MockFactory 创建返回 False 的 data processor mock
         processor_mock = self.mock_factory.create_data_processor_mock(False)
-        
+
         mock_data_processor_class.reset_mock()
         mock_data_processor_class.return_value = processor_mock
 
@@ -305,7 +300,7 @@ class TestProcessDataTask:
         # 重置并测试 None
         processor_mock.reset_mock()
         mock_data_processor_class.reset_mock()
-        
+
         # 重新创建 processor mock
         processor_mock_2 = self.mock_factory.create_data_processor_mock(False)
         mock_data_processor_class.return_value = processor_mock_2
@@ -327,7 +322,7 @@ class TestProcessDataTask:
         # 使用 MockFactory 创建抛出异常的 data processor mock
         processor_mock = self.mock_factory.create_data_processor_mock()
         processor_mock.process_data.side_effect = Exception("Processing failed")
-        
+
         mock_data_processor_class.reset_mock()
         mock_data_processor_class.return_value = processor_mock
 
@@ -378,10 +373,11 @@ class TestHueyIntegration:
 
 class TestMetadataSyncTask:
     """测试元数据同步任务"""
-    
+
     def setup_method(self):
         """每个测试方法前的设置"""
         from tests.fixtures.mock_factory import MockFactory
+
         self.mock_factory = MockFactory()
 
     @patch("neo.tasks.metadata_sync_tasks.get_config")
@@ -468,10 +464,11 @@ class TestMetadataSyncTask:
 
 class TestBuildAndEnqueueTask:
     """测试 build_and_enqueue_downloads_task 任务"""
-    
+
     def setup_method(self):
         """每个测试方法前的设置"""
         from tests.fixtures.mock_factory import MockFactory
+
         self.mock_factory = MockFactory()
 
     @patch("neo.tasks.download_tasks.download_task")
@@ -491,10 +488,9 @@ class TestBuildAndEnqueueTask:
 
         # 使用 MockFactory 创建完整的容器 mock
         huey_mocks = self.mock_factory.create_complete_huey_container_mock(
-            latest_trading_day="20240115",
-            max_dates={"000001.SZ": "20240110"}
+            latest_trading_day="20240115", max_dates={"000001.SZ": "20240110"}
         )
-        
+
         # 设置 container mock
         mock_container.db_queryer.return_value = huey_mocks["db_queryer"]
         mock_container.schema_loader.return_value = huey_mocks["schema_loader"]
@@ -546,10 +542,9 @@ class TestBuildAndEnqueueTask:
 
         # 使用 MockFactory 创建完整的容器 mock
         huey_mocks = self.mock_factory.create_complete_huey_container_mock(
-            latest_trading_day="20240115",
-            max_dates={"600519.SH": "20240110"}
+            latest_trading_day="20240115", max_dates={"600519.SH": "20240110"}
         )
-        
+
         # 设置 container mock
         mock_container.db_queryer.return_value = huey_mocks["db_queryer"]
         mock_container.schema_loader.return_value = huey_mocks["schema_loader"]

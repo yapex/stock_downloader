@@ -7,6 +7,7 @@ from typing import List, Union, Dict, Any
 import pandas as pd
 import tushare
 from box import Box
+import toml
 
 # 添加项目根目录到 Python 路径
 project_root = Path(__file__).parent.parent
@@ -59,24 +60,75 @@ columns = [
     print(f"Columns: {columns_list}")
 
 
+def load_column_descriptions(descriptions_file: Union[str, Path]) -> Dict[str, Dict[str, str]]:
+    """加载字段描述配置文件
+    
+    Args:
+        descriptions_file: 描述配置文件路径
+        
+    Returns:
+        字段描述字典，格式为 {table_name: {column_name: description}}
+    """
+    descriptions_path = Path(descriptions_file)
+    
+    if not descriptions_path.exists():
+        print(f"描述配置文件 {descriptions_path} 不存在，跳过描述加载")
+        return {}
+    
+    try:
+        with open(descriptions_path, 'r', encoding='utf-8') as f:
+            descriptions = toml.load(f)
+        
+        print(f"已加载 {len(descriptions)} 个表的字段描述配置")
+        return descriptions
+    except Exception as e:
+        print(f"加载描述配置文件失败: {e}")
+        return {}
+
+
 def generate_combined_schema_toml(
     all_schemas: Dict[str, Dict[str, Any]],
     output_path: Union[str, Path],
+    merge_existing: bool = True,
+    descriptions_file: Union[str, Path] = None,
 ) -> None:
     """生成合并的 TOML 格式 schema 文件
 
     Args:
         all_schemas: 所有表的 schema 数据字典
         output_path: 输出文件路径
+        merge_existing: 是否合并现有的 schema 配置
+        descriptions_file: 字段描述配置文件路径
     """
     # 确保输出目录存在
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # 加载字段描述配置
+    descriptions = {}
+    if descriptions_file:
+        descriptions = load_column_descriptions(descriptions_file)
+    
+    # 如果启用合并且文件已存在，先读取现有的配置
+    existing_schemas = {}
+    if merge_existing and output_path.exists():
+        try:
+            with open(output_path, 'r', encoding='utf-8') as f:
+                existing_schemas = toml.load(f)
+            print(f"已读取现有的 {len(existing_schemas)} 个表配置")
+        except Exception as e:
+            print(f"读取现有配置失败: {e}，将创建新文件")
+    
+    # 合并现有配置和新配置
+    merged_schemas = existing_schemas.copy()
+    merged_schemas.update(all_schemas)
+    
+    print(f"合并后共有 {len(merged_schemas)} 个表配置")
 
     # 构建 TOML 数据结构
     toml_data = {}
 
-    for table_name, schema_data in all_schemas.items():
+    for table_name, schema_data in merged_schemas.items():
         # 创建有序字典，确保 table_name 和 primary_key 在最上面
         table_config = {}
 
@@ -109,7 +161,16 @@ def generate_combined_schema_toml(
             columns_with_types = []
             for col_name in schema_data["columns"]:
                 col_type = schema_data["column_types"].get(col_name, "TEXT")
-                columns_with_types.append({"name": col_name, "type": col_type})
+                
+                # 创建字段字典
+                column_dict = {"name": col_name, "type": col_type}
+                
+                # 添加描述信息（如果存在）
+                if table_name in descriptions and col_name in descriptions[table_name]:
+                    column_dict["desc"] = descriptions[table_name][col_name]
+                
+                columns_with_types.append(column_dict)
+                
             table_config["columns"] = columns_with_types
         else:
             # 如果没有类型信息，保持原有格式
@@ -223,8 +284,8 @@ TABLE_CONFIGS = Box(
         },
         "income": {
             "table_name": "income",
-            "primary_key": ["ts_code", "ann_date"],
-            "date_col": "f_ann_date",
+            "primary_key": ["ts_code", "end_date"],
+            "date_col": "end_date",
             "description": "利润表字段",
             "api_method": "income",
             "base_object": "pro",
@@ -234,8 +295,8 @@ TABLE_CONFIGS = Box(
         },
         "balance_sheet": {
             "table_name": "balance_sheet",
-            "primary_key": ["ts_code", "ann_date"],
-            "date_col": "f_ann_date",
+            "primary_key": ["ts_code", "end_date"],
+            "date_col": "end_date",
             "description": "资产负债表字段",
             "api_method": "balancesheet",
             "base_object": "pro",
@@ -245,8 +306,8 @@ TABLE_CONFIGS = Box(
         },
         "cash_flow": {
             "table_name": "cash_flow",
-            "primary_key": ["ts_code", "ann_date"],
-            "date_col": "f_ann_date",
+            "primary_key": ["ts_code", "end_date"],
+            "date_col": "end_date",
             "description": "现金流量表字段",
             "api_method": "cashflow",
             "base_object": "pro",
@@ -269,6 +330,17 @@ TABLE_CONFIGS = Box(
             "required_params": {
                 "exchange": "SSE",
             },
+            "fields": [],
+            "output_file": "src/stock_schema.toml",
+        },
+        "dividend": {
+            "table_name": "dividend",
+            "primary_key": ["ts_code", "end_date"],
+            "date_col": "end_date",
+            "description": "分红送股数据",
+            "api_method": "dividend",
+            "base_object": "pro",
+            "default_params": {"ts_code": "600519.SH"},
             "fields": [],
             "output_file": "src/stock_schema.toml",
         },
@@ -353,11 +425,12 @@ def get_table_schema_data(pro, table_name: str, config: Box) -> Dict[str, Any]:
         return None
 
 
-def create_schemas(table_names: List[str] = None) -> None:
+def create_schemas(table_names: List[str] = None, descriptions_file: Union[str, Path] = None) -> None:
     """批量创建表 schema
 
     Args:
         table_names: 要创建的表名列表，如果为 None 则创建所有表
+        descriptions_file: 字段描述配置文件路径
     """
     pro = get_tushare_api()
 
@@ -391,7 +464,12 @@ def create_schemas(table_names: List[str] = None) -> None:
     # 生成统一的 schema 文件
     if all_schemas:
         output_path = Path.cwd() / "stock_schema.toml"
-        generate_combined_schema_toml(all_schemas, output_path)
+        generate_combined_schema_toml(
+            all_schemas, 
+            output_path, 
+            merge_existing=True, 
+            descriptions_file=descriptions_file
+        )
         print(
             f"\n完成! 成功生成 {success_count}/{total_count} 个表的 schema，输出到 {output_path}"
         )
@@ -409,6 +487,12 @@ def main():
         help="指定要生成的表名，不指定则生成所有表",
     )
     parser.add_argument("--list", action="store_true", help="列出所有支持的表名")
+    parser.add_argument(
+        "--descriptions",
+        type=str,
+        default="scripts/stock_column_descriptions.toml",
+        help="字段描述配置文件路径",
+    )
 
     args = parser.parse_args()
 
@@ -418,7 +502,7 @@ def main():
             print(f"  {table_name}: {config['description']}")
         return
 
-    create_schemas(args.tables)
+    create_schemas(args.tables, args.descriptions)
 
 
 if __name__ == "__main__":

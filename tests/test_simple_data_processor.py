@@ -25,9 +25,12 @@ def real_schema_loader() -> SchemaLoader:
     return SchemaLoader()
 
 
-@patch("src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy", return_value="incremental")
+@patch(
+    "src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy",
+    return_value="incremental",
+)
 def test_with_real_schema_for_stock_daily_should_partition(
-    mock_get_strategy, # patch arugment
+    mock_get_strategy,  # patch arugment
     mock_parquet_writer: MagicMock,
     real_schema_loader: SchemaLoader,
 ):
@@ -35,10 +38,12 @@ def test_with_real_schema_for_stock_daily_should_partition(
     # GIVEN: 一个真实的 schema loader 和一个待处理的 task_type
     task_type = "stock_daily"
     # 根据真实的 schema，我们知道需要 trade_date 列
-    sample_data = pd.DataFrame({
-        "trade_date": ["2023-01-01", "2024-01-02"],
-        "ts_code": ["600519.SH", "000001.SZ"],
-    })
+    sample_data = pd.DataFrame(
+        {
+            "trade_date": ["2023-01-01", "2024-01-02"],
+            "ts_code": ["600519.SH", "000001.SZ"],
+        }
+    )
 
     # WHEN: 使用真实的 schema loader 初始化 processor 并处理数据
     processor = SimpleDataProcessor(
@@ -48,12 +53,17 @@ def test_with_real_schema_for_stock_daily_should_partition(
 
     # THEN: writer 应被告知按 ['year'] 分区
     assert result is True
-    mock_parquet_writer.write.assert_called_once_with(ANY, task_type, ["year"], "any_symbol")
+    mock_parquet_writer.write.assert_called_once_with(
+        ANY, task_type, ["year"], "any_symbol"
+    )
 
 
-@patch("src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy", return_value="incremental")
+@patch(
+    "src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy",
+    return_value="incremental",
+)
 def test_with_real_schema_for_stock_basic_should_not_partition(
-    mock_get_strategy, # patch arugment
+    mock_get_strategy,  # patch arugment
     mock_parquet_writer: MagicMock,
     real_schema_loader: SchemaLoader,
 ):
@@ -61,10 +71,9 @@ def test_with_real_schema_for_stock_basic_should_not_partition(
     # GIVEN
     task_type = "stock_basic"
     # stock_basic 不需要日期列
-    sample_data = pd.DataFrame({
-        "ts_code": ["600519.SH", "000001.SZ"],
-        "name": ["贵州茅台", "平安银行"]
-    })
+    sample_data = pd.DataFrame(
+        {"ts_code": ["600519.SH", "000001.SZ"], "name": ["贵州茅台", "平安银行"]}
+    )
 
     # WHEN
     processor = SimpleDataProcessor(
@@ -77,9 +86,12 @@ def test_with_real_schema_for_stock_basic_should_not_partition(
     mock_parquet_writer.write.assert_called_once_with(ANY, task_type, [], "any_symbol")
 
 
-@patch("src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy", return_value="incremental")
+@patch(
+    "src.neo.data_processor.simple_data_processor.SimpleDataProcessor._get_update_strategy",
+    return_value="incremental",
+)
 def test_with_real_schema_for_trade_cal_should_partition(
-    mock_get_strategy, # patch arugment
+    mock_get_strategy,  # patch arugment
     mock_parquet_writer: MagicMock,
     real_schema_loader: SchemaLoader,
 ):
@@ -87,11 +99,13 @@ def test_with_real_schema_for_trade_cal_should_partition(
     # GIVEN
     task_type = "trade_cal"
     # 根据 schema，trade_cal 需要 cal_date 列
-    sample_data = pd.DataFrame({
-        "cal_date": ["20230101", "20240102"],
-        "exchange": ["SSE", "SSE"],
-        "is_open": [1, 1]
-    })
+    sample_data = pd.DataFrame(
+        {
+            "cal_date": ["20230101", "20240102"],
+            "exchange": ["SSE", "SSE"],
+            "is_open": [1, 1],
+        }
+    )
 
     # WHEN
     processor = SimpleDataProcessor(
@@ -101,4 +115,6 @@ def test_with_real_schema_for_trade_cal_should_partition(
 
     # THEN: writer 应被告知按 ['year'] 分区
     assert result is True
-    mock_parquet_writer.write.assert_called_once_with(ANY, task_type, ["year"], "any_symbol")
+    mock_parquet_writer.write.assert_called_once_with(
+        ANY, task_type, ["year"], "any_symbol"
+    )

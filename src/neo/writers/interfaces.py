@@ -8,7 +8,11 @@ class IParquetWriter(Protocol):
     """Parquet 文件写入器接口"""
 
     def write(
-        self, data: pd.DataFrame, task_type: str, partition_cols: List[str], symbol: str = None
+        self,
+        data: pd.DataFrame,
+        task_type: str,
+        partition_cols: List[str],
+        symbol: str = None,
     ) -> None:
         """将 DataFrame 写入到分区的 Parquet 文件中
 

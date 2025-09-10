@@ -94,7 +94,7 @@ class AppService:
         # 注意：GroupHandler 对于全局任务组会返回 [""] 而不是 []
         if not symbols:
             return {}
-            
+
         # 构建映射关系：每个任务类型对应所有股票代码
         # 对于不需要股票代码的任务（如 stock_basic, trade_cal），
         # symbols 为 [""]，这样会创建一个空字符串作为 symbol 的任务

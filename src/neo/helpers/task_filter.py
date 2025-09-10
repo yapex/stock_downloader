@@ -48,21 +48,23 @@ class TaskFilter:
         # 提取交易所代码
         exchange = symbol.split(".")[-1]
         return exchange in self.exchange_whitelist
-    
+
     def get_stock_filter_sql_conditions(self) -> str:
         """获取股票过滤的SQL条件字符串
-        
+
         Returns:
             str: SQL WHERE 条件字符串
         """
         # 交易所白名单条件
-        exchange_conditions = [f"ts_code LIKE '%.{exchange}'" for exchange in self.exchange_whitelist]
+        exchange_conditions = [
+            f"ts_code LIKE '%.{exchange}'" for exchange in self.exchange_whitelist
+        ]
         conditions = [f"({' OR '.join(exchange_conditions)})"]
-        
+
         # 注释: stock_basic 表中如果有 list_status 字段，可以增加以下条件：
         # conditions.append("list_status = 'L'")
         # 但当前的 stock_basic 表结构中没有该字段
-        
+
         return " AND ".join(conditions)
 
     def filter_symbols(self, symbols: List[str]) -> List[str]:

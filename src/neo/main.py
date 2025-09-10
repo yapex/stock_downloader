@@ -45,29 +45,28 @@ def dl(
     """
     from neo.tasks.huey_tasks import build_and_enqueue_downloads_task
     from neo.tasks.download_tasks import detect_task_group_strategy
-    from neo.helpers.app_service import AppService
 
     # 检测任务组的更新策略类型
     strategy = detect_task_group_strategy(group)
     strategy_text = {
         "full_replace": "全量替换",
-        "incremental": "增量更新", 
+        "incremental": "增量更新",
         "mixed": "混合策略",
-        "unknown": "未知策略"
+        "unknown": "未知策略",
     }.get(strategy, "未知策略")
-    
+
     typer.echo(f"正在提交任务组 '{group}' 的{strategy_text}下载构建任务...")
-    
+
     # 使用 AppService 构建任务映射
     app_service = container.app_service()
     task_stock_mapping = app_service.build_task_stock_mapping_from_group(
         group, stock_codes
     )
-    
+
     if not task_stock_mapping:
         typer.echo(f"⚠️ 任务组 '{group}' 没有找到任何任务或股票代码")
         return
-    
+
     # 将任务提交到 Huey 慢速队列
     task_result = build_and_enqueue_downloads_task(task_stock_mapping)
     typer.echo(

@@ -73,6 +73,11 @@ rate_limit_per_minute = 195
 update_strategy = "incremental"  # 修改为增量追加
 update_by_symbol = true # 指定按 symbol 更新
 
+[download_tasks.dividend]  
+rate_limit_per_minute = 195  
+update_strategy = "incremental"  # 分红数据适合增量更新
+update_by_symbol = true # 指定按 symbol 更新
+
 [task_groups]
 sys=[
     "stock_basic",
@@ -91,6 +96,9 @@ financial=[
     "income",
     "cash_flow",
 ]
+dividend=[
+    "dividend"
+]
 all=[
     "stock_daily",
     "daily_basic",
@@ -98,6 +106,7 @@ all=[
     "balance_sheet",
     "income",
     "cash_flow",
+    "dividend",
 ]
 test=[
     "cash_flow"

@@ -177,7 +177,9 @@ class TestAppServiceFacade:
         mock_group_handler.get_symbols_for_group.assert_not_called()
 
     @patch("neo.app.container")
-    def test_build_task_stock_mapping_from_group_sys_group_should_work(self, mock_container):
+    def test_build_task_stock_mapping_from_group_sys_group_should_work(
+        self, mock_container
+    ):
         """测试 sys 组（包含 stock_basic 和 trade_cal）应该正常工作"""
         from neo.helpers.app_service import AppService
 
@@ -207,7 +209,7 @@ class TestAppServiceFacade:
         # 5. 断言结果 - 修复后应该返回正确的映射
         expected_mapping = {
             "stock_basic": [""],  # 不需要股票代码的任务使用空字符串
-            "trade_cal": [""],   # 不需要股票代码的任务使用空字符串
+            "trade_cal": [""],  # 不需要股票代码的任务使用空字符串
         }
         assert result == expected_mapping
 

@@ -96,9 +96,9 @@ def _setup_file_handler(log_type: str, log_level: str) -> None:
     # 创建按天轮转的文件处理器，保留2天的日志文件
     file_handler = TimedRotatingFileHandler(
         filename=os.path.join(log_dir, log_filename),
-        when="midnight",     # 每天午夜轮转
-        interval=1,          # 每1天轮转一次
-        backupCount=2,       # 保留2个备份文件（即保留2天的历史日志）
+        when="midnight",  # 每天午夜轮转
+        interval=1,  # 每1天轮转一次
+        backupCount=2,  # 保留2个备份文件（即保留2天的历史日志）
         encoding="utf-8",
     )
 

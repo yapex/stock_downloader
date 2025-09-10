@@ -1,6 +1,6 @@
 """测试 RateLimitManager 类"""
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from neo.helpers.rate_limit_manager import RateLimitManager, get_rate_limit_manager
 from neo.helpers.interfaces import IRateLimitManager
@@ -8,12 +8,15 @@ from neo.helpers.interfaces import IRateLimitManager
 # TaskType 现在使用字符串，TaskTemplateRegistry 已移除
 from pyrate_limiter import Limiter
 from neo.containers import AppContainer
+
+
 class TestRateLimitManager:
     """测试 RateLimitManager 类"""
 
     def setup_method(self):
         """每个测试方法前的设置"""
         from tests.fixtures.mock_factory import MockFactory
+
         self.mock_factory = MockFactory()
 
     def teardown_method(self):
@@ -129,12 +132,15 @@ class TestRateLimitManager:
         # 应该是不同的实例
         assert limiter1 is not limiter2
         assert len(manager.rate_limiters) == 2
+
+
 class TestRateLimitManagerSingleton:
     """测试 RateLimitManager 单例模式"""
-    
+
     def setup_method(self):
         """每个测试方法前的设置"""
         from tests.fixtures.mock_factory import MockFactory
+
         self.mock_factory = MockFactory()
 
     def teardown_method(self):
@@ -248,12 +254,15 @@ class TestRateLimitManagerSingleton:
         singleton_manager = RateLimitManager.singleton()
         assert singleton_manager is not manager1
         assert singleton_manager is not manager2
+
+
 class TestRateLimitManagerContainer:
     """测试从 Container 中获取 RateLimitManager"""
-    
+
     def setup_method(self):
         """每个测试方法前的设置"""
         from tests.fixtures.mock_factory import MockFactory
+
         self.mock_factory = MockFactory()
 
     def teardown_method(self):

@@ -22,7 +22,7 @@ class TestDlCommand:
         """测试带有 group 参数的 dl 命令"""
         # 使用 Mock 工厂创建所有需要的 mock
         mocks = self.mock_factory.create_complete_dl_mocks()
-        
+
         # 设置各个 mock 对象 - container 是全局对象，不是函数
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
@@ -36,7 +36,9 @@ class TestDlCommand:
         # 验证结果
         assert result.exit_code == 0
         mock_logging.assert_called_once_with("download", "info")
-        mocks["app_service"].build_task_stock_mapping_from_group.assert_called_once_with(
+        mocks[
+            "app_service"
+        ].build_task_stock_mapping_from_group.assert_called_once_with(
             "test_group", None
         )
         mock_task.assert_called_once_with({"stock_daily": ["000001.SZ", "000002.SZ"]})
@@ -50,7 +52,7 @@ class TestDlCommand:
         """测试带有 debug 标志的 dl 命令"""
         # 使用 Mock 工厂创建所有需要的 mock
         mocks = self.mock_factory.create_complete_dl_mocks()
-        
+
         # 设置各个 mock 对象 - container 是全局对象，不是函数
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
@@ -64,7 +66,9 @@ class TestDlCommand:
         # 验证结果
         assert result.exit_code == 0
         mock_logging.assert_called_once_with("download", "debug")
-        mocks["app_service"].build_task_stock_mapping_from_group.assert_called_once_with(
+        mocks[
+            "app_service"
+        ].build_task_stock_mapping_from_group.assert_called_once_with(
             "test_group", None
         )
         mock_task.assert_called_once_with({"stock_daily": ["000001.SZ", "000002.SZ"]})
@@ -76,7 +80,7 @@ class TestDlCommand:
         """测试带有 symbols 参数的 dl 命令"""
         # 使用 Mock 工厂创建所有需要的 mock
         mocks = self.mock_factory.create_complete_dl_mocks()
-        
+
         # 设置各个 mock 对象 - container 是全局对象，不是函数
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
@@ -86,13 +90,14 @@ class TestDlCommand:
 
         # 执行命令
         result = self.runner.invoke_dl_command(
-            group="test_group",
-            symbols=["000001.SZ", "000002.SZ"]
+            group="test_group", symbols=["000001.SZ", "000002.SZ"]
         )
 
         # 验证结果
         assert result.exit_code == 0
-        mocks["app_service"].build_task_stock_mapping_from_group.assert_called_once_with(
+        mocks[
+            "app_service"
+        ].build_task_stock_mapping_from_group.assert_called_once_with(
             "test_group", ["000001.SZ", "000002.SZ"]
         )
         mock_task.assert_called_once_with({"stock_daily": ["000001.SZ", "000002.SZ"]})
@@ -104,7 +109,7 @@ class TestDlCommand:
         """测试带有 dry-run 标志的 dl 命令"""
         # 使用 Mock 工厂创建所有需要的 mock
         mocks = self.mock_factory.create_complete_dl_mocks()
-        
+
         # 设置各个 mock 对象 - container 是全局对象，不是函数
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
@@ -117,7 +122,9 @@ class TestDlCommand:
 
         # 验证结果
         assert result.exit_code == 0
-        mocks["app_service"].build_task_stock_mapping_from_group.assert_called_once_with(
+        mocks[
+            "app_service"
+        ].build_task_stock_mapping_from_group.assert_called_once_with(
             "test_group", None
         )
         mock_task.assert_called_once_with({"stock_daily": ["000001.SZ", "000002.SZ"]})
@@ -129,7 +136,7 @@ class TestDlCommand:
         """测试不带 group 参数的 dl 命令"""
         # 使用 Mock 工厂创建所有需要的 mock
         mocks = self.mock_factory.create_complete_dl_mocks()
-        
+
         # 设置各个 mock 对象 - container 是全局对象，不是函数
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
@@ -142,9 +149,9 @@ class TestDlCommand:
 
         # 验证结果
         assert result.exit_code == 0
-        mocks["app_service"].build_task_stock_mapping_from_group.assert_called_once_with(
-            None, None
-        )
+        mocks[
+            "app_service"
+        ].build_task_stock_mapping_from_group.assert_called_once_with(None, None)
         mock_task.assert_called_once_with({"stock_daily": ["000001.SZ", "000002.SZ"]})
 
     @patch("neo.helpers.utils.setup_logging")
@@ -154,7 +161,7 @@ class TestDlCommand:
         """测试 dl 命令中任务执行异常的处理"""
         # 使用 Mock 工厂创建所有需要的 mock
         mocks = self.mock_factory.create_complete_dl_mocks()
-        
+
         # 设置异常情况 - container 是全局对象，不是函数
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
@@ -183,7 +190,7 @@ class TestDpCommand:
         """测试启动 fast 队列的 dp 命令"""
         # 使用 Mock 工厂创建所有需要的 mock
         mocks = self.mock_factory.create_complete_dp_mocks()
-        
+
         # 设置各个 mock 对象 - container 是全局对象，不是函数
         mock_container.app_service.return_value = mocks["app_service"]
         mock_logging.return_value = mocks["logging"]
@@ -202,7 +209,7 @@ class TestDpCommand:
         """测试启动 slow 队列的 dp 命令"""
         # 使用 Mock 工厂创建所有需要的 mock
         mocks = self.mock_factory.create_complete_dp_mocks()
-        
+
         # 设置各个 mock 对象 - container 是全局对象，不是函数
         mock_container.app_service.return_value = mocks["app_service"]
         mock_logging.return_value = mocks["logging"]
@@ -221,7 +228,7 @@ class TestDpCommand:
         """测试启动 maint 队列的 dp 命令"""
         # 使用 Mock 工厂创建所有需要的 mock
         mocks = self.mock_factory.create_complete_dp_mocks()
-        
+
         # 设置各个 mock 对象 - container 是全局对象，不是函数
         mock_container.app_service.return_value = mocks["app_service"]
         mock_logging.return_value = mocks["logging"]
@@ -240,7 +247,7 @@ class TestDpCommand:
         """测试带有 debug 标志的 dp 命令"""
         # 使用 Mock 工厂创建所有需要的 mock
         mocks = self.mock_factory.create_complete_dp_mocks()
-        
+
         # 设置各个 mock 对象 - container 是全局对象，不是函数
         mock_container.app_service.return_value = mocks["app_service"]
         mock_logging.return_value = mocks["logging"]
@@ -255,6 +262,7 @@ class TestDpCommand:
     def test_dp_without_queue_name(self):
         """测试不提供队列名称的 dp 命令"""
         from neo.main import app
+
         # 执行命令
         result = self.runner.runner.invoke(app, ["dp"])
 
@@ -267,7 +275,7 @@ class TestDpCommand:
         """测试 dp 命令中 app_service 异常的处理"""
         # 使用 Mock 工厂创建所有需要的 mock
         mocks = self.mock_factory.create_complete_dp_mocks()
-        
+
         # 设置异常情况
         mocks["app_service"].run_data_processor.side_effect = Exception(
             "数据处理器启动失败"
@@ -377,13 +385,15 @@ class TestEdgeCases:
         # 设置 mock
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
-        
+
         # 设置 app_service mock 返回任务映射
         mock_app_service = Mock()
         mock_task_mapping = {"stock_daily": ["000001.SZ", "000002.SZ"]}
-        mock_app_service.build_task_stock_mapping_from_group.return_value = mock_task_mapping
+        mock_app_service.build_task_stock_mapping_from_group.return_value = (
+            mock_task_mapping
+        )
         mock_container.app_service.return_value = mock_app_service
-        
+
         # 设置 task 返回值
         mock_task_result = Mock()
         mock_task_result.id = "test-task-id"
@@ -407,13 +417,15 @@ class TestEdgeCases:
         # 设置 mock
         mock_container.task_builder.return_value = Mock()
         mock_container.group_handler.return_value = Mock()
-        
+
         # 设置 app_service mock 返回任务映射
         mock_app_service = Mock()
         mock_task_mapping = {"stock_daily": ["000001.SZ", "000002.SZ"]}
-        mock_app_service.build_task_stock_mapping_from_group.return_value = mock_task_mapping
+        mock_app_service.build_task_stock_mapping_from_group.return_value = (
+            mock_task_mapping
+        )
         mock_container.app_service.return_value = mock_app_service
-        
+
         # 设置 task 返回值
         mock_task_result = Mock()
         mock_task_result.id = "test-task-id"
